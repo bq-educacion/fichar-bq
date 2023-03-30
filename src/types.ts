@@ -23,6 +23,7 @@ export type UserStats = {
   logsThisWeekDays: number;
   logsThisMonthDays: number;
   logsThisYearDays: number;
+  message: string;
 };
 
 export type UserToday = {

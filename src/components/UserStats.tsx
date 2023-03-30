@@ -21,7 +21,11 @@ const UserStats: FC<{ email: string }> = ({ email }) => {
       {Object.keys(stats).map((stat) => (
         <div key={stat}>
           {stat}:{" "}
-          {stats[stat as keyof UserStats].toFixed(2).replace(/\.?0+$/, "")}
+          {typeof stats[stat as keyof UserStats] === "number"
+            ? (stats[stat as keyof UserStats] as number)
+                .toFixed(2)
+                .replace(/\.?0+$/, "")
+            : stats[stat as keyof UserStats]}
         </div>
       ))}{" "}
     </div>

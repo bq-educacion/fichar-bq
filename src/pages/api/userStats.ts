@@ -15,7 +15,27 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
     const email = session!.user!.email;
 
+    let message = "";
     await connectMongo();
+
+    // if last log is not out and it is from yesterday, add a error log width date of yesterday
+    const lastLog = await LogModel.findOne({
+      user: email,
+    }).sort({ date: -1 });
+
+    if (
+      lastLog &&
+      lastLog.type !== LOG_TYPE.out &&
+      new Date(lastLog.date).setHours(0, 0, 0, 0) !==
+        new Date().setHours(0, 0, 0, 0)
+    ) {
+      await LogModel.create({
+        type: LOG_TYPE.error,
+        user: email,
+        date: lastLog.date,
+      });
+      message = "El último día se te olvidó desfichar";
+    }
 
     // how many days have passed since the beginning of the week
     const daysPassedWeek = new Date().getDay();
@@ -201,6 +221,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       errorLogsThisWeek,
       errorLogsThisMonth,
       errorLogsThisYear,
+      message,
     });
 
     res.end();

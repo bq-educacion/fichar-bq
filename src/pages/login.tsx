@@ -15,8 +15,6 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   // if autheticated redirect to /
   if (session?.user) {
     console.log("session", session.user);
-    // await connectMongo();
-    // await addUser(session!.user!.email!);
 
     return {
       redirect: {
