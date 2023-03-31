@@ -11,6 +11,8 @@ import Image from "next/image";
 import React from "react";
 import UserStats from "@/components/UserStats";
 import UserToday from "@/components/UserToday";
+import { LogModel } from "@/db/Models";
+import connectMongo from "@/lib/connectMongo";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   // get session data
@@ -26,14 +28,37 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     };
   }
 
+  let message = "";
+
+  // if last log is not out and it is from yesterday, add a error log width date of yesterday
+  await connectMongo();
+  const lastLog = await LogModel.findOne({
+    user: session.user.email,
+  }).sort({ date: -1 });
+
+  if (
+    lastLog &&
+    lastLog.type !== LOG_TYPE.out &&
+    new Date(lastLog.date).setHours(0, 0, 0, 0) !==
+      new Date().setHours(0, 0, 0, 0)
+  ) {
+    await LogModel.create({
+      type: LOG_TYPE.error,
+      user: session.user.email,
+      date: lastLog.date,
+    });
+    message = "El último día se te olvidó desfichar";
+  }
+
   return {
     props: {
+      message,
       session,
     },
   };
 };
 
-const Home: NextPage = () => {
+const Home: NextPage<{ message: string }> = ({ message }) => {
   const getUserStatus = async () => {
     const res = await fetch("/api/userStatus");
     if (res.status !== 200) router.push("/login");
@@ -74,6 +99,7 @@ const Home: NextPage = () => {
         src={data?.user?.image || ""}
         alt={data?.user?.name + " photo"}
       />
+      {message !== "" && <div>{message}</div>}
       {status === USER_STATUS.not_started && (
         <Button onClick={() => logActivity(LOG_TYPE.in)}>
           Empezar a trabajar
@@ -158,15 +184,12 @@ const H1 = styled.h1`
   color: ${colors.black};
 `;
 
-// Container centered on page with border
 const Container = styled.div`
-  // center horizontally children
   display: flex;
   flex-direction: column;
   align-items: center;
 
-  width: 800px;
-  max-width: 800px;
+  min-width: 400px;
   position: absolute;
   top: 50%;
   left: 50%;

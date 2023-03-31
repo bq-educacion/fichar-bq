@@ -38,7 +38,9 @@ const Login = () => {
   } else {
     return (
       <Container>
-        <button onClick={() => signIn("google")}>sign in with gooogle</button>
+        <button onClick={() => signIn("google")}>
+          sign in with bq account
+        </button>
       </Container>
     );
   }
@@ -46,10 +48,12 @@ const Login = () => {
 
 export default Login;
 
-// Container centered on page with border
 const Container = styled.div`
-  width: 800px;
-  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  min-width: 400px;
   position: absolute;
   top: 50%;
   left: 50%;
