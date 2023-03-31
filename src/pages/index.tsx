@@ -123,7 +123,7 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
       <div>Status: {status}</div>
       {status !== USER_STATUS.error && (
         <Button onClick={() => logActivity(LOG_TYPE.error)}>
-          Hoy me he lidado y he cometido un error
+          Hoy la he lidado y no cuenta
         </Button>
       )}
       {status === USER_STATUS.error && (
