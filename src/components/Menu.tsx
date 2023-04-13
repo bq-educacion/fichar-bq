@@ -7,20 +7,24 @@ import styled from "@emotion/styled";
 type MenuItems = {
   icon: React.ReactNode;
   text: string;
+  enabled: boolean;
 };
 
 const menuItems: MenuItems[] = [
   {
     icon: <IconClock />,
     text: "Fichar",
+    enabled: true,
   },
   {
     icon: <IconTeam />,
     text: "Compañeros",
+    enabled: false,
   },
   {
     icon: <IconPalm />,
     text: "Vacaciones",
+    enabled: false,
   },
 ];
 
@@ -29,7 +33,11 @@ const Menu = () => {
   return (
     <MenuContainer>
       {menuItems.map((item, index) => (
-        <MenuItem key={index} selected={index === selected}>
+        <MenuItem
+          key={index}
+          selected={index === selected}
+          enabled={item.enabled}
+        >
           {item.icon}
           <div>{item.text}</div>
         </MenuItem>
@@ -48,16 +56,15 @@ const MenuContainer = styled.div`
   margin-top: -15px;
 `;
 
-const MenuItem = styled.div<{ selected: boolean }>`
+const MenuItem = styled.div<{ selected: boolean; enabled: boolean }>`
   display: flex;
   flex: 0 0 ${100 / menuItems.length}%;
   flex-direction: row;
   align-items: center;
   height: 50px;
-  cursor: not-allowed;
+  cursor: ${(props) => (props.enabled ? "pointer" : "not-allowed")};
   :first-of-type {
     border-top-left-radius: 10px;
-    cursor: pointer;
   }
   :last-of-type {
     border-top-right-radius: 10px;
