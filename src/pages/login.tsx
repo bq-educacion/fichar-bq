@@ -5,11 +5,8 @@ import { authOptions } from "./api/auth/[...nextauth]";
 import styled from "@emotion/styled";
 import { colors } from "@/styles/colors";
 import React from "react";
-import connectMongo from "@/lib/connectMongo";
-import { addUser } from "@/lib/controllers.ts/User";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
-  // get session data
   // get session data
   const session = await getServerSession(context.req, context.res, authOptions);
   // if autheticated redirect to /
