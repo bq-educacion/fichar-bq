@@ -13,6 +13,10 @@ import UserStats from "@/components/UserStats";
 import UserToday from "@/components/UserToday";
 import { LogModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
+import Header from "@/components/Header";
+import Layout from "@/components/Layout";
+import WelcomeUser from "@/components/WelcomeUser";
+import SingleBoxAction from "@/components/SingleBoxAction";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   // get session data
@@ -91,56 +95,53 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
   });
 
   return (
-    <Container>
-      <H1>{data?.user?.name || "Nombre no definido"}</H1>
-      <Imagex
-        width={100}
-        height={100}
-        src={data?.user?.image || ""}
-        alt={data?.user?.name + " photo"}
-      />
-      {message !== "" && <div>{message}</div>}
-      {status === USER_STATUS.not_started && (
-        <Button onClick={() => logActivity(LOG_TYPE.in)}>
-          Empezar a trabajar
-        </Button>
-      )}
-      {status === USER_STATUS.paused && (
-        <Button onClick={() => logActivity(LOG_TYPE.in)}>
-          Volver al trabajo
-        </Button>
-      )}
-      {status === USER_STATUS.working && (
-        <>
-          <Button onClick={() => logActivity(LOG_TYPE.pause)}>
-            Hacer una pausa
+    <Layout>
+      <WelcomeUser data={data!} />
+      <SingleBoxAction action={LOG_TYPE.in} />
+      <Container>
+        {message !== "" && <div>{message}</div>}
+        {status === USER_STATUS.not_started && (
+          <Button onClick={() => logActivity(LOG_TYPE.in)}>
+            Empezar a trabajar
           </Button>
-          <Button onClick={() => logActivity(LOG_TYPE.out)}>
-            Acabar por hoy
+        )}
+        {status === USER_STATUS.paused && (
+          <Button onClick={() => logActivity(LOG_TYPE.in)}>
+            Volver al trabajo
           </Button>
-        </>
-      )}
-      <div>Status: {status}</div>
-      {status !== USER_STATUS.error && (
-        <Button onClick={() => logActivity(LOG_TYPE.error)}>
-          Hoy la he lidado y no cuenta
+        )}
+        {status === USER_STATUS.working && (
+          <>
+            <Button onClick={() => logActivity(LOG_TYPE.pause)}>
+              Hacer una pausa
+            </Button>
+            <Button onClick={() => logActivity(LOG_TYPE.out)}>
+              Acabar por hoy
+            </Button>
+          </>
+        )}
+        <div>Status: {status}</div>
+        {status !== USER_STATUS.error && (
+          <Button onClick={() => logActivity(LOG_TYPE.error)}>
+            Hoy la he lidado y no cuenta
+          </Button>
+        )}
+        {status === USER_STATUS.error && (
+          <div>Hoy la he lidado, mañana será otro día</div>
+        )}
+        <Button
+          color={colors.white}
+          backColor={colors.purple100}
+          onClick={() => signOut()}
+        >
+          sign out
         </Button>
-      )}
-      {status === USER_STATUS.error && (
-        <div>Hoy la he lidado, mañana será otro día</div>
-      )}
-      <Button
-        color={colors.white}
-        backColor={colors.purple100}
-        onClick={() => signOut()}
-      >
-        sign out
-      </Button>
-      <UserStats email={data?.user?.email || ""} />
-      ------
-      <br />
-      <UserToday email={data?.user?.email || ""} />
-    </Container>
+        <UserStats email={data?.user?.email || ""} />
+        ------
+        <br />
+        <UserToday email={data?.user?.email || ""} />
+      </Container>
+    </Layout>
   );
 };
 
@@ -190,10 +191,6 @@ const Container = styled.div`
   align-items: center;
 
   min-width: 400px;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   border: 1px solid ${colors.black};
   border-radius: 4px;
   padding: 20px;
