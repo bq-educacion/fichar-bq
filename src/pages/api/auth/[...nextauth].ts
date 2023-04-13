@@ -1,5 +1,5 @@
 import connectMongo from "@/lib/connectMongo";
-import { addUser } from "@/lib/controllers.ts/User";
+import { addUser } from "@/controllers/User";
 import NextAuth, {
   Account,
   Profile,

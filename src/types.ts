@@ -1,3 +1,5 @@
+import mongoose from "mongoose";
+
 export enum USER_STATUS {
   not_started = "not_started",
   working = "working",
@@ -27,4 +29,16 @@ export type UserStats = {
 
 export type UserToday = {
   hoursToday: number;
+};
+
+export type User = {
+  email: string;
+  active: boolean;
+};
+
+export type Log = {
+  id: mongoose.Schema.Types.ObjectId;
+  type: LOG_TYPE;
+  date: Date;
+  user: User;
 };

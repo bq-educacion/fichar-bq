@@ -4,6 +4,13 @@ import { LOG_TYPE, USER_STATUS } from "@/types";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "./auth/[...nextauth]";
+import {
+  logsIn,
+  logsOut,
+  numberOfDays,
+  numberOfErrorLogs,
+  removeErrorLogs,
+} from "@/lib/utils";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
@@ -34,43 +41,19 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     });
 
     // remove logs from days in which there is an error
-    const logsThisWeekFiltered = logsThisWeek.filter((log) => {
-      const date = new Date(log.date).setHours(0, 0, 0, 0);
-      const logsThisDay = logsThisWeek.filter(
-        (log) => new Date(log.date).setHours(0, 0, 0, 0) === date
-      );
-      return !logsThisDay.some((log) => log.type === LOG_TYPE.error);
-    });
+    const logsThisWeekFiltered = removeErrorLogs(logsThisWeek);
 
     // number of days with error logs this week
-    const errorLogsThisWeek = await LogModel.find({
-      user: email,
-      type: LOG_TYPE.error,
-      date: {
-        $gte: new Date(
-          new Date().setHours(0, 0, 0, 0) - daysPassedWeek * 24 * 60 * 60 * 1000
-        ),
-      },
-    }).countDocuments();
+    const errorLogsThisWeek = numberOfErrorLogs(logsThisWeek);
 
     // sum date of all logs with type "in"
-    const logsThisWeekIn = logsThisWeekFiltered
-      .filter((log) => log.type === LOG_TYPE.in)
-      .reduce((acc, log) => acc + log.date.getTime(), 0);
+    const logsThisWeekIn = logsIn(logsThisWeekFiltered);
 
     // sum date of all logs with type "out" or pause
-    const logsThisWeekOut = logsThisWeekFiltered
-      .filter((log) => log.type === LOG_TYPE.out || log.type === LOG_TYPE.pause)
-      .reduce((acc, log) => acc + log.date.getTime(), 0);
+    const logsThisWeekOut = logsOut(logsThisWeekFiltered);
 
     // count how many logs of different days there are
-    const logsThisWeekDays = logsThisWeekFiltered.reduce((acc, log) => {
-      const date = new Date(log.date).setHours(0, 0, 0, 0);
-      if (!acc.includes(date)) {
-        acc.push(date);
-      }
-      return acc;
-    }, []).length;
+    const logsThisWeekDays = numberOfDays(logsThisWeekFiltered);
 
     // average time worked this week
     const averageThisWeek =
@@ -81,6 +64,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           1000 /
           60 /
           60;
+
+    // totoal hours worked this week
+    const totalThisWeek = (logsThisWeekOut - logsThisWeekIn) / 1000 / 60 / 60;
 
     const logsThisMonth = await LogModel.find({
       user: email,
@@ -93,41 +79,15 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     });
 
     // remove logs from days in which there is an error
-    const logsThisMonthFiltered = logsThisMonth.filter((log) => {
-      const date = new Date(log.date).setHours(0, 0, 0, 0);
-      const logsThisDate = logsThisMonth.filter(
-        (log) => new Date(log.date).setHours(0, 0, 0, 0) === date
-      );
-      return !logsThisDate.some((log) => log.type === LOG_TYPE.error);
-    });
+    const logsThisMonthFiltered = removeErrorLogs(logsThisMonth);
 
     // number of days with error logs this month
-    const errorLogsThisMonth = await LogModel.find({
-      user: email,
-      type: LOG_TYPE.error,
-      date: {
-        $gte: new Date(
-          new Date(currentYear, currentMonth, 1).setHours(0, 0, 0, 0)
-        ),
-      },
-    }).countDocuments();
+    const errorLogsThisMonth = numberOfErrorLogs(logsThisMonth);
 
     // calculate the average for the month
-    const logsThisMonthIn = logsThisMonthFiltered
-      .filter((log) => log.type === LOG_TYPE.in)
-      .reduce((acc, log) => acc + log.date.getTime(), 0);
-
-    const logsThisMonthOut = logsThisMonthFiltered
-      .filter((log) => log.type === LOG_TYPE.out || log.type === LOG_TYPE.pause)
-      .reduce((acc, log) => acc + log.date.getTime(), 0);
-
-    const logsThisMonthDays = logsThisMonthFiltered.reduce((acc, log) => {
-      const date = new Date(log.date).setHours(0, 0, 0, 0);
-      if (!acc.includes(date)) {
-        acc.push(date);
-      }
-      return acc;
-    }, []).length;
+    const logsThisMonthIn = logsIn(logsThisMonthFiltered);
+    const logsThisMonthOut = logsOut(logsThisMonthFiltered);
+    const logsThisMonthDays = numberOfDays(logsThisMonthFiltered);
 
     const averageThisMonth =
       logsThisMonthDays === 0
@@ -147,39 +107,15 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     });
 
     // remove logs from days in which there is an error
-    const logsThisYearFiltered = logsThisYear.filter((log) => {
-      const date = new Date(log.date).setHours(0, 0, 0, 0);
-      const logsThisDay = logsThisYear.filter(
-        (log) => new Date(log.date).setHours(0, 0, 0, 0) === date
-      );
-      return !logsThisDay.some((log) => log.type === LOG_TYPE.error);
-    });
+    const logsThisYearFiltered = removeErrorLogs(logsThisYear);
 
     // number of days with error logs this year
-    const errorLogsThisYear = await LogModel.find({
-      user: email,
-      type: LOG_TYPE.error,
-      date: {
-        $gte: new Date(new Date(currentYear, 0, 1).setHours(0, 0, 0, 0)),
-      },
-    }).countDocuments();
+    const errorLogsThisYear = numberOfErrorLogs(logsThisYear);
 
     // calculate the average for the year
-    const logsThisYearIn = logsThisYearFiltered
-      .filter((log) => log.type === LOG_TYPE.in)
-      .reduce((acc, log) => acc + log.date.getTime(), 0);
-
-    const logsThisYearOut = logsThisYearFiltered
-      .filter((log) => log.type === LOG_TYPE.out || log.type === LOG_TYPE.pause)
-      .reduce((acc, log) => acc + log.date.getTime(), 0);
-
-    const logsThisYearDays = logsThisYearFiltered.reduce((acc, log) => {
-      const date = new Date(log.date).setHours(0, 0, 0, 0);
-      if (!acc.includes(date)) {
-        acc.push(date);
-      }
-      return acc;
-    }, []).length;
+    const logsThisYearIn = logsIn(logsThisYearFiltered);
+    const logsThisYearOut = logsOut(logsThisYearFiltered);
+    const logsThisYearDays = numberOfDays(logsThisYearFiltered);
 
     // average time worked this year in hours
     const averageThisYear =
@@ -192,6 +128,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           60;
 
     res.status(200).json({
+      totalThisWeek,
       averageThisWeek,
       averageThisMonth,
       averageThisYear,

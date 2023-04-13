@@ -24,15 +24,3 @@ const UserSchema = new mongoose.Schema(
 export const LogModel = mongoose.models.Log || mongoose.model("Log", LogSchema);
 export const UserModel =
   mongoose.models.User || mongoose.model("User", UserSchema);
-
-export type User = {
-  email: string;
-  active: boolean;
-};
-
-export type Log = {
-  id: mongoose.Schema.Types.ObjectId;
-  type: "in" | "out";
-  date: Date;
-  user: User;
-};
