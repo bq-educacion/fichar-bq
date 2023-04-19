@@ -1,6 +1,6 @@
 import { LogModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
-import { USER_STATUS } from "@/types";
+import { LOG_TYPE, Log, USER_STATUS } from "@/types";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "./auth/[...nextauth]";
@@ -17,7 +17,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   await connectMongo();
 
-  const logsOfToday = await LogModel.find({
+  const logsOfToday: Log[] = await LogModel.find({
     user: email,
     date: {
       $gte: new Date(new Date().setHours(0, 0, 0, 0)),
@@ -31,16 +31,24 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     res.status(200).json({ status: USER_STATUS.not_started });
   } else {
     const lastType = logsOfToday[0].type;
+    const lastDate = logsOfToday[0].date;
+    const startDate = logsOfToday.at(-1)?.date;
 
     // if there is any type with USER_STATUS.error
-    if (logsOfToday.some((log) => log.type === USER_STATUS.error)) {
+    if (logsOfToday.some((log) => log.type === LOG_TYPE.error)) {
       res.status(200).json({ status: USER_STATUS.error });
     } else if (lastType === "in") {
-      res.status(200).json({ status: USER_STATUS.working });
+      res
+        .status(200)
+        .json({ status: USER_STATUS.working, date: lastDate, startDate });
     } else if (lastType === "pause") {
-      res.status(200).json({ status: USER_STATUS.paused });
+      res
+        .status(200)
+        .json({ status: USER_STATUS.paused, date: lastDate, startDate });
     } else {
-      res.status(200).json({ status: USER_STATUS.finished });
+      res
+        .status(200)
+        .json({ status: USER_STATUS.finished, date: lastDate, startDate });
     }
     res.end();
   }

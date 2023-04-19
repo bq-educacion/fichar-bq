@@ -42,6 +42,8 @@ export const authOptions = {
   ],
   session: {
     strategy: "jwt" as SessionStrategy,
+    // expires after 6 hours idle
+    maxAge: 6 * 60 * 60,
   },
   secret: process.env.JWT_SECRET,
 };

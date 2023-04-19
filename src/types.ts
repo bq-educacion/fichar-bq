@@ -42,3 +42,9 @@ export type Log = {
   date: Date;
   user: User;
 };
+
+export type Status = {
+  status: USER_STATUS;
+  date?: Date;
+  startDate?: Date;
+};

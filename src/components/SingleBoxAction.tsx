@@ -1,9 +1,17 @@
-import { LOG_TYPE } from "@/types";
+import { LOG_TYPE, Status, USER_STATUS } from "@/types";
 import styled from "@emotion/styled";
 import React, { FC, useEffect, useState } from "react";
 import IconClock from "@/assets/icons/icon-clock.svg";
+import IconFork from "@/assets/icons/icon-fork-and-spoon.svg";
+import IconCoputerOff from "@/assets/icons/icon-computer-off.svg";
+import { useRouter } from "next/router";
 
-const SingleBoxAction: FC<{ action: LOG_TYPE }> = ({ action }) => {
+const SingleBoxAction: FC<{
+  action: LOG_TYPE;
+  status: Status;
+  refreshStatus: () => void;
+}> = ({ action, status, refreshStatus }) => {
+  const router = useRouter();
   const [time, setTime] = useState<string>(
     new Date().getHours() + ":" + new Date().getMinutes()
   );
@@ -15,6 +23,18 @@ const SingleBoxAction: FC<{ action: LOG_TYPE }> = ({ action }) => {
       day: "numeric",
     })
   );
+
+  const logActivity = async (type: LOG_TYPE) => {
+    const res = await fetch("/api/logActivity", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ type }),
+    });
+    //const data = await res.json();
+    if (res.status !== 200) router.push("/login");
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -32,34 +52,79 @@ const SingleBoxAction: FC<{ action: LOG_TYPE }> = ({ action }) => {
   }, []);
 
   let background = "";
-  switch (action) {
-    case LOG_TYPE.in:
+  let buttonbakground = "";
+  let iconbackground = "";
+  let buttonText = "";
+  let headerLine: JSX.Element | undefined = undefined;
+  let subHeaderLine: JSX.Element | undefined = undefined;
+  let icon: JSX.Element | undefined = undefined;
+  switch (status.status) {
+    case USER_STATUS.not_started:
       background = "linear-gradient(247deg, #8a4d92, #ff1842)";
+      buttonbakground = "linear-gradient(256deg, #b68fbb, #ff5776)";
+      buttonText = "Empezar a trabajar";
+      headerLine = <HeaderLine>{time}</HeaderLine>;
+      subHeaderLine = <SubHeaderLine>{date}</SubHeaderLine>;
+      iconbackground = "linear-gradient(247deg, #8a4d92, #ff1842)";
+      icon = <IconClock />;
       break;
-    case LOG_TYPE.out:
-      background = "#fff";
+    case USER_STATUS.paused:
+      background = "linear-gradient(247deg, #fe5000, #f6a001)";
+      buttonbakground = "linear-gradient(256deg, #fea77f, #facf7f)";
+      buttonText = "Volver al trabajo";
+      headerLine = <HeaderLine>Descanso iniciado</HeaderLine>;
+      subHeaderLine = (
+        <SubHeaderLine>
+          a las {status.date?.getHours()}:{status.date?.getMinutes()}{" "}
+        </SubHeaderLine>
+      );
+      iconbackground = " linear-gradient(225deg, #fea77f, #facf7f)";
+      icon = <IconFork />;
       break;
-    case LOG_TYPE.error:
-      background = "#fff";
-      break;
+    case USER_STATUS.finished:
+      background = "linear-gradient(230deg, #6d2077 100%, #e4002b)";
+      buttonbakground = "linear-gradient(256deg, #b68fbb 100%, #ff5776)";
+      buttonText = "Cancelar";
+      headerLine = <HeaderLine>Jornada finalizada</HeaderLine>;
+      subHeaderLine = (
+        <SubHeaderLine>
+          A las {status.date?.getHours()}:{status.date?.getMinutes()} (Has
+          trabajado
+          {new Date(
+            status.date?.getTime() - status.startDate?.getTime()
+          ).getHours()}
+          :
+          {new Date(
+            status.date?.getTime() - status.startDate?.getTime()
+          ).getMinutes()}
+          )
+        </SubHeaderLine>
+      );
+      iconbackground = "linear-gradient(225deg, #b68fbb, #ff5776)";
+      icon = <IconCoputerOff />;
   }
 
   return (
     <Container background={background}>
-      <Icon>
-        <IconClock />
-      </Icon>
-      <Time>{time}</Time>
-      <DateLine>{date}</DateLine>
+      <Icon background={iconbackground}>{icon}</Icon>
+      {headerLine}
+      {subHeaderLine}
+      <Button
+        background={buttonbakground}
+        onClick={async () => {
+          await logActivity(action);
+          refreshStatus();
+        }}
+      >
+        {buttonText}
+      </Button>
     </Container>
   );
 };
 
 const Container = styled.div<{ background: string }>`
   width: 615px;
-  height: 255px;
-  margin: 10px 0;
-  padding: 40px 208px;
+  margin-top: 0px;
   border-radius: 5px;
   background-image: ${(props) => props.background};
   display: flex;
@@ -68,11 +133,12 @@ const Container = styled.div<{ background: string }>`
   color: #fff;
 `;
 
-const Icon = styled.div`
+const Icon = styled.div<{ background: string }>`
   width: 46px;
   height: 46px;
+  margin-top: 40px;
   border-radius: 50%;
-  background-image: linear-gradient(225deg, #b68fbb, #ff5776);
+  background-image: ${(props) => props.background};
   position: relative;
   svg {
     display: block;
@@ -85,7 +151,7 @@ const Icon = styled.div`
   }
 `;
 
-const Time = styled.div`
+const HeaderLine = styled.div`
   height: 25px;
   margin-top: 9px;
   font-size: 20px;
@@ -95,13 +161,25 @@ const Time = styled.div`
   color: #fff;
 `;
 
-const DateLine = styled.div`
+const SubHeaderLine = styled.div`
   height: 20px;
   margin-top: 5px;
   font-size: 14px;
   line-height: 1.43;
   color: #fff;
   text-transform: capitalize;
+`;
+
+const Button = styled.div<{ background: string }>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  width: 199px;
+  height: 50px;
+  margin: 20px 0 40px 0;
+  border-radius: 4px;
+  background-image: ${(props) => props.background};
 `;
 
 export default SingleBoxAction;

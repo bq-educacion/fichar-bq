@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { LOG_TYPE, USER_STATUS } from "@/types";
+import { LOG_TYPE, Status, USER_STATUS } from "@/types";
 import styled from "@emotion/styled";
 import { colors } from "@/styles/colors";
 import Image from "next/image";
@@ -66,13 +66,16 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
   const getUserStatus = async () => {
     const res = await fetch("/api/userStatus");
     if (res.status !== 200) router.push("/login");
-
     const data = await res.json();
-    setStatus(data.status);
+    setStatus({
+      status: data.status,
+      date: new Date(data.date),
+      startDate: new Date(data.startDate),
+    });
   };
 
   const router = useRouter();
-  const [status, setStatus] = useState<USER_STATUS | undefined>(undefined);
+  const [status, setStatus] = useState<Status | undefined>(undefined);
   useEffect(() => {
     getUserStatus();
   }, []);
@@ -97,50 +100,54 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
   return (
     <Layout>
       <WelcomeUser data={data!} />
-      <SingleBoxAction action={LOG_TYPE.in} />
-      <Container>
-        {message !== "" && <div>{message}</div>}
-        {status === USER_STATUS.not_started && (
-          <Button onClick={() => logActivity(LOG_TYPE.in)}>
-            Empezar a trabajar
-          </Button>
-        )}
-        {status === USER_STATUS.paused && (
-          <Button onClick={() => logActivity(LOG_TYPE.in)}>
-            Volver al trabajo
-          </Button>
-        )}
-        {status === USER_STATUS.working && (
-          <>
-            <Button onClick={() => logActivity(LOG_TYPE.pause)}>
-              Hacer una pausa
+      {status && (
+        <SingleBoxAction
+          status={status}
+          action={LOG_TYPE.in}
+          refreshStatus={() => getUserStatus()}
+        />
+      )}
+
+      {status && (
+        <Container>
+          {message !== "" && <div>{message}</div>}
+          {status.status === USER_STATUS.paused && (
+            <Button onClick={() => logActivity(LOG_TYPE.in)}>
+              Volver al trabajo
             </Button>
-            <Button onClick={() => logActivity(LOG_TYPE.out)}>
-              Acabar por hoy
+          )}
+          {status.status === USER_STATUS.working && (
+            <>
+              <Button onClick={() => logActivity(LOG_TYPE.pause)}>
+                Hacer una pausa
+              </Button>
+              <Button onClick={() => logActivity(LOG_TYPE.out)}>
+                Acabar por hoy
+              </Button>
+            </>
+          )}
+          <div>Status: {status.status}</div>
+          {status.status !== USER_STATUS.error && (
+            <Button onClick={() => logActivity(LOG_TYPE.error)}>
+              Hoy la he lidado y no cuenta
             </Button>
-          </>
-        )}
-        <div>Status: {status}</div>
-        {status !== USER_STATUS.error && (
-          <Button onClick={() => logActivity(LOG_TYPE.error)}>
-            Hoy la he lidado y no cuenta
+          )}
+          {status.status === USER_STATUS.error && (
+            <div>Hoy la he lidado, mañana será otro día</div>
+          )}
+          <Button
+            color={colors.white}
+            backColor={colors.purple100}
+            onClick={() => signOut()}
+          >
+            sign out
           </Button>
-        )}
-        {status === USER_STATUS.error && (
-          <div>Hoy la he lidado, mañana será otro día</div>
-        )}
-        <Button
-          color={colors.white}
-          backColor={colors.purple100}
-          onClick={() => signOut()}
-        >
-          sign out
-        </Button>
-        <UserStats email={data?.user?.email || ""} />
-        ------
-        <br />
-        <UserToday email={data?.user?.email || ""} />
-      </Container>
+          <UserStats email={data?.user?.email || ""} />
+          ------
+          <br />
+          <UserToday email={data?.user?.email || ""} />
+        </Container>
+      )}
     </Layout>
   );
 };
