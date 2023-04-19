@@ -4,6 +4,7 @@ import { LOG_TYPE, USER_STATUS } from "@/types";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "./auth/[...nextauth]";
+import { getHoursToday } from "@/lib/utils";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
@@ -24,45 +25,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       },
     });
 
-    if (
-      logsToday.some((log) => log.type === USER_STATUS.error) ||
-      logsToday.length === 0
-    ) {
-      res.status(200).json({ hoursToday: 0 });
-      res.end();
-      return;
-    }
-
-    const logsTodayIn = logsToday.filter((log) => log.type === LOG_TYPE.in);
-    const logsTodayOut = logsToday.filter(
-      (log) => log.type === LOG_TYPE.out || log.type === LOG_TYPE.pause
-    );
-
-    if (logsTodayOut.length === 0) {
-      logsTodayOut.push({
-        date: new Date(),
-        type: LOG_TYPE.out,
-      });
-    }
-
-    if (logsTodayOut.at(-1).date < logsTodayIn.at(-1).date) {
-      logsTodayOut.push({
-        date: new Date(),
-        type: LOG_TYPE.out,
-      });
-    }
-
-    // sum of todays in
-    const sumIn = logsTodayIn.reduce((acc, log) => {
-      return acc + log.date.getTime();
-    }, 0);
-
-    // sum of todays out
-    const sumOut = logsTodayOut.reduce((acc, log) => {
-      return acc + log.date.getTime();
-    }, 0);
-
-    const hoursToday = (sumOut - sumIn) / 1000 / 60 / 60;
+    const hoursToday = getHoursToday(logsToday);
 
     res.status(200).json({
       hoursToday,

@@ -37,7 +37,7 @@ export type User = {
 };
 
 export type Log = {
-  id: mongoose.Schema.Types.ObjectId;
+  id?: mongoose.Schema.Types.ObjectId;
   type: LOG_TYPE;
   date: Date;
   user: User;
@@ -47,4 +47,5 @@ export type Status = {
   status: USER_STATUS;
   date?: Date;
   startDate?: Date;
+  hoursToday?: number;
 };

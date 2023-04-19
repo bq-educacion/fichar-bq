@@ -71,6 +71,7 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
       status: data.status,
       date: new Date(data.date),
       startDate: new Date(data.startDate),
+      hoursToday: data.hoursToday,
     });
   };
 

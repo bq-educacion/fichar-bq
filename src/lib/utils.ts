@@ -1,6 +1,8 @@
 // remove logs from days in which there is an error
 
 import { LOG_TYPE, Log } from "@/types";
+import mongoose from "mongoose";
+import { mongo } from "mongoose";
 
 export const removeErrorLogs = (logs: Log[]) =>
   logs.filter((log) => {
@@ -37,3 +39,43 @@ export const numberOfDays = (logs: Log[]) =>
     }
     return acc;
   }, []).length;
+
+export const getHoursToday = (logs: Log[]) => {
+  const logsIn: { date: Date; type: LOG_TYPE }[] = logs.filter(
+    (log) => log.type === LOG_TYPE.in
+  );
+  const logsOut: { date: Date; type: LOG_TYPE }[] = logs.filter(
+    (log) => log.type === LOG_TYPE.out || log.type === LOG_TYPE.pause
+  );
+
+  if (logsOut.length === 0) {
+    logsOut.push({
+      date: new Date(),
+      type: LOG_TYPE.out,
+    });
+  }
+
+  if (
+    logsOut.length > 0 &&
+    logsIn.length > 0 &&
+    logsOut.at(-1)!.date < logsIn.at(-1)!.date
+  ) {
+    logsOut.push({
+      date: new Date(),
+      type: LOG_TYPE.out,
+    });
+  }
+
+  // sum of todays in
+  const sumIn = logsIn.reduce((acc, log) => {
+    return acc + log.date.getTime();
+  }, 0);
+
+  // sum of todays out
+  const sumOut = logsOut.reduce((acc, log) => {
+    return acc + log.date.getTime();
+  }, 0);
+
+  const hoursToday = (sumOut - sumIn) / 1000 / 60 / 60;
+  return hoursToday;
+};

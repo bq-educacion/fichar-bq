@@ -91,18 +91,14 @@ const SingleBoxAction: FC<{
       buttonbakground = "linear-gradient(256deg, #b68fbb 100%, #ff5776)";
       buttonText = "Cancelar";
       headerLine = <HeaderLine>Jornada finalizada</HeaderLine>;
-      const startTime = status.startDate?.getTime() || 0;
-      const endTime = status.date?.getTime() || 0;
-      const diff = new Date(endTime - startTime);
-      debugger;
+      const hoursToday = status.hoursToday!;
+      console.log("hoursToday:", hoursToday);
+
       subHeaderLine = (
         <SubHeaderLine>
           A las {status.date?.getHours()}:{status.date?.getMinutes()} (Has
-          trabajado{" "}
-          {diff.getHours() - 1 < 10
-            ? `0${diff.getHours() - 1}`
-            : diff.getHours() - 1}
-          :{diff.getMinutes()} horas)
+          trabajado {Math.floor(hoursToday)}h ,{" "}
+          {Math.floor((hoursToday % 1) * 60)}m)
         </SubHeaderLine>
       );
       iconbackground = "linear-gradient(225deg, #b68fbb, #ff5776)";
@@ -115,7 +111,7 @@ const SingleBoxAction: FC<{
       {headerLine}
       {subHeaderLine}
       <TimedButton
-        time={6}
+        time={5}
         background={buttonbakground}
         onClick={async () => {
           await logActivity(action);

@@ -4,6 +4,7 @@ import { LOG_TYPE, Log, USER_STATUS } from "@/types";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "./auth/[...nextauth]";
+import { getHoursToday } from "@/lib/utils";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const session = await getServerSession(req, res, authOptions);
@@ -13,7 +14,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   const email = session!.user!.email;
-  const { type } = req.body;
 
   await connectMongo();
 
@@ -33,22 +33,33 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     const lastType = logsOfToday[0].type;
     const lastDate = logsOfToday[0].date;
     const startDate = logsOfToday.at(-1)?.date;
+    const hoursToday = getHoursToday(logsOfToday.reverse());
+    console.log("hours Today: ", hoursToday);
 
     // if there is any type with USER_STATUS.error
     if (logsOfToday.some((log) => log.type === LOG_TYPE.error)) {
       res.status(200).json({ status: USER_STATUS.error });
     } else if (lastType === "in") {
-      res
-        .status(200)
-        .json({ status: USER_STATUS.working, date: lastDate, startDate });
+      res.status(200).json({
+        status: USER_STATUS.working,
+        date: lastDate,
+        startDate,
+        hoursToday,
+      });
     } else if (lastType === "pause") {
-      res
-        .status(200)
-        .json({ status: USER_STATUS.paused, date: lastDate, startDate });
+      res.status(200).json({
+        status: USER_STATUS.paused,
+        date: lastDate,
+        startDate,
+        hoursToday,
+      });
     } else {
-      res
-        .status(200)
-        .json({ status: USER_STATUS.finished, date: lastDate, startDate });
+      res.status(200).json({
+        status: USER_STATUS.finished,
+        date: lastDate,
+        startDate,
+        hoursToday,
+      });
     }
     res.end();
   }
