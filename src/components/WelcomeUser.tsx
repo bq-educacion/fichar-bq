@@ -7,12 +7,14 @@ const WelcomeUser: FC<{ data: Session }> = ({ data }) => {
   const user = data.user!;
   return (
     <Container>
-      <StyledImage
-        width={76}
-        height={76}
-        src={data?.user?.image || ""}
-        alt={data?.user?.name + " photo"}
-      />
+      <ImageMask>
+        <Image
+          width={72}
+          height={72}
+          src={data?.user?.image || ""}
+          alt={data?.user?.name + " photo"}
+        />
+      </ImageMask>
       <H1>¡Hola, {data.user?.name!.split(" ").at(0)}!</H1>
       <H2>{user.email}</H2>
     </Container>
@@ -27,9 +29,24 @@ const Container = styled.div`
   padding-bottom: 40px;
 `;
 
-const StyledImage = styled(Image)`
+const ImageMask = styled.div`
+  width: 76px;
+  height: 76px;
+  background-image: linear-gradient(
+    52deg,
+    #44b8af 14%,
+    #f6a001 38%,
+    #e4002b 62%,
+    #6d2077 86%
+  );
   border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   margin-bottom: 22px;
+  img {
+    border-radius: 50%;
+  }
 `;
 
 const H1 = styled.h1`

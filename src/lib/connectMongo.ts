@@ -4,7 +4,7 @@ const connectMongo = async () => {
   const MongoURL = process.env.MONGO_URL;
 
   if (mongoose.connections[0].readyState) {
-    console.log("MongoDB already connected", MongoURL);
+    //console.log("MongoDB already connected", MongoURL);
     return;
   }
 

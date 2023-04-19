@@ -5,6 +5,7 @@ import IconClock from "@/assets/icons/icon-clock.svg";
 import IconFork from "@/assets/icons/icon-fork-and-spoon.svg";
 import IconCoputerOff from "@/assets/icons/icon-computer-off.svg";
 import { useRouter } from "next/router";
+import TimedButton from "../ui/TimedButton";
 
 const SingleBoxAction: FC<{
   action: LOG_TYPE;
@@ -13,7 +14,11 @@ const SingleBoxAction: FC<{
 }> = ({ action, status, refreshStatus }) => {
   const router = useRouter();
   const [time, setTime] = useState<string>(
-    new Date().getHours() + ":" + new Date().getMinutes()
+    `${new Date().getHours()}:${
+      new Date().getMinutes() < 10
+        ? "0" + new Date().getMinutes()
+        : new Date().getMinutes()
+    }`
   );
   const [date, setDate] = useState<string>(
     new Date().toLocaleDateString("es-ES", {
@@ -86,18 +91,18 @@ const SingleBoxAction: FC<{
       buttonbakground = "linear-gradient(256deg, #b68fbb 100%, #ff5776)";
       buttonText = "Cancelar";
       headerLine = <HeaderLine>Jornada finalizada</HeaderLine>;
+      const startTime = status.startDate?.getTime() || 0;
+      const endTime = status.date?.getTime() || 0;
+      const diff = new Date(endTime - startTime);
+      debugger;
       subHeaderLine = (
         <SubHeaderLine>
           A las {status.date?.getHours()}:{status.date?.getMinutes()} (Has
-          trabajado
-          {new Date(
-            status.date?.getTime() - status.startDate?.getTime()
-          ).getHours()}
-          :
-          {new Date(
-            status.date?.getTime() - status.startDate?.getTime()
-          ).getMinutes()}
-          )
+          trabajado{" "}
+          {diff.getHours() - 1 < 10
+            ? `0${diff.getHours() - 1}`
+            : diff.getHours() - 1}
+          :{diff.getMinutes()} horas)
         </SubHeaderLine>
       );
       iconbackground = "linear-gradient(225deg, #b68fbb, #ff5776)";
@@ -109,7 +114,8 @@ const SingleBoxAction: FC<{
       <Icon background={iconbackground}>{icon}</Icon>
       {headerLine}
       {subHeaderLine}
-      <Button
+      <TimedButton
+        time={6}
         background={buttonbakground}
         onClick={async () => {
           await logActivity(action);
@@ -117,7 +123,7 @@ const SingleBoxAction: FC<{
         }}
       >
         {buttonText}
-      </Button>
+      </TimedButton>
     </Container>
   );
 };
@@ -167,19 +173,7 @@ const SubHeaderLine = styled.div`
   font-size: 14px;
   line-height: 1.43;
   color: #fff;
-  text-transform: capitalize;
-`;
-
-const Button = styled.div<{ background: string }>`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  width: 199px;
-  height: 50px;
-  margin: 20px 0 40px 0;
-  border-radius: 4px;
-  background-image: ${(props) => props.background};
+  text-transform: titlecase;
 `;
 
 export default SingleBoxAction;
