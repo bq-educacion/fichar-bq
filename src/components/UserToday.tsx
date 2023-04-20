@@ -1,6 +1,7 @@
 import { UserToday } from "@/types";
 import styled from "@emotion/styled";
 import React, { FC, useEffect, useState } from "react";
+import IconClock from "@/assets/icons/icon-clock.svg";
 
 const UserToday: FC<{ email: string }> = ({ email }) => {
   const fetchUserToday = async () => {
@@ -28,7 +29,10 @@ const UserToday: FC<{ email: string }> = ({ email }) => {
 
   return (
     <Container>
-      <div>Tiempo trabajado</div>
+      <Line>
+        <IconClock />
+        Tiempo trabajado
+      </Line>
       <Time>
         {Math.floor(stats.hoursToday)}h{Math.floor((stats.hoursToday % 1) * 60)}
         m
@@ -53,9 +57,13 @@ const Container = styled.div`
 `;
 
 const Line = styled.div`
-  letter-spacing: normal;
-  text-align: center;
   color: #4e4f53;
+  svg {
+    width: 11px;
+    height: 11px;
+    color: #434242;
+    margin-right: 5px;
+  }
 `;
 
 const Time = styled.div`
