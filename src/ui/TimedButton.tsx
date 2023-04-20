@@ -32,6 +32,7 @@ const TimedButton: FC<{
         if (timeout === 1) {
           onClick();
           clearInterval(interval.current);
+          setTimeLeft(0);
           setTimeout(() => setClicked(false), 1000);
         } else {
           timeout--;

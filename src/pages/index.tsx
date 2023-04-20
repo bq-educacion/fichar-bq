@@ -82,18 +82,13 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
     getUserStatus();
   }, []);
 
-  const logActivity = async (type: LOG_TYPE) => {
-    const res = await fetch("/api/logActivity", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ type }),
-    });
-    const data = await res.json();
-    if (res.status !== 200) router.push("/login");
-    else getUserStatus();
-  };
+  // refetch every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      getUserStatus();
+    }, 10 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const { data } = useSession({
     required: true,

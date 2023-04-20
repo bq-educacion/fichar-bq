@@ -24,7 +24,11 @@ const UserToday: FC<{ email: string }> = ({ email }) => {
   }, [email]);
 
   if (!stats) {
-    return <div>Loading...</div>;
+    return (
+      <Container>
+        <Line>...</Line>
+      </Container>
+    );
   }
 
   return (
