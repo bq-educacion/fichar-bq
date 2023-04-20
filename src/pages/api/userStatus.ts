@@ -34,11 +34,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     const lastDate = logsOfToday[0].date;
     const startDate = logsOfToday.at(-1)?.date;
     const hoursToday = getHoursToday(logsOfToday.reverse());
-    console.log("hours Today: ", hoursToday);
 
     // if there is any type with USER_STATUS.error
     if (logsOfToday.some((log) => log.type === LOG_TYPE.error)) {
-      res.status(200).json({ status: USER_STATUS.error });
+      res.status(200).json({ status: USER_STATUS.error, date: lastDate });
     } else if (lastType === "in") {
       res.status(200).json({
         status: USER_STATUS.working,

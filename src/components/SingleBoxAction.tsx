@@ -4,6 +4,8 @@ import React, { FC, useEffect, useState } from "react";
 import IconClock from "@/assets/icons/icon-clock.svg";
 import IconFork from "@/assets/icons/icon-fork-and-spoon.svg";
 import IconCoputerOff from "@/assets/icons/icon-computer-off.svg";
+import IconConfussion from "@/assets/icons/icon-confussion.svg";
+
 import { useRouter } from "next/router";
 import TimedButton from "../ui/TimedButton";
 
@@ -103,6 +105,20 @@ const SingleBoxAction: FC<{
       );
       iconbackground = "linear-gradient(225deg, #b68fbb, #ff5776)";
       icon = <IconCoputerOff />;
+      break;
+    case USER_STATUS.error:
+      background = "linear-gradient(230deg, #434242, #434242)";
+      buttonbakground = "linear-gradient(256deg, #6d6c6c, #6d6c6c)";
+      buttonText = "Cancelar";
+      headerLine = <HeaderLine>Hoy la he liado</HeaderLine>;
+
+      subHeaderLine = (
+        <SubHeaderLine>
+          A las {status.date?.getHours()}:{status.date?.getMinutes()}
+        </SubHeaderLine>
+      );
+      iconbackground = "linear-gradient(225deg, #6d6c6c, #6d6c6c)";
+      icon = <IconConfussion />;
   }
 
   return (
@@ -110,19 +126,26 @@ const SingleBoxAction: FC<{
       <Icon background={iconbackground}>{icon}</Icon>
       {headerLine}
       {subHeaderLine}
-      <TimedButton
-        width="199px"
-        height="50px"
-        time={5}
-        background={buttonbakground}
-        margin="20px 0 40px 0"
-        onClick={async () => {
-          await logActivity(action);
-          refreshStatus();
-        }}
-      >
-        {buttonText}
-      </TimedButton>
+      {status.status !== USER_STATUS.error ? (
+        <TimedButton
+          width="199px"
+          height="50px"
+          time={5}
+          background={buttonbakground}
+          margin="20px 0 40px 0"
+          onClick={async () => {
+            await logActivity(action);
+            refreshStatus();
+          }}
+        >
+          {buttonText}
+        </TimedButton>
+      ) : (
+        <>
+          <br />
+          <br />
+        </>
+      )}
     </Container>
   );
 };

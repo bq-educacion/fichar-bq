@@ -107,6 +107,7 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
           USER_STATUS.not_started,
           USER_STATUS.paused,
           USER_STATUS.finished,
+          USER_STATUS.error,
         ].includes(status.status) && (
           <SingleBoxAction
             status={status}

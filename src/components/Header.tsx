@@ -20,7 +20,7 @@ const HeaderDiv = styled.div`
   svg {
     margin: 25px 0px 45px 0px;
     cursor: pointer;
-    height: 50px;
+    height: 32px;
   }
 `;
 
