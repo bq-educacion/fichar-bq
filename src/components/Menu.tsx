@@ -83,6 +83,7 @@ const MenuItem = styled.div<{ selected: boolean; enabled: boolean }>`
     width: 15.2px;
     height: 15.4px;
     margin: 0px 3px 3px 0px;
+    color: #434242;
   }
 `;
 

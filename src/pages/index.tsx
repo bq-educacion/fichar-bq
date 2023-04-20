@@ -17,6 +17,7 @@ import Header from "@/components/Header";
 import Layout from "@/components/Layout";
 import WelcomeUser from "@/components/WelcomeUser";
 import SingleBoxAction from "@/components/SingleBoxAction";
+import ThreeBoxAction from "@/components/ThreeBoxAction";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   // get session data
@@ -101,15 +102,23 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
   return (
     <Layout>
       <WelcomeUser data={data!} />
-      {status && (
-        <SingleBoxAction
-          status={status}
-          action={LOG_TYPE.in}
-          refreshStatus={() => getUserStatus()}
-        />
+      {status &&
+        [
+          USER_STATUS.not_started,
+          USER_STATUS.paused,
+          USER_STATUS.finished,
+        ].includes(status.status) && (
+          <SingleBoxAction
+            status={status}
+            action={LOG_TYPE.in}
+            refreshStatus={() => getUserStatus()}
+          />
+        )}
+      {status && status.status === USER_STATUS.working && (
+        <ThreeBoxAction refreshStatus={() => getUserStatus()} />
       )}
 
-      {status && (
+      {/* {status && (
         <Container>
           {message !== "" && <div>{message}</div>}
           {status.status === USER_STATUS.paused && (
@@ -148,7 +157,7 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
           <br />
           <UserToday email={data?.user?.email || ""} />
         </Container>
-      )}
+      )} */}
     </Layout>
   );
 };
@@ -203,8 +212,4 @@ const Container = styled.div`
   border-radius: 4px;
   padding: 20px;
   box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.5);
-`;
-
-const Imagex = styled(Image)`
-  border-radius: 50%;
 `;

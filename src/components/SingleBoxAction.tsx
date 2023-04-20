@@ -111,8 +111,11 @@ const SingleBoxAction: FC<{
       {headerLine}
       {subHeaderLine}
       <TimedButton
+        width="199px"
+        height="50px"
         time={5}
         background={buttonbakground}
+        margin="20px 0 40px 0"
         onClick={async () => {
           await logActivity(action);
           refreshStatus();
