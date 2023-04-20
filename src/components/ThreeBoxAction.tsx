@@ -7,6 +7,7 @@ import IconCoputerOff from "@/assets/icons/icon-computer-off.svg";
 import IconConfussion from "@/assets/icons/icon-confussion.svg";
 import { useRouter } from "next/router";
 import TimedButton from "../ui/TimedButton";
+import UserToday from "./UserToday";
 
 const ThreeBoxAction: FC<{
   refreshStatus: () => void;
@@ -89,39 +90,43 @@ const ThreeBoxAction: FC<{
   ];
 
   return (
-    <Container>
-      {boxes.map((box, index) => (
-        <Box key={index} background={box.background}>
-          <Icon background={box.iconbackground}>{box.icon}</Icon>
-          {box.headerLine}
-          {box.subHeaderLine}
-          <TimedButton
-            width="155px"
-            height="40px"
-            time={5}
-            background={box.buttonbakground}
-            margin="15px 0 20px 0"
-            onClick={async () => {
-              await logActivity(box.action);
-              refreshStatus();
-            }}
-            fontSize="14px"
-          >
-            {box.buttonText}
-          </TimedButton>
-        </Box>
-      ))}
-    </Container>
+    <>
+      <Container>
+        {boxes.map((box, index) => (
+          <Box key={index} background={box.background}>
+            <Icon background={box.iconbackground}>{box.icon}</Icon>
+            {box.headerLine}
+            {box.subHeaderLine}
+            <TimedButton
+              width="155px"
+              height="40px"
+              time={5}
+              background={box.buttonbakground}
+              margin="15px 0 20px 0"
+              onClick={async () => {
+                await logActivity(box.action);
+                refreshStatus();
+              }}
+              fontSize="14px"
+            >
+              {box.buttonText}
+            </TimedButton>
+          </Box>
+        ))}
+      </Container>
+    </>
   );
 };
 
 const Container = styled.div`
+  width: 590px;
   display: flex;
   justify-content: space-between;
   flex-direction: row;
   gap: 3px;
-  margin-top: 0px;
-  border-radius: 5px;
+  margin-top: 1px;
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
   background-color: #eaeae9;
   padding: 10px 12px 10px 12px;
 `;

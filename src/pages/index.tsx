@@ -103,6 +103,10 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
     <Layout>
       <WelcomeUser data={data!} />
       {status &&
+        [USER_STATUS.working, USER_STATUS.paused].includes(status.status) && (
+          <UserToday email={data!.user!.email!} />
+        )}
+      {status &&
         [
           USER_STATUS.not_started,
           USER_STATUS.paused,

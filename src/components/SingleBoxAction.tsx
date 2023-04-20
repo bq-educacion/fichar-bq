@@ -94,13 +94,12 @@ const SingleBoxAction: FC<{
       buttonText = "Cancelar";
       headerLine = <HeaderLine>Jornada finalizada</HeaderLine>;
       const hoursToday = status.hoursToday!;
-      console.log("hoursToday:", hoursToday);
 
       subHeaderLine = (
         <SubHeaderLine>
           A las {status.date?.getHours()}:{status.date?.getMinutes()} (Has
-          trabajado {Math.floor(hoursToday)}h ,{" "}
-          {Math.floor((hoursToday % 1) * 60)}m)
+          trabajado {Math.floor(hoursToday)}h{Math.floor((hoursToday % 1) * 60)}
+          m)
         </SubHeaderLine>
       );
       iconbackground = "linear-gradient(225deg, #b68fbb, #ff5776)";
@@ -122,7 +121,7 @@ const SingleBoxAction: FC<{
   }
 
   return (
-    <Container background={background}>
+    <Container background={background} status={status.status}>
       <Icon background={iconbackground}>{icon}</Icon>
       {headerLine}
       {subHeaderLine}
@@ -150,10 +149,15 @@ const SingleBoxAction: FC<{
   );
 };
 
-const Container = styled.div<{ background: string }>`
+const Container = styled.div<{ background: string; status: USER_STATUS }>`
   width: 615px;
-  margin-top: 0px;
+  margin-top: ${(props) =>
+    props.status === USER_STATUS.paused ? "1px" : "0px"};
   border-radius: 5px;
+  border-top-right-radius: ${(props) =>
+    props.status === USER_STATUS.paused ? "0px" : "5px"};
+  border-top-left-radius: ${(props) =>
+    props.status === USER_STATUS.paused ? "0px" : "5px"};
   background-image: ${(props) => props.background};
   display: flex;
   flex-direction: column;
