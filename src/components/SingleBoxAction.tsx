@@ -126,7 +126,7 @@ const SingleBoxAction: FC<{
       <Icon background={iconbackground}>{icon}</Icon>
       {headerLine}
       {subHeaderLine}
-      {status.status !== USER_STATUS.error ? (
+      {![USER_STATUS.error, USER_STATUS.finished].includes(status.status) ? (
         <TimedButton
           width="199px"
           height="50px"
