@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { LOG_TYPE, USER_STATUS } from "@/types";
+import { LOG_TYPE, Status, USER_STATUS } from "@/types";
 import styled from "@emotion/styled";
 import { colors } from "@/styles/colors";
 import Image from "next/image";
@@ -13,6 +13,11 @@ import UserStats from "@/components/UserStats";
 import UserToday from "@/components/UserToday";
 import { LogModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
+import Header from "@/components/Header";
+import Layout from "@/components/Layout";
+import WelcomeUser from "@/components/WelcomeUser";
+import SingleBoxAction from "@/components/SingleBoxAction";
+import ThreeBoxAction from "@/components/ThreeBoxAction";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   // get session data
@@ -62,13 +67,17 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
   const getUserStatus = async () => {
     const res = await fetch("/api/userStatus");
     if (res.status !== 200) router.push("/login");
-
     const data = await res.json();
-    setStatus(data.status);
+    setStatus({
+      status: data.status,
+      date: new Date(data.date),
+      startDate: new Date(data.startDate),
+      hoursToday: data.hoursToday,
+    });
   };
 
   const router = useRouter();
-  const [status, setStatus] = useState<USER_STATUS | undefined>(undefined);
+  const [status, setStatus] = useState<Status | undefined>(undefined);
   useEffect(() => {
     getUserStatus();
   }, []);
@@ -91,56 +100,65 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
   });
 
   return (
-    <Container>
-      <H1>{data?.user?.name || "Nombre no definido"}</H1>
-      <Imagex
-        width={100}
-        height={100}
-        src={data?.user?.image || ""}
-        alt={data?.user?.name + " photo"}
-      />
-      {message !== "" && <div>{message}</div>}
-      {status === USER_STATUS.not_started && (
-        <Button onClick={() => logActivity(LOG_TYPE.in)}>
-          Empezar a trabajar
-        </Button>
+    <Layout>
+      <WelcomeUser data={data!} />
+      {status &&
+        [
+          USER_STATUS.not_started,
+          USER_STATUS.paused,
+          USER_STATUS.finished,
+        ].includes(status.status) && (
+          <SingleBoxAction
+            status={status}
+            action={LOG_TYPE.in}
+            refreshStatus={() => getUserStatus()}
+          />
+        )}
+      {status && status.status === USER_STATUS.working && (
+        <ThreeBoxAction refreshStatus={() => getUserStatus()} />
       )}
-      {status === USER_STATUS.paused && (
-        <Button onClick={() => logActivity(LOG_TYPE.in)}>
-          Volver al trabajo
-        </Button>
-      )}
-      {status === USER_STATUS.working && (
-        <>
-          <Button onClick={() => logActivity(LOG_TYPE.pause)}>
-            Hacer una pausa
+
+      {/* {status && (
+        <Container>
+          {message !== "" && <div>{message}</div>}
+          {status.status === USER_STATUS.paused && (
+            <Button onClick={() => logActivity(LOG_TYPE.in)}>
+              Volver al trabajo
+            </Button>
+          )}
+          {status.status === USER_STATUS.working && (
+            <>
+              <Button onClick={() => logActivity(LOG_TYPE.pause)}>
+                Hacer una pausa
+              </Button>
+              <Button onClick={() => logActivity(LOG_TYPE.out)}>
+                Acabar por hoy
+              </Button>
+            </>
+          )}
+          <div>Status: {status.status}</div>
+          {status.status !== USER_STATUS.error && (
+            <Button onClick={() => logActivity(LOG_TYPE.error)}>
+              Hoy la he lidado y no cuenta
+            </Button>
+          )}
+          {status.status === USER_STATUS.error && (
+            <div>Hoy la he lidado, mañana será otro día</div>
+          )}
+          <Button
+            color={colors.white}
+            backColor={colors.purple100}
+            onClick={() => signOut()}
+          >
+            sign out
           </Button>
-          <Button onClick={() => logActivity(LOG_TYPE.out)}>
-            Acabar por hoy
-          </Button>
-        </>
-      )}
-      <div>Status: {status}</div>
-      {status !== USER_STATUS.error && (
-        <Button onClick={() => logActivity(LOG_TYPE.error)}>
-          Hoy la he lidado y no cuenta
-        </Button>
-      )}
-      {status === USER_STATUS.error && (
-        <div>Hoy la he lidado, mañana será otro día</div>
-      )}
-      <Button
-        color={colors.white}
-        backColor={colors.purple100}
-        onClick={() => signOut()}
-      >
-        sign out
-      </Button>
-      <UserStats email={data?.user?.email || ""} />
-      ------
-      <br />
-      <UserToday email={data?.user?.email || ""} />
-    </Container>
+          <UserStats email={data?.user?.email || ""} />
+          ------
+          <br />
+          <UserToday email={data?.user?.email || ""} />
+        </Container>
+      )} */}
+    </Layout>
   );
 };
 
@@ -190,16 +208,8 @@ const Container = styled.div`
   align-items: center;
 
   min-width: 400px;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   border: 1px solid ${colors.black};
   border-radius: 4px;
   padding: 20px;
   box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.5);
-`;
-
-const Imagex = styled(Image)`
-  border-radius: 50%;
 `;
