@@ -25,17 +25,14 @@ const TimedButton: FC<{
   const interval = useRef<NodeJS.Timeout | undefined>(undefined);
 
   useEffect(() => {
-    console.log("clicked", clicked);
     if (clicked) {
       let timeout = time!;
 
       interval.current = setInterval(() => {
-        console.log("timeout", timeout);
         if (timeout === 1) {
-          clearInterval(interval.current);
-          setClicked(false);
-          console.log("Ejecución onClick");
           onClick();
+          clearInterval(interval.current);
+          setTimeout(() => setClicked(false), 1000);
         } else {
           timeout--;
           setTimeLeft(timeout);
