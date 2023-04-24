@@ -99,7 +99,7 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
       <WelcomeUser data={data!} />
       {status &&
         [USER_STATUS.working, USER_STATUS.paused].includes(status.status) && (
-          <UserToday email={data!.user!.email!} />
+          <UserToday />
         )}
       {status &&
         [
@@ -117,6 +117,7 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
       {status && status.status === USER_STATUS.working && (
         <ThreeBoxAction refreshStatus={() => getUserStatus()} />
       )}
+      {status && <UserStats />}
 
       {/* {status && (
         <Container>
