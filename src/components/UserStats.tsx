@@ -23,31 +23,23 @@ const UserStats = () => {
       <Container>
         <Table>
           <Header />
-          <Header>
-            Horas/día &nbsp;<em>(total)</em>
-          </Header>
+          <Header>Horas/día </Header>
+          <Header>Total</Header>
           <Header>Días</Header>
           <Header>Días mal fichados</Header>
           <Title>Esta semana</Title>
+          <Data>{decimalToHours(stats.averageThisWeek)}</Data>
           <Data>
-            {decimalToHours(stats.averageThisWeek)}
-            &nbsp;
-            <em>
-              ({decimalToHours(stats.averageThisWeek * stats.logsThisWeekDays)})
-            </em>
+            {decimalToHours(stats.averageThisWeek * stats.logsThisWeekDays)}
           </Data>
           <Data>{stats.logsThisWeekDays.toFixed(2).replace(/\.?0+$/, "")}</Data>
           <Data>
             {stats.errorLogsThisWeek.toFixed(2).replace(/\.?0+$/, "")}
           </Data>
           <Title>Este mes</Title>
+          <Data>{decimalToHours(stats.averageThisMonth)}&nbsp;</Data>
           <Data>
-            {decimalToHours(stats.averageThisMonth)}&nbsp;
-            <em>
-              (
-              {decimalToHours(stats.averageThisMonth * stats.logsThisMonthDays)}
-              )
-            </em>
+            {decimalToHours(stats.averageThisMonth * stats.logsThisMonthDays)}
           </Data>
           <Data>
             {stats.logsThisMonthDays.toFixed(2).replace(/\.?0+$/, "")}{" "}
@@ -56,11 +48,9 @@ const UserStats = () => {
             {stats.errorLogsThisMonth.toFixed(2).replace(/\.?0+$/, "")}
           </Data>
           <Title>Este año</Title>
+          <Data>{decimalToHours(stats.averageThisYear)}&nbsp;</Data>
           <Data>
-            {decimalToHours(stats.averageThisYear)}&nbsp;
-            <em>
-              ({decimalToHours(stats.averageThisYear * stats.logsThisYearDays)})
-            </em>
+            {decimalToHours(stats.averageThisYear * stats.logsThisYearDays)}
           </Data>
           <Data>{stats.logsThisYearDays.toFixed(2).replace(/\.?0+$/, "")}</Data>
           <Data>
@@ -81,7 +71,7 @@ const Container = styled.div`
 const Table = styled.div`
   width: 614px;
   display: grid;
-  grid-template-columns: 179px 1fr 1fr auto;
+  grid-template-columns: 179px 1fr 1fr auto auto;
   grid-template-rows: repeat(4, 38px);
   column-gap: 2px;
   row-gap: 2px;
