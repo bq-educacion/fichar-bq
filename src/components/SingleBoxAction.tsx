@@ -15,6 +15,12 @@ const SingleBoxAction: FC<{
   refreshStatus: () => void;
 }> = ({ action, status, refreshStatus }) => {
   const router = useRouter();
+  const [clickable, setClickable] = useState<boolean>(true);
+
+  useEffect(() => {
+    setClickable(true);
+  }, [status]);
+
   const [time, setTime] = useState<string>(
     `${new Date().getHours()}:${
       new Date().getMinutes() < 10
@@ -133,8 +139,11 @@ const SingleBoxAction: FC<{
           background={buttonbakground}
           margin="20px 0 40px 0"
           onClick={async () => {
-            await logActivity(action);
-            refreshStatus();
+            if (clickable) {
+              setClickable(false);
+              await logActivity(action);
+              refreshStatus();
+            }
           }}
         >
           {buttonText}

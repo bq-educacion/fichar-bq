@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import React, { FC, useEffect, useState } from "react";
 import IconClock from "@/assets/icons/icon-clock.svg";
 
-const UserToday: FC<{ email: string }> = ({ email }) => {
+const UserToday = () => {
   const fetchUserToday = async () => {
     const response = await fetch(`/api/userToday`);
     const data = await response.json();
@@ -13,7 +13,7 @@ const UserToday: FC<{ email: string }> = ({ email }) => {
   const [stats, setStats] = useState<UserToday | undefined>(undefined);
   useEffect(() => {
     fetchUserToday();
-  }, [email]);
+  }, []);
 
   // refresh every 5 minutes
   useEffect(() => {
@@ -21,7 +21,7 @@ const UserToday: FC<{ email: string }> = ({ email }) => {
       fetchUserToday();
     }, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [email]);
+  }, []);
 
   if (!stats) {
     return (
