@@ -1,3 +1,4 @@
+import { decimalToHours } from "@/lib/utils";
 import { UserStats } from "@/types";
 import DisplayContent from "@/ui/DisplayContent";
 import styled from "@emotion/styled";
@@ -22,17 +23,32 @@ const UserStats = () => {
       <Container>
         <Table>
           <Header />
-          <Header>Horas/día </Header>
+          <Header>
+            Horas/día &nbsp;<em>(total)</em>
+          </Header>
           <Header>Días</Header>
           <Header>Días mal fichados</Header>
           <Title>Esta semana</Title>
-          <Data>{stats.averageThisWeek.toFixed(2).replace(/\.?0+$/, "")}</Data>
+          <Data>
+            {decimalToHours(stats.averageThisWeek)}
+            &nbsp;
+            <em>
+              ({decimalToHours(stats.averageThisWeek * stats.logsThisWeekDays)})
+            </em>
+          </Data>
           <Data>{stats.logsThisWeekDays.toFixed(2).replace(/\.?0+$/, "")}</Data>
           <Data>
-            {stats.errorLogsThisWeek.toFixed(2).replace(/\.?0+$/, "")}{" "}
+            {stats.errorLogsThisWeek.toFixed(2).replace(/\.?0+$/, "")}
           </Data>
           <Title>Este mes</Title>
-          <Data>{stats.averageThisMonth.toFixed(2).replace(/\.?0+$/, "")}</Data>
+          <Data>
+            {decimalToHours(stats.averageThisMonth)}&nbsp;
+            <em>
+              (
+              {decimalToHours(stats.averageThisMonth * stats.logsThisMonthDays)}
+              )
+            </em>
+          </Data>
           <Data>
             {stats.logsThisMonthDays.toFixed(2).replace(/\.?0+$/, "")}{" "}
           </Data>
@@ -40,7 +56,12 @@ const UserStats = () => {
             {stats.errorLogsThisMonth.toFixed(2).replace(/\.?0+$/, "")}
           </Data>
           <Title>Este año</Title>
-          <Data>{stats.averageThisYear.toFixed(2).replace(/\.?0+$/, "")}</Data>
+          <Data>
+            {decimalToHours(stats.averageThisYear)}&nbsp;
+            <em>
+              ({decimalToHours(stats.averageThisYear * stats.logsThisYearDays)})
+            </em>
+          </Data>
           <Data>{stats.logsThisYearDays.toFixed(2).replace(/\.?0+$/, "")}</Data>
           <Data>
             {stats.errorLogsThisYear.toFixed(2).replace(/\.?0+$/, "")}
