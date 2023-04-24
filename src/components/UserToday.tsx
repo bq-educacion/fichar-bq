@@ -46,7 +46,7 @@ const UserToday = () => {
 };
 
 const Container = styled.div`
-  width: 615px;
+  width: 614px;
   height: 54px;
   display: flex;
   justify-content: center;

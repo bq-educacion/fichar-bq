@@ -36,15 +36,29 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         $gte: new Date(
           new Date().setHours(0, 0, 0, 0) - daysPassedWeek * 24 * 60 * 60 * 1000
         ),
-        $lt: new Date().setHours(0, 0, 0, 0),
+        $lt: new Date(),
       },
     });
 
+    // get last index with type error or type out
+    let lastErrorOutIndex = -1;
+    for (let i = logsThisWeek.length - 1; i >= 0; i--) {
+      if (
+        logsThisWeek[i].type === LOG_TYPE.error ||
+        logsThisWeek[i].type === LOG_TYPE.out
+      ) {
+        lastErrorOutIndex = i;
+        break;
+      }
+    }
+
+    const realLogsThisWeek = logsThisWeek.slice(0, lastErrorOutIndex + 1);
+
     // remove logs from days in which there is an error
-    const logsThisWeekFiltered = removeErrorLogs(logsThisWeek);
+    const logsThisWeekFiltered = removeErrorLogs(realLogsThisWeek);
 
     // number of days with error logs this week
-    const errorLogsThisWeek = numberOfErrorLogs(logsThisWeek);
+    const errorLogsThisWeek = numberOfErrorLogs(realLogsThisWeek);
 
     // sum date of all logs with type "in"
     const logsThisWeekIn = logsIn(logsThisWeekFiltered);

@@ -1,3 +1,4 @@
+import { decimalToHours } from "@/lib/utils";
 import { UserStats } from "@/types";
 import DisplayContent from "@/ui/DisplayContent";
 import styled from "@emotion/styled";
@@ -23,16 +24,23 @@ const UserStats = () => {
         <Table>
           <Header />
           <Header>Horas/día </Header>
+          <Header>Total</Header>
           <Header>Días</Header>
           <Header>Días mal fichados</Header>
           <Title>Esta semana</Title>
-          <Data>{stats.averageThisWeek.toFixed(2).replace(/\.?0+$/, "")}</Data>
+          <Data>{decimalToHours(stats.averageThisWeek)}</Data>
+          <Data>
+            {decimalToHours(stats.averageThisWeek * stats.logsThisWeekDays)}
+          </Data>
           <Data>{stats.logsThisWeekDays.toFixed(2).replace(/\.?0+$/, "")}</Data>
           <Data>
-            {stats.errorLogsThisWeek.toFixed(2).replace(/\.?0+$/, "")}{" "}
+            {stats.errorLogsThisWeek.toFixed(2).replace(/\.?0+$/, "")}
           </Data>
           <Title>Este mes</Title>
-          <Data>{stats.averageThisMonth.toFixed(2).replace(/\.?0+$/, "")}</Data>
+          <Data>{decimalToHours(stats.averageThisMonth)}&nbsp;</Data>
+          <Data>
+            {decimalToHours(stats.averageThisMonth * stats.logsThisMonthDays)}
+          </Data>
           <Data>
             {stats.logsThisMonthDays.toFixed(2).replace(/\.?0+$/, "")}{" "}
           </Data>
@@ -40,7 +48,10 @@ const UserStats = () => {
             {stats.errorLogsThisMonth.toFixed(2).replace(/\.?0+$/, "")}
           </Data>
           <Title>Este año</Title>
-          <Data>{stats.averageThisYear.toFixed(2).replace(/\.?0+$/, "")}</Data>
+          <Data>{decimalToHours(stats.averageThisYear)}&nbsp;</Data>
+          <Data>
+            {decimalToHours(stats.averageThisYear * stats.logsThisYearDays)}
+          </Data>
           <Data>{stats.logsThisYearDays.toFixed(2).replace(/\.?0+$/, "")}</Data>
           <Data>
             {stats.errorLogsThisYear.toFixed(2).replace(/\.?0+$/, "")}
@@ -60,7 +71,7 @@ const Container = styled.div`
 const Table = styled.div`
   width: 614px;
   display: grid;
-  grid-template-columns: 179px 1fr 1fr auto;
+  grid-template-columns: 179px 1fr 1fr auto auto;
   grid-template-rows: repeat(4, 38px);
   column-gap: 2px;
   row-gap: 2px;
