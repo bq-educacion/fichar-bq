@@ -77,7 +77,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         $gte: new Date(
           new Date(currentYear, currentMonth, 1).setHours(0, 0, 0, 0)
         ),
-        $lt: new Date().setHours(0, 0, 0, 0),
+        $lt: new Date(),
       },
     });
 
@@ -107,7 +107,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       user: email,
       date: {
         $gte: new Date(new Date(currentYear, 0, 1).setHours(0, 0, 0, 0)),
-        $lt: new Date().setHours(0, 0, 0, 0),
+        $lt: new Date(),
       },
     });
 
