@@ -19,7 +19,7 @@ const UserToday = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       fetchUserToday();
-    }, 5 * 60 * 1000);
+    }, 1 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
