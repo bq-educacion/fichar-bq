@@ -150,8 +150,29 @@ const SingleBoxAction: FC<{
         </TimedButton>
       ) : (
         <>
-          <br />
-          <br />
+          {USER_STATUS.finished === status.status ? (
+            <TimedButton
+              width="199px"
+              height="50px"
+              time={5}
+              background={buttonbakground}
+              margin="20px 0 40px 0"
+              onClick={async () => {
+                if (clickable) {
+                  setClickable(false);
+                  await logActivity(LOG_TYPE.goback);
+                  refreshStatus();
+                }
+              }}
+            >
+              I'm back!
+            </TimedButton>
+          ) : (
+            <>
+              <br />
+              <br />
+            </>
+          )}
         </>
       )}
     </Container>

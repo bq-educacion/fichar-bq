@@ -13,6 +13,7 @@ export enum LOG_TYPE {
   out = "out",
   pause = "pause",
   error = "error",
+  goback = "goback",
 }
 
 export type UserStats = {
