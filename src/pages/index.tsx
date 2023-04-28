@@ -42,14 +42,17 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 
   if (
     lastLog &&
-    lastLog.type !== LOG_TYPE.out &&
+    ![LOG_TYPE.out, LOG_TYPE.error].includes(lastLog.type) &&
     new Date(lastLog.date).setHours(0, 0, 0, 0) !==
       new Date().setHours(0, 0, 0, 0)
   ) {
     await LogModel.create({
       type: LOG_TYPE.error,
       user: session.user.email,
-      date: lastLog.date,
+      // lastLog.date + 1 minute
+      date: new Date(lastLog.date).setMinutes(
+        new Date(lastLog.date).getMinutes() + 1
+      ),
     });
     message = "El último día se te olvidó desfichar";
   }
