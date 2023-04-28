@@ -165,7 +165,7 @@ const SingleBoxAction: FC<{
                 }
               }}
             >
-              I'm back!
+              {"I'm back!"}
             </TimedButton>
           ) : (
             <>
