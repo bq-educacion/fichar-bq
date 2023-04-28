@@ -9,6 +9,7 @@ import {
   logsOut,
   numberOfDays,
   numberOfErrorLogs,
+  realLogs,
   removeErrorLogs,
 } from "@/lib/utils";
 
@@ -40,19 +41,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       },
     });
 
-    // get last index with type error or type out
-    let lastErrorOutIndex = -1;
-    for (let i = logsThisWeek.length - 1; i >= 0; i--) {
-      if (
-        logsThisWeek[i].type === LOG_TYPE.error ||
-        logsThisWeek[i].type === LOG_TYPE.out
-      ) {
-        lastErrorOutIndex = i;
-        break;
-      }
-    }
-
-    const realLogsThisWeek = logsThisWeek.slice(0, lastErrorOutIndex + 1);
+    const realLogsThisWeek = realLogs(logsThisWeek);
 
     // remove logs from days in which there is an error
     const logsThisWeekFiltered = removeErrorLogs(realLogsThisWeek);
@@ -92,11 +81,13 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       },
     });
 
+    const realLogsThisMonth = realLogs(logsThisMonth);
+
     // remove logs from days in which there is an error
-    const logsThisMonthFiltered = removeErrorLogs(logsThisMonth);
+    const logsThisMonthFiltered = removeErrorLogs(realLogsThisMonth);
 
     // number of days with error logs this month
-    const errorLogsThisMonth = numberOfErrorLogs(logsThisMonth);
+    const errorLogsThisMonth = numberOfErrorLogs(realLogsThisMonth);
 
     // calculate the average for the month
     const logsThisMonthIn = logsIn(logsThisMonthFiltered);
@@ -120,11 +111,15 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       },
     });
 
+    // get last index with type error or type out
+
+    const realLogsThisYear = realLogs(logsThisYear);
+
     // remove logs from days in which there is an error
-    const logsThisYearFiltered = removeErrorLogs(logsThisYear);
+    const logsThisYearFiltered = removeErrorLogs(realLogsThisYear);
 
     // number of days with error logs this year
-    const errorLogsThisYear = numberOfErrorLogs(logsThisYear);
+    const errorLogsThisYear = numberOfErrorLogs(realLogsThisYear);
 
     // calculate the average for the year
     const logsThisYearIn = logsIn(logsThisYearFiltered);

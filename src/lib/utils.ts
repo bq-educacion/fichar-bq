@@ -86,3 +86,16 @@ export const decimalToHours = (decimal: number) => {
   const minutes = Math.floor((decimal - hours) * 60);
   return `${hours}h${minutes < 10 ? `0${minutes}` : minutes}m`;
 };
+
+export const realLogs = (logs: Log[]) => {
+  // get last index with type error or type out
+  let lastErrorOutIndex = -1;
+  for (let i = logs.length - 1; i >= 0; i--) {
+    if (logs[i].type === LOG_TYPE.error || logs[i].type === LOG_TYPE.out) {
+      lastErrorOutIndex = i;
+      break;
+    }
+  }
+
+  return logs.slice(0, lastErrorOutIndex + 1);
+};
