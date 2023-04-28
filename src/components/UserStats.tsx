@@ -1,19 +1,27 @@
 import { decimalToHours } from "@/lib/utils";
-import { UserStats } from "@/types";
+import { USER_STATUS, UserStats } from "@/types";
 import DisplayContent from "@/ui/DisplayContent";
 import styled from "@emotion/styled";
 import React, { FC, useEffect, useState } from "react";
 
-const UserStats = () => {
+const UserStats: FC<{ status: USER_STATUS }> = ({ status }) => {
   const [stats, setStats] = useState<UserStats | undefined>(undefined);
+  const fetchUserStats = async () => {
+    const response = await fetch(`/api/userStats`);
+    const data = await response.json();
+    setStats(data);
+  };
+
   useEffect(() => {
-    const fetchUserStats = async () => {
-      const response = await fetch(`/api/userStats`);
-      const data = await response.json();
-      setStats(data);
-    };
     fetchUserStats();
   }, []);
+
+  useEffect(() => {
+    if ([USER_STATUS.error, USER_STATUS.finished].includes(status)) {
+      fetchUserStats();
+    }
+  }, [status]);
+
   if (!stats) {
     return <div>Loading...</div>;
   }

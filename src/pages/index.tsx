@@ -13,7 +13,6 @@ import UserStats from "@/components/UserStats";
 import UserToday from "@/components/UserToday";
 import { LogModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
-import Header from "@/components/Header";
 import Layout from "@/components/Layout";
 import WelcomeUser from "@/components/WelcomeUser";
 import SingleBoxAction from "@/components/SingleBoxAction";
@@ -117,48 +116,7 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
       {status && status.status === USER_STATUS.working && (
         <ThreeBoxAction refreshStatus={() => getUserStatus()} />
       )}
-      {status && <UserStats />}
-
-      {/* {status && (
-        <Container>
-          {message !== "" && <div>{message}</div>}
-          {status.status === USER_STATUS.paused && (
-            <Button onClick={() => logActivity(LOG_TYPE.in)}>
-              Volver al trabajo
-            </Button>
-          )}
-          {status.status === USER_STATUS.working && (
-            <>
-              <Button onClick={() => logActivity(LOG_TYPE.pause)}>
-                Hacer una pausa
-              </Button>
-              <Button onClick={() => logActivity(LOG_TYPE.out)}>
-                Acabar por hoy
-              </Button>
-            </>
-          )}
-          <div>Status: {status.status}</div>
-          {status.status !== USER_STATUS.error && (
-            <Button onClick={() => logActivity(LOG_TYPE.error)}>
-              Hoy la he lidado y no cuenta
-            </Button>
-          )}
-          {status.status === USER_STATUS.error && (
-            <div>Hoy la he lidado, mañana será otro día</div>
-          )}
-          <Button
-            color={colors.white}
-            backColor={colors.purple100}
-            onClick={() => signOut()}
-          >
-            sign out
-          </Button>
-          <UserStats email={data?.user?.email || ""} />
-          ------
-          <br />
-          <UserToday email={data?.user?.email || ""} />
-        </Container>
-      )} */}
+      {status && <UserStats status={status.status} />}
     </Layout>
   );
 };
