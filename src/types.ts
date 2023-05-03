@@ -17,6 +17,9 @@ export enum LOG_TYPE {
 }
 
 export type UserStats = {
+  totalThisWeek: number;
+  totalThisMonth: number;
+  totalThisYear: number;
   averageThisWeek: number;
   averageThisMonth: number;
   averageThisYear: number;

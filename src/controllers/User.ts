@@ -3,17 +3,28 @@
 import { UserModel } from "@/db/Models";
 import { User } from "@/types";
 
-export const addUser = async (email: string): Promise<User> => {
+export const addUser = async (
+  email: string,
+  image: string,
+  name: string
+): Promise<User> => {
   console.log("addUser", email);
   const user = await UserModel.findOne({ email }).exec();
   if (!user) {
     console.log("addUser", email, "not found, creating");
-    const user = new UserModel({ email, active: true });
+    const user = new UserModel({ email, active: true, image, name });
     await user.save();
     //const user = await UserModel.create({ mail, active: true });
     console.log("addUser", email, "created");
     return user;
   }
+
+  if (user.image !== image || user.name !== name) {
+    user.image = image;
+    user.name = name;
+    await user.save();
+  }
+
   return user;
 };
 

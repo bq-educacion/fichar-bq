@@ -1,10 +1,7 @@
-import { LogModel } from "@/db/Models";
-import connectMongo from "@/lib/connectMongo";
-import { LOG_TYPE, USER_STATUS } from "@/types";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "./auth/[...nextauth]";
-import { getHoursToday } from "@/lib/utils";
+import getUserToday from "@/controllers/getUserToday";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
@@ -16,16 +13,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
     const email = session!.user!.email;
 
-    await connectMongo();
-
-    const logsToday = await LogModel.find({
-      user: email,
-      date: {
-        $gte: new Date(new Date().setHours(0, 0, 0, 0)),
-      },
-    });
-
-    const hoursToday = getHoursToday(logsToday);
+    const hoursToday = await getUserToday(email!);
 
     res.status(200).json({
       hoursToday,
