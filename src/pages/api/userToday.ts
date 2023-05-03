@@ -14,6 +14,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     const email = session!.user!.email;
 
     const hoursToday = await getUserToday(email!);
+
     res.status(200).json({
       hoursToday,
     });

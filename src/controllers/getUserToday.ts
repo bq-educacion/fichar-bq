@@ -2,7 +2,7 @@ import { LogModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
 import { getHoursToday } from "@/lib/utils";
 
-const getUserToday = async (email: string): Promise<{ hoursToday: number }> => {
+const getUserToday = async (email: string): Promise<number> => {
   await connectMongo();
 
   const logsToday = await LogModel.find({
@@ -14,9 +14,7 @@ const getUserToday = async (email: string): Promise<{ hoursToday: number }> => {
 
   const hoursToday = getHoursToday(logsToday);
 
-  return {
-    hoursToday,
-  };
+  return hoursToday;
 };
 
 export default getUserToday;

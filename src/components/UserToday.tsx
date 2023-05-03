@@ -7,6 +7,7 @@ const UserToday = () => {
   const fetchUserToday = async () => {
     const response = await fetch(`/api/userToday`);
     const data = await response.json();
+    console.log(data);
     setStats(data);
   };
 
