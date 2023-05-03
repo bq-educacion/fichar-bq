@@ -1,5 +1,3 @@
-import { LogModel } from "@/db/Models";
-import connectMongo from "@/lib/connectMongo";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "./auth/[...nextauth]";
@@ -14,8 +12,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     const email = session!.user!.email;
-
-    await connectMongo();
 
     // get body page and pagesize params
     const { page, numberofdays } = req.body;

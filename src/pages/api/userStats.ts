@@ -1,17 +1,6 @@
-import { LogModel } from "@/db/Models";
-import connectMongo from "@/lib/connectMongo";
-import { LOG_TYPE, USER_STATUS } from "@/types";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "./auth/[...nextauth]";
-import {
-  logsIn,
-  logsOut,
-  numberOfDays,
-  numberOfErrorLogs,
-  realLogs,
-  removeErrorLogs,
-} from "@/lib/utils";
 import getUserStats from "@/controllers/getUserStats";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
