@@ -17,6 +17,7 @@ import Layout from "@/components/Layout";
 import WelcomeUser from "@/components/WelcomeUser";
 import SingleBoxAction from "@/components/SingleBoxAction";
 import ThreeBoxAction from "@/components/ThreeBoxAction";
+import UserLogsComponent from "@/components/UserLogsComponent";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   // get session data
@@ -120,6 +121,9 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
         <ThreeBoxAction refreshStatus={() => getUserStatus()} />
       )}
       {status && <UserStats status={status.status} />}
+      {status && <UserLogsComponent status={status.status} />}
+      <br />
+      <br />
     </Layout>
   );
 };

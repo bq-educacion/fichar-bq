@@ -2,15 +2,16 @@ import React, { FC, ReactNode } from "react";
 import IconDirection from "@/assets/icons/icon-direction.svg";
 import styled from "@emotion/styled";
 
-const DisplayContent: FC<{ title: string; children: ReactNode }> = ({
-  title,
-  children,
-}) => {
+const DisplayContent: FC<{
+  title: string;
+  bold: boolean;
+  children: ReactNode;
+}> = ({ title, children, bold }) => {
   const [show, setShow] = React.useState<boolean>(true);
   return (
     <Container>
-      <Title>
-        <IconBox show={show}>
+      <Title bold={bold}>
+        <IconBox show={show} bold={bold}>
           <IconDirection onClick={() => setShow(!show)} />
         </IconBox>
         <div>{title}</div>
@@ -20,7 +21,7 @@ const DisplayContent: FC<{ title: string; children: ReactNode }> = ({
   );
 };
 
-const Title = styled.div`
+const Title = styled.div<{ bold: boolean }>`
   width: 100%;
   height: 39px;
   display: flex;
@@ -30,16 +31,19 @@ const Title = styled.div`
   gap: 1px;
   background-color: #eee;
   font-size: 14px;
-  font-weight: bold;
+  font-weight: ${({ bold }) => (bold ? "bold" : "normal")};
   color: #4e4f53;
 `;
 
-const IconBox = styled.div<{ show: boolean }>`
+const IconBox = styled.div<{ show: boolean; bold: boolean }>`
   width: 40px;
+  height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
   cursor: pointer;
+  border-right: ${({ bold }) => (bold ? "1px solid #fff" : "none")};
+  margin-right: ${({ bold }) => (bold ? "10px" : "opx")};
   svg {
     width: 20px;
     height: 20px;
@@ -56,8 +60,12 @@ const Container = styled.div`
   align-items: center;
   border-radius: 5px;
   background-color: #eee;
-  margin-bottom: 20px;
+  margin-bottom: 0px;
   overflow: hidden;
+  /* // last of type
+  &:last-of-type {
+    margin-bottom: 30px;
+  } */
 `;
 
 export default DisplayContent;
