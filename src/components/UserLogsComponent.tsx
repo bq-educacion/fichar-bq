@@ -81,7 +81,7 @@ const UserLogsComponent: FC<{ status: USER_STATUS }> = ({ status }) => {
   };
 
   return (
-    <DisplayContent bold={true} title="Registro de Fichajes (últimos 7 días)">
+    <DisplayContent bold={true} title="Registro de fichajes (últimos 7 días)">
       <Container>
         {Object.keys(processedLogs).map((key) => {
           // first letter of key in upper case
