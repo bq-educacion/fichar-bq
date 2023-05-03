@@ -10,7 +10,7 @@ import GoogleProvider from "next-auth/providers/google";
 
 type SignInParams = {
   account: Account | null;
-  profile: Profile | undefined;
+  profile: (Profile & { picture: string }) | undefined;
 };
 
 export const authOptions = {
@@ -22,7 +22,8 @@ export const authOptions = {
           profile!.email!.endsWith("@bq.com")
         ) {
           await connectMongo();
-          await addUser(profile?.email!, profile?.image!, profile?.name!);
+          console.log(profile);
+          await addUser(profile?.email!, profile?.picture!, profile?.name!);
         }
 
         return (

@@ -11,8 +11,6 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   const session = await getServerSession(context.req, context.res, authOptions);
   // if autheticated redirect to /
   if (session?.user) {
-    console.log("session", session.user);
-
     return {
       redirect: {
         destination: "/",
