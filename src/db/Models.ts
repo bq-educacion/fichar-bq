@@ -15,6 +15,8 @@ const UserSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, index: true },
     active: { type: Boolean, required: true, default: true },
     manager: { type: String },
+    name: { type: String, required: true },
+    image: { type: String, required: true },
     isManager: { type: Boolean, required: true, default: false },
   },
   {
