@@ -22,7 +22,7 @@ export const authOptions = {
           profile!.email!.endsWith("@bq.com")
         ) {
           await connectMongo();
-          await addUser(profile?.email!);
+          await addUser(profile?.email!, profile?.image!, profile?.name!);
         }
 
         return (
