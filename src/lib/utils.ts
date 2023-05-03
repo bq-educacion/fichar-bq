@@ -87,6 +87,12 @@ export const decimalToHours = (decimal: number) => {
   return `${hours}h${minutes < 10 ? `0${minutes}` : minutes}m`;
 };
 
+export const datetoHHMM = (date: Date) => {
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  return `${hours}:${minutes < 10 ? `0${minutes}` : minutes}`;
+};
+
 export const realLogs = (logs: Log[]) => {
   // get last index with type error or type out
   let lastErrorOutIndex = -1;
