@@ -90,7 +90,7 @@ const UserLogsComponent: FC<{ status: USER_STATUS }> = ({ status }) => {
             <DisplayContent key={key} title={title} bold={false}>
               <>
                 {processedLogs[key].map((log) => (
-                  <Log>
+                  <Log key={log._id.toString()}>
                     <Icon color={LogIcon[log.type].color}>
                       {LogIcon[log.type].icon}
                     </Icon>

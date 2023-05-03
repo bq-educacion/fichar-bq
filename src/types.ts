@@ -38,7 +38,7 @@ export type User = {
 };
 
 export type Log = {
-  id?: mongoose.Schema.Types.ObjectId;
+  _id: mongoose.Schema.Types.ObjectId;
   type: LOG_TYPE;
   date: Date;
   user: User;
