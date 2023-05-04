@@ -1,6 +1,5 @@
 import { UserModel } from "@/db/Models";
 import computeUserStatus from "./computeUserStatus";
-import { User } from "@/types";
 
 const updateUserStatus = async (email: string) => {
   const status = await computeUserStatus(email);

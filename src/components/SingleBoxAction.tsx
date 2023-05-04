@@ -1,4 +1,4 @@
-import { LOG_TYPE, Status, USER_STATUS } from "@/types";
+import { LOG_TYPE, UserStatus, USER_STATUS } from "@/types";
 import styled from "@emotion/styled";
 import React, { FC, useEffect, useState } from "react";
 import IconClock from "@/assets/icons/icon-clock.svg";
@@ -11,7 +11,7 @@ import TimedButton from "../ui/TimedButton";
 
 const SingleBoxAction: FC<{
   action: LOG_TYPE;
-  status: Status;
+  status: UserStatus;
   refreshStatus: () => void;
 }> = ({ action, status, refreshStatus }) => {
   const router = useRouter();

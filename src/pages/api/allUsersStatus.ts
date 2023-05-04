@@ -1,8 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "./auth/[...nextauth]";
-import getUserStatus from "@/controllers/getUserStatus";
-import computeUserStatus from "@/controllers/computeUserStatus";
 import getAllActiveUsers from "@/controllers/getAllActiveUsers";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {

@@ -5,7 +5,6 @@ import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { User } from "@/types";
-import { colors } from "@/styles/colors";
 import React from "react";
 import Layout from "@/components/Layout";
 import WelcomeUser from "@/components/WelcomeUser";

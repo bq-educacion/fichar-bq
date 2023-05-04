@@ -1,4 +1,4 @@
-import { datetoHHMM, decimalToHours } from "@/lib/utils";
+import { datetoHHMM } from "@/lib/utils";
 import { LOG_TYPE, Log, USER_STATUS, UserStats as UserLogs } from "@/types";
 import DisplayContent from "@/ui/DisplayContent";
 import styled from "@emotion/styled";
