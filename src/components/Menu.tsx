@@ -3,11 +3,13 @@ import IconClock from "@/assets/icons/icon-clock.svg";
 import IconPalm from "@/assets/icons/icon-palm.svg";
 import IconTeam from "@/assets/icons/icon-team.svg";
 import styled from "@emotion/styled";
+import Link from "next/link";
 
 type MenuItems = {
   icon: React.ReactNode;
   text: string;
   enabled: boolean;
+  link?: string;
 };
 
 const menuItems: MenuItems[] = [
@@ -15,11 +17,13 @@ const menuItems: MenuItems[] = [
     icon: <IconClock />,
     text: "Fichar",
     enabled: true,
+    link: "/",
   },
   {
     icon: <IconTeam />,
     text: "Compañeros",
-    enabled: false,
+    enabled: true,
+    link: "/colleagues",
   },
   {
     icon: <IconPalm />,
@@ -34,6 +38,8 @@ const Menu = () => {
     <MenuContainer>
       {menuItems.map((item, index) => (
         <MenuItem
+          href={item.link || ""}
+          passHref={true}
           key={index}
           selected={index === selected}
           enabled={item.enabled}
@@ -56,12 +62,13 @@ const MenuContainer = styled.div`
   margin-top: -15px;
 `;
 
-const MenuItem = styled.div<{ selected: boolean; enabled: boolean }>`
+const MenuItem = styled(Link)<{ selected: boolean; enabled: boolean }>`
   display: flex;
   flex: 0 0 ${100 / menuItems.length}%;
   flex-direction: row;
   align-items: center;
   height: 50px;
+  text-decoration: none;
   cursor: ${(props) => (props.enabled ? "pointer" : "not-allowed")};
   :first-of-type {
     border-top-left-radius: 10px;

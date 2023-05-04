@@ -18,15 +18,19 @@ const Colleagues: FC<{
       title="Compañeros"
       backgroundImage="linear-gradient(256deg, #b68fbb, #ff5776)"
     >
-      {users.map((user) => {
-        return (
-          <User key={`${user.email}-${user.status.date}`}>
-            <Ball status={user.status.status}></Ball>
-            <div>{user.name}</div>
-            <div>{StatusType[user.status.status].text}</div>
-          </User>
-        );
-      })}
+      <Container rows={users.length}>
+        {users.map((user) => {
+          return (
+            <React.Fragment key={`${user.email}-${user.status.date}`}>
+              <Status>
+                <Ball status={user.status.status}></Ball>
+              </Status>
+              <UserName>{user.name}</UserName>
+              <UserStatus>{StatusType[user.status.status].text}</UserStatus>
+            </React.Fragment>
+          );
+        })}
+      </Container>
     </SimpleContainer>
   );
 };
@@ -54,23 +58,48 @@ const StatusType = {
   },
 };
 
-const User = styled.div`
+const Name = styled.div``;
+
+const UserName = styled.div`
+  font-weight: bold;
+  height: 100%;
   width: 100%;
-  height: 40px;
-  border-top: 1px solid #fff;
-  font-size: 14px;
-  color: #4e4f53;
-  display: grid;
-  grid-template-columns: 60px 100px 100px;
-  gap: 10px;
+  border-bottom: 1px solid #fff;
+  display: flex;
+  justify-content: start;
   align-items: center;
-  justify-items: center;
+`;
+const UserStatus = styled.div`
+  height: 100%;
+  width: 100%;
+  border-bottom: 1px solid #fff;
+  display: flex;
+  justify-content: start;
+  align-items: center;
+`;
+const Status = styled.div`
+  height: 100%;
+  width: 100%;
+  border-bottom: 1px solid #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 `;
 const Ball = styled.div<{ status: USER_STATUS }>`
   width: 15px;
   height: 15px;
   border-radius: 50%;
   background-color: ${(props) => StatusType[props.status].color};
+`;
+
+const Container = styled.div<{ rows: number }>`
+  display: grid;
+  grid-template-columns: 60px 250px auto;
+  grid-template-rows: ${(props) => `repeat(${props.rows}, 40px)`};
+  width: 100%;
+  border-top: 2px solid #fff;
+  font-size: 14px;
+  color: #4e4f53;
 `;
 
 export default Colleagues;
