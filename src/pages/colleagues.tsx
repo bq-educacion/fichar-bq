@@ -34,6 +34,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 const Home: NextPage<{}> = () => {
   const getAllUsersStatus = async () => {
     const res = await fetch("/api/allUsersStatus");
+    console.log(res.status);
     if (res.status !== 200) router.push("/login");
     const data = await res.json();
     setUsersStatus(data);
