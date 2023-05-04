@@ -95,7 +95,7 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
   });
 
   return (
-    <Layout>
+    <Layout active={0}>
       <WelcomeUser data={data!} />
       {status &&
         [USER_STATUS.working, USER_STATUS.paused].includes(status.status) && (
