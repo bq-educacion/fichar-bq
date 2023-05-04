@@ -60,7 +60,7 @@ const Home: NextPage<{}> = () => {
   });
 
   return (
-    <Layout>
+    <Layout active={1}>
       <WelcomeUser data={data!} />
       {usersStatus.length > 0 && (
         <>

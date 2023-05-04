@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { FC, useState } from "react";
 import IconClock from "@/assets/icons/icon-clock.svg";
 import IconPalm from "@/assets/icons/icon-palm.svg";
 import IconTeam from "@/assets/icons/icon-team.svg";
@@ -32,14 +32,15 @@ const menuItems: MenuItems[] = [
   },
 ];
 
-const Menu = () => {
-  const [selected, setSelected] = useState<number>(0);
+const Menu: FC<{ active: number }> = ({ active }) => {
+  const [selected, setSelected] = useState<number>(active);
   return (
     <MenuContainer>
       {menuItems.map((item, index) => (
         <MenuItem
+          onClick={() => setSelected(index)}
           href={item.link || ""}
-          passHref={true}
+          //passHref={true}
           key={index}
           selected={index === selected}
           enabled={item.enabled}
