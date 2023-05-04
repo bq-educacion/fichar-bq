@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { LOG_TYPE, Status, USER_STATUS } from "@/types";
+import { LOG_TYPE, UserStatus, USER_STATUS } from "@/types";
 import styled from "@emotion/styled";
 import { colors } from "@/styles/colors";
 import Image from "next/image";
@@ -80,7 +80,7 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
   };
 
   const router = useRouter();
-  const [status, setStatus] = useState<Status | undefined>(undefined);
+  const [status, setStatus] = useState<UserStatus | undefined>(undefined);
   useEffect(() => {
     getUserStatus();
   }, []);

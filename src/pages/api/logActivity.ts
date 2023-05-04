@@ -4,6 +4,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "./auth/[...nextauth]";
 import { LOG_TYPE } from "@/types";
+import addLog from "@/controllers/addLog";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const session = await getServerSession(req, res, authOptions);
@@ -15,35 +16,15 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const email = session.user.email;
   const { type } = req.body;
 
-  await connectMongo();
-
-  if (type === LOG_TYPE.goback) {
-    const lastLog = await LogModel.findOne({ user: email })
-      .sort({ date: -1 })
-      .exec();
-    if (!lastLog || lastLog.type !== LOG_TYPE.out) {
-      res.status(400).send("Bad Request");
-      return;
-    }
-    lastLog.type = LOG_TYPE.pause;
-    await lastLog.save();
-    const log = await LogModel.create({
-      type: LOG_TYPE.in,
-      date: new Date(),
-      user: email,
-    });
+  try {
+    const lastLog = await addLog(email!, type);
     res.status(200).json(lastLog);
     res.end();
     return;
+  } catch (e) {
+    res.status(400).send("Bad Request");
+    return;
   }
-  const log = await LogModel.create({
-    type,
-    date: new Date(),
-    user: email,
-  });
-
-  res.status(200).json(log);
-  res.end();
 };
 
 export default handler;

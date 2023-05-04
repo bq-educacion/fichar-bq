@@ -81,13 +81,22 @@ const UserLogsComponent: FC<{ status: USER_STATUS }> = ({ status }) => {
   };
 
   return (
-    <DisplayContent bold={true} title="Registro de fichajes (últimos 7 días)">
+    <DisplayContent
+      opened={true}
+      bold={true}
+      title="Registro de fichajes (últimos 7 días)"
+    >
       <Container>
-        {Object.keys(processedLogs).map((key) => {
+        {Object.keys(processedLogs).map((key, index) => {
           // first letter of key in upper case
           const title = key.charAt(0).toUpperCase() + key.slice(1);
           return (
-            <DisplayContent key={key} title={title} bold={false}>
+            <DisplayContent
+              opened={index === 0}
+              key={key}
+              title={title}
+              bold={false}
+            >
               <>
                 {processedLogs[key].map((log) => (
                   <Log key={log._id.toString()}>

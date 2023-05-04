@@ -38,6 +38,11 @@ export type UserToday = {
 export type User = {
   email: string;
   active: boolean;
+  isManager: boolean;
+  image: string;
+  name: string;
+  status: UserStatus;
+  manager?: string;
 };
 
 export type Log = {
@@ -47,7 +52,7 @@ export type Log = {
   user: User;
 };
 
-export type Status = {
+export type UserStatus = {
   status: USER_STATUS;
   date?: Date;
   startDate?: Date;

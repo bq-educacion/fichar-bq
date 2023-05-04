@@ -1,0 +1,55 @@
+import { LogModel } from "@/db/Models";
+import connectMongo from "@/lib/connectMongo";
+import { LOG_TYPE, Log, USER_STATUS, UserStatus } from "@/types";
+import { getHoursToday } from "@/lib/utils";
+
+const computeUserStatus = async (email: string): Promise<UserStatus> => {
+  await connectMongo();
+
+  const logsOfToday: Log[] = await LogModel.find({
+    user: email,
+    date: {
+      $gte: new Date(new Date().setHours(0, 0, 0, 0)),
+    },
+  })
+    .sort({ date: -1 })
+    .exec();
+
+  // not yet started to work
+  if (logsOfToday.length === 0) {
+    return { status: USER_STATUS.not_started };
+  } else {
+    const lastType = logsOfToday[0].type;
+    const lastDate = logsOfToday[0].date;
+    const startDate = logsOfToday.at(-1)?.date;
+    const hoursToday = getHoursToday(logsOfToday.reverse());
+
+    // if there is any type with USER_STATUS.error
+    if (logsOfToday.some((log) => log.type === LOG_TYPE.error)) {
+      return { status: USER_STATUS.error, date: lastDate };
+    } else if (lastType === "in") {
+      return {
+        status: USER_STATUS.working,
+        date: lastDate,
+        startDate,
+        hoursToday,
+      };
+    } else if (lastType === "pause") {
+      return {
+        status: USER_STATUS.paused,
+        date: lastDate,
+        startDate,
+        hoursToday,
+      };
+    } else {
+      return {
+        status: USER_STATUS.finished,
+        date: lastDate,
+        startDate,
+        hoursToday,
+      };
+    }
+  }
+};
+
+export default computeUserStatus;
