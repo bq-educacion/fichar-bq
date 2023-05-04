@@ -8,6 +8,7 @@ import { User } from "@/types";
 import React from "react";
 import Layout from "@/components/Layout";
 import WelcomeUser from "@/components/WelcomeUser";
+import Colleagues from "@/components/Colleagues";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   // get session data
@@ -63,13 +64,7 @@ const Home: NextPage<{}> = () => {
       <WelcomeUser data={data!} />
       {usersStatus.length > 0 && (
         <>
-          {usersStatus.map((user) => {
-            return (
-              <>
-                {user.email} {user.status.status}
-              </>
-            );
-          })}
+          <Colleagues users={usersStatus} />
         </>
       )}
       <br />
