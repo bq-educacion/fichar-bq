@@ -8,6 +8,7 @@ import IconConfussion from "@/assets/icons/icon-confussion.svg";
 
 import { useRouter } from "next/router";
 import TimedButton from "../ui/TimedButton";
+import { datetoHHMM } from "@/lib/utils";
 
 const SingleBoxAction: FC<{
   action: LOG_TYPE;
@@ -87,9 +88,7 @@ const SingleBoxAction: FC<{
       buttonText = "Volver al trabajo";
       headerLine = <HeaderLine>Descanso iniciado</HeaderLine>;
       subHeaderLine = (
-        <SubHeaderLine>
-          a las {status.date?.getHours()}:{status.date?.getMinutes()}{" "}
-        </SubHeaderLine>
+        <SubHeaderLine>a las {datetoHHMM(status.date!)} </SubHeaderLine>
       );
       iconbackground = " linear-gradient(225deg, #fea77f, #facf7f)";
       icon = <IconFork />;
