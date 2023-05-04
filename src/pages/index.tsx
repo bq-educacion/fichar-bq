@@ -4,10 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { LOG_TYPE, Status, USER_STATUS } from "@/types";
-import styled from "@emotion/styled";
-import { colors } from "@/styles/colors";
-import Image from "next/image";
+import { LOG_TYPE, UserStatus, USER_STATUS } from "@/types";
 import React from "react";
 import UserStats from "@/components/UserStats";
 import UserToday from "@/components/UserToday";
@@ -80,7 +77,7 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
   };
 
   const router = useRouter();
-  const [status, setStatus] = useState<Status | undefined>(undefined);
+  const [status, setStatus] = useState<UserStatus | undefined>(undefined);
   useEffect(() => {
     getUserStatus();
   }, []);
@@ -129,53 +126,3 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
 };
 
 export default Home;
-
-const Button = styled.button<{ color?: string; backColor?: string }>`
-  align-items: center;
-  width: max-content;
-  padding: 0 20px;
-  height: 40px;
-  border-radius: 4px;
-  ${(props) =>
-    props.color
-      ? `
-        color: ${props.color};
-    `
-      : `
-        color: ${colors.white};
-    `}
-  ${(props) =>
-    props.backColor
-      ? `
-        background-color: ${props.backColor};
-    `
-      : `
-        background-color: ${colors.blackBackground};
-    `}
-  border: none;
-  &:hover {
-    background-color: ${colors.grayBlue2};
-    cursor: pointer;
-  }
-  &:active {
-    border: 1px solid ${colors.grayBlue};
-  }
-`;
-
-const H1 = styled.h1`
-  font-size: 26px;
-  font-weight: 700;
-  color: ${colors.black};
-`;
-
-const Container = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-
-  min-width: 400px;
-  border: 1px solid ${colors.black};
-  border-radius: 4px;
-  padding: 20px;
-  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.5);
-`;

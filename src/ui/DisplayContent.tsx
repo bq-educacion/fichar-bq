@@ -3,11 +3,12 @@ import IconDirection from "@/assets/icons/icon-direction.svg";
 import styled from "@emotion/styled";
 
 const DisplayContent: FC<{
+  opened: boolean;
   title: string;
   bold: boolean;
   children: ReactNode;
-}> = ({ title, children, bold }) => {
-  const [show, setShow] = React.useState<boolean>(true);
+}> = ({ opened, title, children, bold }) => {
+  const [show, setShow] = React.useState<boolean>(opened);
   return (
     <Container>
       <Title bold={bold}>

@@ -1,8 +1,6 @@
 // remove logs from days in which there is an error
 
 import { LOG_TYPE, Log } from "@/types";
-import mongoose from "mongoose";
-import { mongo } from "mongoose";
 
 export const removeErrorLogs = (logs: Log[]) =>
   logs.filter((log) => {

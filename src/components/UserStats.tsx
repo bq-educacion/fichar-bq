@@ -31,7 +31,7 @@ const UserStats: FC<{ status: USER_STATUS }> = ({ status }) => {
   }
 
   return (
-    <DisplayContent title="Tiempo trabajado" bold={true}>
+    <DisplayContent opened={true} title="Tiempo trabajado" bold={true}>
       <Container>
         <Table>
           <Header />

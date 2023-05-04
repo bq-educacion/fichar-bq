@@ -1,6 +1,6 @@
 import { UserToday } from "@/types";
 import styled from "@emotion/styled";
-import React, { FC, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import IconClock from "@/assets/icons/icon-clock.svg";
 
 const UserToday = () => {

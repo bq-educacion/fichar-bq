@@ -1,13 +1,11 @@
-import { LOG_TYPE, Status, USER_STATUS } from "@/types";
+import { LOG_TYPE } from "@/types";
 import styled from "@emotion/styled";
 import React, { FC, useEffect, useState } from "react";
-import IconClock from "@/assets/icons/icon-clock.svg";
 import IconFork from "@/assets/icons/icon-fork-and-spoon.svg";
 import IconCoputerOff from "@/assets/icons/icon-computer-off.svg";
 import IconConfussion from "@/assets/icons/icon-confussion.svg";
 import { useRouter } from "next/router";
 import TimedButton from "../ui/TimedButton";
-import UserToday from "./UserToday";
 
 const ThreeBoxAction: FC<{
   refreshStatus: () => void;
