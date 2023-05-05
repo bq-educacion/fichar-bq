@@ -1,12 +1,20 @@
 import { UserModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
-import { User, UserStatus } from "@/types";
+import { USER_STATUS, User, UserStatus } from "@/types";
+import computeUserStatus from "./computeUserStatus";
 
 const getUserStatus = async (email: string): Promise<UserStatus> => {
   await connectMongo();
-  const user: User = await UserModel.findOne({ email }).exec();
+  const user = await UserModel.findOne({ email }).exec();
   if (!user) {
     throw new Error("User not found");
+  }
+
+  // if status is finished and date is previous of today
+  if (user.status.status === USER_STATUS.finished) {
+    const status = await computeUserStatus(email);
+    user.status = status;
+    await user.save();
   }
   return user.status;
 };
