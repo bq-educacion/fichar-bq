@@ -17,7 +17,7 @@ const computeUserStatus = async (email: string): Promise<UserStatus> => {
 
   // not yet started to work
   if (logsOfToday.length === 0) {
-    return { status: USER_STATUS.not_started };
+    return { status: USER_STATUS.not_started, date: new Date(), hoursToday: 0 };
   } else {
     const lastType = logsOfToday[0].type;
     const lastDate = logsOfToday[0].date;
