@@ -27,6 +27,11 @@ const Colleagues: FC<{
               </Status>
               <UserName>{user.name}</UserName>
               <UserStatus>{StatusType[user.status.status].text}</UserStatus>
+              <Time>
+                {user.status.status !== USER_STATUS.not_started && (
+                  <>{datetoHHMM(new Date(user.status.date!))}</>
+                )}
+              </Time>
             </React.Fragment>
           );
         })}
@@ -77,6 +82,14 @@ const UserStatus = styled.div`
   justify-content: start;
   align-items: center;
 `;
+const Time = styled.div`
+  height: 100%;
+  width: 100%;
+  border-bottom: 1px solid #fff;
+  display: flex;
+  justify-content: start;
+  align-items: center;
+`;
 const Status = styled.div`
   height: 100%;
   width: 100%;
@@ -94,7 +107,7 @@ const Ball = styled.div<{ status: USER_STATUS }>`
 
 const Container = styled.div<{ rows: number }>`
   display: grid;
-  grid-template-columns: 60px 250px auto;
+  grid-template-columns: 60px 250px 1fr 1fr;
   grid-template-rows: ${(props) => `repeat(${props.rows}, 40px)`};
   width: 100%;
   border-top: 2px solid #fff;
