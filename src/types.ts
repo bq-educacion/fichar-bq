@@ -46,10 +46,12 @@ export type User = {
 };
 
 export type Log = {
-  _id: mongoose.Schema.Types.ObjectId;
+  _id: mongoose.Schema.Types.ObjectId | string;
   type: LOG_TYPE;
   date: Date;
   user: User;
+  error_text?: string;
+  error_hours?: number;
 };
 
 export type UserStatus = {
