@@ -82,7 +82,7 @@ export const getHoursToday = (logs: Log[]) => {
 export const decimalToHours = (decimal: number) => {
   const hours = Math.floor(decimal);
   const minutes = Math.floor((decimal - hours) * 60);
-  return `${hours}h${minutes < 10 ? `0${minutes}` : minutes}m`;
+  return `${hours}h${minutes}m`;
 };
 
 export const datetoHHMM = (date: Date) => {
