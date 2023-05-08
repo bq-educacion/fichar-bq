@@ -196,6 +196,7 @@ const UserLogsComponent: FC<{ status: USER_STATUS }> = ({ status }) => {
         {Object.keys(processedLogs).map((key, index) => {
           // first letter of key in upper case
           const title = key.charAt(0).toUpperCase() + key.slice(1);
+          // title and number of hours worked (except if there is an error)
           const title_full = `${title} ${
             !processedLogs[key].some((log) => log.type === LOG_TYPE.error)
               ? `(${decimalToHours(
@@ -205,8 +206,7 @@ const UserLogsComponent: FC<{ status: USER_STATUS }> = ({ status }) => {
                       date: new Date(log.date),
                     }))
                   )
-                )}
-            )
+                )})
             `
               : ""
           }`;
