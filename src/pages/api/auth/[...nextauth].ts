@@ -22,7 +22,6 @@ export const authOptions = {
           profile!.email!.endsWith("@bq.com")
         ) {
           await connectMongo();
-          console.log(profile);
           await addUser(profile?.email!, profile?.picture!, profile?.name!);
         }
 

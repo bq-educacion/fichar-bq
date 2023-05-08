@@ -135,9 +135,10 @@ const Box = styled.div<{ background: string }>`
   align-items: center;
   justify-content: center;
   width: 195px;
-  height: 235px;
+  //height: 235px;
   border-radius: 3px;
   background-image: ${(props) => props.background};
+  padding-bottom: 5px;
 `;
 
 const Icon = styled.div<{ background: string }>`
@@ -165,7 +166,7 @@ const Icon = styled.div<{ background: string }>`
 
 const HeaderLine = styled.div`
   width: 74px;
-  height: 40px;
+  //height: 40px;
   margin-top: 13px;
   font-size: 16px;
   font-weight: 500;
@@ -175,7 +176,7 @@ const HeaderLine = styled.div`
 `;
 
 const SubHeaderLine = styled.div`
-  height: 20px;
+  //height: 20px;
   margin-top: 5px;
   font-size: 14px;
   line-height: 1.43;

@@ -1,7 +1,7 @@
 // add User if it doesn't exist
 
 import { UserModel } from "@/db/Models";
-import { User } from "@/types";
+import { USER_STATUS, User } from "@/types";
 
 export const addUser = async (
   email: string,
@@ -11,8 +11,17 @@ export const addUser = async (
   console.log("addUser", email);
   const user = await UserModel.findOne({ email }).exec();
   if (!user) {
-    console.log("addUser", email, "not found, creating");
-    const user = new UserModel({ email, active: true, image, name });
+    const user = new UserModel({
+      email,
+      active: true,
+      image,
+      name,
+      status: {
+        status: USER_STATUS.not_started,
+        date: new Date(),
+        hoursToday: 0,
+      },
+    });
     await user.save();
     //const user = await UserModel.create({ mail, active: true });
     console.log("addUser", email, "created");
