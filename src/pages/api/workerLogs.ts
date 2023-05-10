@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "./auth/[...nextauth]";
-import getUserStats from "@/controllers/getUserStats";
+import getUserLogs from "@/controllers/getUserLogs";
 import checkIfManager from "@/controllers/checkeManager";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -12,8 +12,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return;
     }
 
-    const { workerEmail } = req.body;
-    if (!workerEmail) {
+    const { workerEmail, page, numberofdays } = req.body;
+    if (!workerEmail || !page || !numberofdays) {
       res.status(400).send("Bad request");
       return;
     }
@@ -23,12 +23,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return;
     }
 
-    const data = await getUserStats(workerEmail!);
-    res.status(200).json(data);
+    const logs = await getUserLogs(workerEmail!, page, numberofdays!);
 
+    // return logs
+    res.status(200).json(logs);
     res.end();
   } catch (e) {
-    console.error(e);
     res.status(500).end();
   }
 };
