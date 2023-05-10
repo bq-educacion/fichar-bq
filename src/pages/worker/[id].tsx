@@ -2,13 +2,15 @@ import { useSession, signOut } from "next-auth/react";
 import type { GetServerSideProps, NextPage } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
-import { UserStats } from "@/types";
-import React from "react";
+import { Log, UserStats } from "@/types";
+import React, { useEffect } from "react";
 import { UserModel } from "@/db/Models";
 import Layout from "@/components/Layout";
 import getUserStats from "@/controllers/getUserStats";
 import UserStatsViewer from "@/components/UserStatsViewer";
 import SimpleContainer from "@/ui/SimpleContainer";
+import getUserLogs from "@/controllers/getUserLogs";
+import UserLogsComponentViewer from "@/components/UserLogsComponentViewer";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   // get session data
@@ -53,17 +55,35 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
       stats,
       name,
       session,
+      workerEmail: worker.email,
     },
   };
 };
 
-const Home: NextPage<{ stats: UserStats; name: string }> = ({
-  stats,
-  name,
-}) => {
+const Home: NextPage<{
+  stats: UserStats;
+  name: string;
+  workerEmail: string;
+}> = ({ stats, name, workerEmail }) => {
   const { data } = useSession({
     required: true,
   });
+  const [logs, setLogs] = React.useState<Log[]>([]);
+  const fetchUserLogs = async () => {
+    const response = await fetch(`/api/workerLogs`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ workerEmail, numberofdays: 7, page: 1 }),
+    });
+    const data = await response.json();
+    setLogs(data);
+  };
+
+  useEffect(() => {
+    fetchUserLogs();
+  }, [workerEmail]);
 
   return (
     <Layout active={0}>
@@ -74,6 +94,9 @@ const Home: NextPage<{ stats: UserStats; name: string }> = ({
         backgroundImage="linear-gradient(220deg, #fe5000, #f6a001)"
       >
         <UserStatsViewer stats={stats} />
+        {logs.length > 0 && (
+          <UserLogsComponentViewer key={workerEmail} logs={logs} />
+        )}
       </SimpleContainer>
     </Layout>
   );
