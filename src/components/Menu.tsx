@@ -27,8 +27,9 @@ const menuItems: MenuItems[] = [
   },
   {
     icon: <IconPalm />,
-    text: "Vacaciones",
-    enabled: false,
+    text: "Mi equipo",
+    enabled: true,
+    link: "/manager",
   },
 ];
 

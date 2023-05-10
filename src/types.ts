@@ -36,6 +36,8 @@ export type UserToday = {
 };
 
 export type User = {
+  _id: mongoose.Schema.Types.ObjectId;
+  id: string;
   email: string;
   active: boolean;
   isManager: boolean;
