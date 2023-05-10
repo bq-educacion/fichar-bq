@@ -6,10 +6,11 @@ import updateUserStatus from "./updateUserStatus";
 const addLog = async (email: string, type: LOG_TYPE): Promise<Log> => {
   await connectMongo();
 
+  const lastLog = await LogModel.findOne({ user: email })
+    .sort({ date: -1 })
+    .exec();
+
   if (type === LOG_TYPE.goback) {
-    const lastLog = await LogModel.findOne({ user: email })
-      .sort({ date: -1 })
-      .exec();
     if (!lastLog || lastLog.type !== LOG_TYPE.out) {
       throw new Error("Bad Request");
     }
@@ -22,6 +23,18 @@ const addLog = async (email: string, type: LOG_TYPE): Promise<Log> => {
     });
     await updateUserStatus(email);
     return log;
+  }
+
+  if (type === LOG_TYPE.pause && lastLog?.type !== LOG_TYPE.in) {
+    throw new Error("Bad Request");
+  }
+
+  if (type === LOG_TYPE.out && lastLog?.type !== LOG_TYPE.in) {
+    throw new Error("Bad Request");
+  }
+
+  if (type === LOG_TYPE.in && lastLog?.type !== LOG_TYPE.pause) {
+    throw new Error("Bad Request");
   }
 
   const log = await LogModel.create({
