@@ -4,11 +4,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { LOG_TYPE, UserStatus, USER_STATUS } from "@/types";
+import { LOG_TYPE, UserStatus, USER_STATUS, User } from "@/types";
 import React from "react";
 import UserStats from "@/components/UserStats";
 import UserToday from "@/components/UserToday";
-import { LogModel } from "@/db/Models";
+import { LogModel, UserModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
 import Layout from "@/components/Layout";
 import WelcomeUser from "@/components/WelcomeUser";
@@ -38,12 +38,14 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     user: session.user.email,
   }).sort({ date: -1 });
 
+  // if lastlog is not correct, create an error log and set user status to not_started
   if (
     lastLog &&
     ![LOG_TYPE.out, LOG_TYPE.error].includes(lastLog.type) &&
     new Date(lastLog.date).setHours(0, 0, 0, 0) !==
       new Date().setHours(0, 0, 0, 0)
   ) {
+    console.log("last log not correct");
     await LogModel.create({
       type: LOG_TYPE.error,
       user: session.user.email,
@@ -52,6 +54,14 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
         new Date(lastLog.date).getMinutes() + 1
       ),
     });
+    const user = await UserModel.findOne({ email: session.user.email }).exec();
+    // set user status to not_started
+
+    user.status.status = USER_STATUS.not_started;
+    user.status.date = new Date();
+    console.log("user: ", user.status);
+    await user?.save();
+
     message = "El último día se te olvidó desfichar";
   }
 

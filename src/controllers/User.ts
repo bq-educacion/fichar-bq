@@ -8,7 +8,6 @@ export const addUser = async (
   image: string,
   name: string
 ): Promise<User> => {
-  console.log("addUser", email);
   const user = await UserModel.findOne({ email }).exec();
   if (!user) {
     const user = new UserModel({
