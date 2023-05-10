@@ -23,6 +23,7 @@ const addLog = async (email: string, type: LOG_TYPE): Promise<Log> => {
     await updateUserStatus(email);
     return log;
   }
+
   const log = await LogModel.create({
     type,
     date: new Date(),

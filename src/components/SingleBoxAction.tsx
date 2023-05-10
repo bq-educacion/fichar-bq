@@ -117,9 +117,7 @@ const SingleBoxAction: FC<{
       headerLine = <HeaderLine>Hoy la he liado</HeaderLine>;
 
       subHeaderLine = (
-        <SubHeaderLine>
-          A las {status.date?.getHours()}:{status.date?.getMinutes()}
-        </SubHeaderLine>
+        <SubHeaderLine>A las {datetoHHMM(status.date!)}</SubHeaderLine>
       );
       iconbackground = "linear-gradient(225deg, #6d6c6c, #6d6c6c)";
       icon = <IconConfussion />;

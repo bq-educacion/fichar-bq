@@ -55,7 +55,7 @@ const EditErrorLog: FC<{ log: Log }> = ({ log }) => {
       <Input
         disabled={!editing}
         type="text"
-        width="275px"
+        width="245px"
         value={text}
         placeholder={log.error_text || "motivo del error"}
         onChange={(e) => setText(e.target.value)}
