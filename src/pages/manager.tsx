@@ -40,10 +40,12 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   return {
     props: {
       session,
-      myWorkers: myWorkers.map((worker) => ({
-        id: worker._id.toString(),
-        name: worker.name,
-      })),
+      myWorkers: myWorkers
+        .map((worker) => ({
+          id: worker._id.toString(),
+          name: worker.name,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name, "es")),
     },
   };
 };
