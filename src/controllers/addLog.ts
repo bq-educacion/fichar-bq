@@ -10,6 +10,15 @@ const addLog = async (email: string, type: LOG_TYPE): Promise<Log> => {
     .sort({ date: -1 })
     .exec();
 
+  // if lastlog date is before today
+  if (
+    lastLog &&
+    lastLog.date < new Date(new Date().setHours(0, 0, 0, 0)) &&
+    type !== LOG_TYPE.in
+  ) {
+    throw new Error("Bad Request");
+  }
+
   if (type === LOG_TYPE.goback) {
     if (!lastLog || lastLog.type !== LOG_TYPE.out) {
       throw new Error("Bad Request");
@@ -35,7 +44,7 @@ const addLog = async (email: string, type: LOG_TYPE): Promise<Log> => {
 
   if (
     type === LOG_TYPE.in &&
-    (lastLog?.type !== LOG_TYPE.pause || lastLog?.type !== LOG_TYPE.error)
+    ![LOG_TYPE.pause, LOG_TYPE.error].includes(lastLog?.type)
   ) {
     throw new Error("Bad Request");
   }
