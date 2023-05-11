@@ -10,7 +10,7 @@ const UserStatsViewer: FC<{ stats: UserStats }> = ({ stats }) => {
       <Container>
         <Table>
           <Header />
-          <Header>Horas/día </Header>
+          <Header>Horas/día</Header>
           <Header>Total</Header>
           <Header>Días</Header>
           <Header>Días mal fichados</Header>

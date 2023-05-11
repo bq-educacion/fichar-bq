@@ -15,8 +15,11 @@ const WorkersViewer: FC<{ workers: Array<User & { stats: LogsStats }> }> = ({
       <Container>
         <Table rows={workers.length}>
           <Header>Nombre</Header>
-          <Header>Horas/día </Header>
-          <Header>Días fichados</Header>
+          <Header>
+            Horas/día
+            <br /> (30 días)
+          </Header>
+          <Header>Días fichados correctamente</Header>
           <Header>Días mal fichados</Header>
           {workers.map((worker) => (
             <React.Fragment key={worker.id}>
