@@ -10,6 +10,7 @@ import getMyWorkers from "@/controllers/getMyWorkers";
 import Link from "next/link";
 import WorkersViewer from "@/components/WorkersViewer";
 import WelcomeUser from "@/components/WelcomeUser";
+import connectMongo from "@/lib/connectMongo";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   // get session data
@@ -24,6 +25,8 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
       },
     };
   }
+
+  connectMongo();
 
   const user: User = await UserModel.findOne({
     email: session.user.email,
