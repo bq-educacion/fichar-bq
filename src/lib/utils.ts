@@ -1,6 +1,6 @@
 // remove logs from days in which there is an error
 
-import { LOG_TYPE, Log } from "@/types";
+import { LOG_TYPE, Log, LogsStats } from "@/types";
 
 export const removeErrorLogs = (logs: Log[]) =>
   logs.filter((log) => {
@@ -102,4 +102,37 @@ export const realLogs = (logs: Log[]) => {
   }
 
   return logs.slice(0, lastErrorOutIndex + 1);
+};
+
+export const statsFromLogs = (logs: Log[]): LogsStats => {
+  const rlogs = realLogs(logs);
+
+  // remove logs from days in which there is an error
+  const logsFiltered = removeErrorLogs(rlogs);
+
+  // number of days with error logs this week
+  const errorLogs = numberOfErrorLogs(rlogs);
+
+  // sum date of all logs with type "in"
+  const rlogsIn = logsIn(logsFiltered);
+
+  // sum date of all logs with type "out" or pause
+  const rlogsOut = logsOut(logsFiltered);
+
+  // count how many logs of different days there are
+  const logsDays = numberOfDays(logsFiltered);
+
+  // average time worked this week
+  const average =
+    logsDays === 0 ? 0 : (rlogsOut - rlogsIn) / logsDays / 1000 / 60 / 60;
+
+  // totoal hours worked this week
+  const total = (rlogsOut - rlogsIn) / 1000 / 60 / 60;
+
+  return {
+    total,
+    average,
+    logsDays,
+    errorLogs,
+  };
 };

@@ -62,3 +62,10 @@ export type UserStatus = {
   startDate?: Date;
   hoursToday?: number;
 };
+
+export type LogsStats = {
+  total: number;
+  average: number;
+  logsDays: number;
+  errorLogs: number;
+};

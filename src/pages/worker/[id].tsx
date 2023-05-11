@@ -86,7 +86,7 @@ const Home: NextPage<{
   }, [workerEmail]);
 
   return (
-    <Layout active={0}>
+    <Layout active={2}>
       <br />
       <br />
       <SimpleContainer

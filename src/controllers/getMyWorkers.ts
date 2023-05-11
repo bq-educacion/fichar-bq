@@ -1,10 +1,33 @@
-import { UserModel } from "@/db/Models";
+import { LogModel, UserModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
-import { User } from "@/types";
+import { statsFromLogs } from "@/lib/utils";
+import { LogsStats, User } from "@/types";
 
-const getMyWorkers = async (manager: string): Promise<User[]> => {
+const getMyWorkers = async (
+  manager: string
+): Promise<Array<User & { stats: LogsStats }>> => {
   await connectMongo();
-  return await getWorkers(manager);
+  const workers = await getWorkers(manager);
+
+  // get las 30 days stats of my workers
+  const last30Days = new Date(new Date().setDate(new Date().getDate() - 30));
+  const last30DaysWorkers = await Promise.all(
+    workers.map(async (worker) => {
+      return await LogModel.find({
+        user: worker.email,
+        date: { $gte: last30Days },
+      }).exec();
+    })
+  );
+
+  const fullWorkers = workers.map((worker, index) => {
+    return {
+      ...(worker as any).toObject(),
+      stats: statsFromLogs(last30DaysWorkers[index]),
+    };
+  });
+
+  return fullWorkers;
 };
 
 const getWorkers = async (manager: string): Promise<User[]> => {
