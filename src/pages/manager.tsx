@@ -2,12 +2,14 @@ import { useSession } from "next-auth/react";
 import type { GetServerSideProps, NextPage } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
-import { User } from "@/types";
+import { LogsStats, User } from "@/types";
 import React from "react";
 import Layout from "@/components/Layout";
 import { UserModel } from "@/db/Models";
 import getMyWorkers from "@/controllers/getMyWorkers";
 import Link from "next/link";
+import WorkersViewer from "@/components/WorkersViewer";
+import WelcomeUser from "@/components/WelcomeUser";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   // get session data
@@ -35,7 +37,9 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     };
   }
 
-  const myWorkers: User[] = await getMyWorkers(user.email);
+  const myWorkers: Array<User & { stats: LogsStats }> = await getMyWorkers(
+    user.email
+  );
 
   return {
     props: {
@@ -44,26 +48,26 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
         .map((worker) => ({
           id: worker._id.toString(),
           name: worker.name,
+          stats: worker.stats,
         }))
         .sort((a, b) => a.name.localeCompare(b.name, "es")),
     },
   };
 };
 
-const Home: NextPage<{ myWorkers: User[] }> = ({ myWorkers }) => {
+const Home: NextPage<{ myWorkers: Array<User & { stats: LogsStats }> }> = ({
+  myWorkers,
+}) => {
   const { data } = useSession({
     required: true,
   });
 
   return (
     <Layout active={2}>
-      {myWorkers.map((worker) => {
-        return (
-          <Link href={`/worker/${worker.id}`} key={worker.id}>
-            {worker.name}
-          </Link>
-        );
-      })}
+      <WelcomeUser data={data!} />
+      <WorkersViewer workers={myWorkers} />
+      <br />
+      <br />
     </Layout>
   );
 };
