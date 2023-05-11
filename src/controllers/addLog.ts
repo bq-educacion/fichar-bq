@@ -44,7 +44,7 @@ const addLog = async (email: string, type: LOG_TYPE): Promise<Log> => {
 
   if (
     type === LOG_TYPE.in &&
-    ![LOG_TYPE.pause, LOG_TYPE.error].includes(lastLog?.type)
+    ![LOG_TYPE.pause, LOG_TYPE.error, LOG_TYPE.out].includes(lastLog?.type)
   ) {
     throw new Error("Bad Request");
   }
