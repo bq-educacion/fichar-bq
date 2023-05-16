@@ -7,7 +7,6 @@ const updateUserStatus = async (email: string) => {
   if (!user) {
     throw new Error("User not found");
   }
-  console.log(status);
   user.status = status;
   await user.save();
 };

@@ -10,7 +10,10 @@ const WorkersViewer: FC<{ workers: Array<User & { stats: LogsStats }> }> = ({
   return (
     <SimpleContainer
       title="Mi Equipo"
-      backgroundImage="linear-gradient(225deg, #fea77f, #facf7f)"
+      textColor="#4e4f53"
+      fontSize="14px"
+      height="40px"
+      backgroundImage="linear-gradient(220deg, #eee, #eee)"
     >
       <Container>
         <Table rows={workers.length}>
