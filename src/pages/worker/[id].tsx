@@ -86,19 +86,22 @@ const Home: NextPage<{
   }, [workerEmail]);
 
   return (
-    <Layout active={2}>
+    <>
       <br />
       <br />
       <SimpleContainer
         title={name}
-        backgroundImage="linear-gradient(220deg, #fe5000, #f6a001)"
+        backgroundImage="linear-gradient(220deg, #eee, #eee)"
+        textColor="#4e4f53"
+        fontSize="14px"
+        height="40px"
       >
         <UserStatsViewer stats={stats} />
         {logs.length > 0 && (
           <UserLogsComponentViewer key={workerEmail} logs={logs} />
         )}
       </SimpleContainer>
-    </Layout>
+    </>
   );
 };
 

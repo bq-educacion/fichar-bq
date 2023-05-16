@@ -3,14 +3,11 @@ import Header from "./Header";
 import Menu from "./Menu";
 import styled from "@emotion/styled";
 
-const Layout: FC<{ children: ReactNode; active: number }> = ({
-  children,
-  active,
-}) => {
+const Layout: FC<{ children: ReactNode }> = ({ children }) => {
   return (
     <div>
       <Header />
-      <Menu active={active} />
+      <Menu />
       <Container>{children}</Container>
     </div>
   );

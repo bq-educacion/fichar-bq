@@ -61,8 +61,7 @@ const Home: NextPage<{}> = () => {
   });
 
   return (
-    <Layout active={1}>
-      <WelcomeUser data={data!} />
+    <>
       {usersStatus.length > 0 && (
         <>
           <Colleagues users={usersStatus} />
@@ -70,7 +69,7 @@ const Home: NextPage<{}> = () => {
       )}
       <br />
       <br />
-    </Layout>
+    </>
   );
 };
 

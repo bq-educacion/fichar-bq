@@ -66,12 +66,11 @@ const Home: NextPage<{ myWorkers: Array<User & { stats: LogsStats }> }> = ({
   });
 
   return (
-    <Layout active={2}>
-      <WelcomeUser data={data!} />
+    <>
       <WorkersViewer workers={myWorkers} />
       <br />
       <br />
-    </Layout>
+    </>
   );
 };
 

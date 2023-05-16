@@ -33,8 +33,8 @@ const menuItems: MenuItems[] = [
   },
 ];
 
-const Menu: FC<{ active: number }> = ({ active }) => {
-  const [selected, setSelected] = useState<number>(active);
+const Menu: FC = () => {
+  const [selected, setSelected] = useState<number>(0);
   return (
     <MenuContainer>
       {menuItems.map((item, index) => (
