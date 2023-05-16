@@ -1,3 +1,4 @@
+import { datetoHHMM, decimalToHours } from "@/lib/utils";
 import { LogsStats, User } from "@/types";
 import SimpleContainer from "@/ui/SimpleContainer";
 import styled from "@emotion/styled";
@@ -22,19 +23,15 @@ const WorkersViewer: FC<{ workers: Array<User & { stats: LogsStats }> }> = ({
             Horas/día
             <br /> (30 días)
           </Header>
-          <Header>Días fichados correctamente</Header>
-          <Header>Días mal fichados</Header>
+          <Header>Correctos</Header>
+          <Header>Errores</Header>
           {workers.map((worker) => (
-            <React.Fragment key={worker.id}>
-              <Data>
-                <Link href={`/worker/${worker.id}`}> {worker.name} </Link>
-              </Data>
-              <Data>
-                {worker.stats.average.toFixed(2).replace(/\.?0+$/, "")}
-              </Data>
+            <Row href={`/worker/${worker.id}`} key={worker.id}>
+              <Data>{worker.name}</Data>
+              <Data>{decimalToHours(worker.stats.average)}</Data>
               <Data>{worker.stats.logsDays}</Data>
               <Data>{worker.stats.errorLogs}</Data>
-            </React.Fragment>
+            </Row>
           ))}
         </Table>
       </Container>
@@ -53,12 +50,20 @@ const Table = styled.div<{ rows: number }>`
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr;
   grid-template-rows: 58px ${(props) => `repeat(${props.rows}, 40px)`};
-  column-gap: 2px;
-  row-gap: 2px;
+  column-gap: 1px;
+  row-gap: 1px;
   background-color: #fff;
 `;
 
-const Data = styled.div`
+const Row = styled(Link)`
+  display: contents;
+  :hover > * {
+    background-color: #a1dbd7;
+    overflow: visible;
+  }
+`;
+
+const Data = styled.span`
   font-size: 14px;
   font-weight: normal;
   color: #4e4f53;
@@ -72,7 +77,7 @@ const Data = styled.div`
   a {
     color: #4e4f53;
     text-decoration: none;
-    font-weight: bold;
+    font-weight: normal;
   }
 `;
 const Title = styled.div`
