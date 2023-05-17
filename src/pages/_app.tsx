@@ -6,9 +6,13 @@ import Layout from "@/components/Layout";
 export default function App({ Component, pageProps }: AppProps) {
   return (
     <SessionProvider session={pageProps.session}>
-      <Layout>
+      {pageProps.session?.user ? (
+        <Layout>
+          <Component {...pageProps} />
+        </Layout>
+      ) : (
         <Component {...pageProps} />
-      </Layout>
+      )}
     </SessionProvider>
   );
 }
