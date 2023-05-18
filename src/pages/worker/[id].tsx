@@ -11,6 +11,8 @@ import UserStatsViewer from "@/components/UserStatsViewer";
 import SimpleContainer from "@/ui/SimpleContainer";
 import getUserLogs from "@/controllers/getUserLogs";
 import UserLogsComponentViewer from "@/components/UserLogsComponentViewer";
+import connectMongo from "@/lib/connectMongo";
+import getUserByEmail from "@/controllers/getUser";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   // get session data
@@ -21,6 +23,18 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     return {
       redirect: {
         destination: "/login",
+        permanent: false,
+      },
+    };
+  }
+
+  await connectMongo();
+
+  const user = await getUserByEmail(session.user.email || "foo");
+  if (!user.legal) {
+    return {
+      redirect: {
+        destination: "/legal",
         permanent: false,
       },
     };

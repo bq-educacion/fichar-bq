@@ -34,6 +34,7 @@ const UserSchema = new mongoose.Schema(
     image: { type: String },
     isManager: { type: Boolean, required: true, default: false },
     status: { type: UserStatusSchema, required: false },
+    legal: { type: Boolean, default: false },
   },
   {
     id: false,

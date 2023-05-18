@@ -8,7 +8,7 @@ import Link from "next/link";
 type MenuItems = {
   icon: React.ReactNode;
   text: string;
-  enabled: boolean;
+  enabled: string;
   link?: string;
 };
 
@@ -16,19 +16,19 @@ const menuItems: MenuItems[] = [
   {
     icon: <IconClock />,
     text: "Fichar",
-    enabled: true,
+    enabled: "true",
     link: "/",
   },
   {
     icon: <IconTeam />,
     text: "Compañeros",
-    enabled: true,
+    enabled: "true",
     link: "/colleagues",
   },
   {
     icon: <IconPalm />,
     text: "Mi equipo",
-    enabled: true,
+    enabled: "true",
     link: "/manager",
   },
 ];
@@ -64,14 +64,14 @@ const MenuContainer = styled.div`
   margin-top: -15px;
 `;
 
-const MenuItem = styled(Link)<{ selected: boolean; enabled: boolean }>`
+const MenuItem = styled(Link)<{ selected: boolean; enabled: string }>`
   display: flex;
   flex: 0 0 ${100 / menuItems.length}%;
   flex-direction: row;
   align-items: center;
   height: 50px;
   text-decoration: none;
-  cursor: ${(props) => (props.enabled ? "pointer" : "not-allowed")};
+  cursor: ${(props) => (props.enabled === "true" ? "pointer" : "not-allowed")};
   :first-of-type {
     border-top-left-radius: 10px;
   }

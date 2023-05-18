@@ -11,6 +11,7 @@ import Link from "next/link";
 import WorkersViewer from "@/components/WorkersViewer";
 import WelcomeUser from "@/components/WelcomeUser";
 import connectMongo from "@/lib/connectMongo";
+import getUserByEmail from "@/controllers/getUser";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   // get session data
@@ -28,9 +29,16 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 
   connectMongo();
 
-  const user: User = await UserModel.findOne({
-    email: session.user.email,
-  }).exec();
+  const user = await getUserByEmail(session.user.email || "foo");
+  if (!user.legal) {
+    return {
+      redirect: {
+        destination: "/legal",
+        permanent: false,
+      },
+    };
+  }
+
   if (!user?.manager) {
     return {
       redirect: {

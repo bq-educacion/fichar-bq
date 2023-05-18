@@ -6,9 +6,9 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { User } from "@/types";
 import React from "react";
-import Colleagues from "@/components/Colleagues";
-import connectMongo from "@/lib/connectMongo";
 import getUserByEmail from "@/controllers/getUser";
+import Legal from "@/components/Legal";
+import TimedButton from "@/ui/TimedButton";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   // get session data
@@ -24,13 +24,20 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     };
   }
 
-  await connectMongo();
-
-  const user = await getUserByEmail(session.user.email || "foo");
-  if (!user.legal) {
+  try {
+    const user = await getUserByEmail(session.user.email || "foo");
+    if (user.legal) {
+      return {
+        redirect: {
+          destination: "/",
+          permanent: false,
+        },
+      };
+    }
+  } catch (e) {
     return {
       redirect: {
-        destination: "/legal",
+        destination: "/login",
         permanent: false,
       },
     };
@@ -44,29 +51,13 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 };
 
 const Home: NextPage<{}> = () => {
-  const getAllUsersStatus = async () => {
-    const res = await fetch("/api/allUsersStatus");
-    console.log(res.status);
-    if (res.status !== 200) router.push("/login");
-    const data = await res.json();
-    setUsersStatus(data);
+  const setLegal = async () => {
+    await fetch("/api/setLegal");
+    // go to / page
+    router.push("/");
   };
 
   const router = useRouter();
-  const [usersStatus, setUsersStatus] = useState<
-    Omit<User, "isManager" | "active" | "manager" | "_id">[]
-  >([]);
-  useEffect(() => {
-    getAllUsersStatus();
-  }, []);
-
-  // refetch every 10 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      getAllUsersStatus();
-    }, 10 * 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   const { data } = useSession({
     required: true,
@@ -74,13 +65,19 @@ const Home: NextPage<{}> = () => {
 
   return (
     <>
-      {usersStatus.length > 0 && (
-        <>
-          <Colleagues users={usersStatus} />
-        </>
-      )}
-      <br />
-      <br />
+      <Legal />
+      <TimedButton
+        width="199px"
+        height="50px"
+        time={0}
+        background="linear-gradient(256deg, #b68fbb, #ff5776)"
+        margin="20px 0 20px 0"
+        onClick={() => {
+          setLegal();
+        }}
+      >
+        Aceptar
+      </TimedButton>
     </>
   );
 };

@@ -45,6 +45,7 @@ export type User = {
   name: string;
   status: UserStatus;
   manager?: string;
+  legal: boolean;
 };
 
 export type Log = {

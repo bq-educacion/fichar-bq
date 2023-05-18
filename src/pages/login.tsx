@@ -5,6 +5,7 @@ import { authOptions } from "./api/auth/[...nextauth]";
 import styled from "@emotion/styled";
 import { colors } from "@/styles/colors";
 import React from "react";
+import { useRouter } from "next/router";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   // get session data
@@ -27,9 +28,10 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 };
 
 const Login = () => {
+  const router = useRouter();
   const { data, status } = useSession();
   if (status === "authenticated") {
-    //redirect to /
+    router.push("/");
   } else {
     return (
       <Container>
