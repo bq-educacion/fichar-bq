@@ -3,7 +3,6 @@ import type { GetServerSideProps } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "./api/auth/[...nextauth]";
 import styled from "@emotion/styled";
-import { colors } from "@/styles/colors";
 import React from "react";
 import { useRouter } from "next/router";
 import GoogleButton from "@/components/GoogleButton";
@@ -122,54 +121,3 @@ const Rectangle = styled.div`
     #6d2077
   );
 `;
-//       <Container>
-//         <div>Inicia Sesión</div>
-//         <Rectangle />
-//         Accede con tu cuenta de BQ
-//         <Button onClick={() => signIn("google")}>
-//           sign in with bq account
-//         </Button>
-//       </Container>
-//     );
-//   }
-// };
-
-// export default Login;
-
-// const Container = styled.div`
-//   display: flex;
-//   flex-direction: column;
-//   align-items: center;
-//   width: 393px;
-//   height: 231px;
-//   position: absolute;
-//   top: 50%;
-//   left: 50%;
-//   transform: translate(-50%, -50%);
-//   border-radius: 3px;
-//   box-shadow: 0 20px 60px 0 rgba(0, 0, 0, 0.1);
-//   border: solid 1px #f8f8f8;
-//   background-color: #fff;
-// `;
-
-// const Rectangle = styled.div`
-//   width: 393px;
-//   height: 1px;
-//   background-image: linear-gradient(
-//     to right,
-//     #44b8af,
-//     #f6a001 33%,
-//     #e4002b 67%,
-//     #6d2077
-//   );
-// `;
-
-// const Button = styled.button`
-//   width: 313px;
-//   height: 40px;
-//   margin: 10px 0 0;
-//   padding: 10px 125px 10px 127px;
-//   border-radius: 4px;
-//   border: solid 1px #3d3e42;
-//   background-color: #fff;
-// `;
