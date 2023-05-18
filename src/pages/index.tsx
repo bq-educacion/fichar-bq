@@ -15,6 +15,7 @@ import WelcomeUser from "@/components/WelcomeUser";
 import SingleBoxAction from "@/components/SingleBoxAction";
 import ThreeBoxAction from "@/components/ThreeBoxAction";
 import UserLogsComponent from "@/components/UserLogsComponent";
+import getUserByEmail from "@/controllers/getUser";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   // get session data
@@ -30,10 +31,22 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     };
   }
 
+  await connectMongo();
+
+  const user = await getUserByEmail(session.user.email || "foo");
+  if (!user.legal) {
+    return {
+      redirect: {
+        destination: "/legal",
+        permanent: false,
+      },
+    };
+  }
+
   let message = "";
 
   // if last log is not out and it is from yesterday, add a error log width date of yesterday
-  await connectMongo();
+
   const lastLog = await LogModel.findOne({
     user: session.user.email,
   }).sort({ date: -1 });
@@ -54,7 +67,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
         new Date(lastLog.date).getMinutes() + 1
       ),
     });
-    const user = await UserModel.findOne({ email: session.user.email }).exec();
+    const user = await getUserByEmail(session.user.email || "foo");
     // set user status to not_started
 
     user.status.status = USER_STATUS.not_started;
