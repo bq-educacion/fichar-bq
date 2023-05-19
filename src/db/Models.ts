@@ -7,6 +7,7 @@ const LogSchema = new mongoose.Schema({
   user: { type: String, required: true },
   error_text: { type: String, required: false },
   error_hours: { type: Number, required: false },
+  isMobile: { type: Boolean, required: false, default: false },
 });
 
 const UserStatusSchema = new mongoose.Schema(
@@ -15,6 +16,7 @@ const UserStatusSchema = new mongoose.Schema(
     date: { type: Date, required: false },
     startDate: { type: Date, required: false },
     hoursToday: { type: Number, required: false },
+    isMobile: { type: Boolean, required: false },
   },
   {
     _id: false,

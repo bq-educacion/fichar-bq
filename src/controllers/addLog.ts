@@ -3,7 +3,11 @@ import connectMongo from "@/lib/connectMongo";
 import { LOG_TYPE, Log } from "@/types";
 import updateUserStatus from "./updateUserStatus";
 
-const addLog = async (email: string, type: LOG_TYPE): Promise<Log> => {
+const addLog = async (
+  email: string,
+  type: LOG_TYPE,
+  isMobile: boolean
+): Promise<Log> => {
   await connectMongo();
 
   const lastLog = await LogModel.findOne({ user: email })
@@ -27,6 +31,7 @@ const addLog = async (email: string, type: LOG_TYPE): Promise<Log> => {
     await lastLog.save();
     const log = await LogModel.create({
       type: LOG_TYPE.in,
+      isMobile,
       date: new Date(),
       user: email,
     });
@@ -53,6 +58,7 @@ const addLog = async (email: string, type: LOG_TYPE): Promise<Log> => {
     type,
     date: new Date(),
     user: email,
+    isMobile,
   });
 
   await updateUserStatus(email);

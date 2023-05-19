@@ -55,6 +55,7 @@ export type Log = {
   user: User;
   error_text?: string;
   error_hours?: number;
+  isMobile?: boolean;
 };
 
 export type UserStatus = {
@@ -62,6 +63,7 @@ export type UserStatus = {
   date?: Date;
   startDate?: Date;
   hoursToday?: number;
+  isMobile?: boolean;
 };
 
 export type LogsStats = {

@@ -1,15 +1,9 @@
 import { datetoHHMM } from "@/lib/utils";
-import {
-  LOG_TYPE,
-  Log,
-  USER_STATUS,
-  User,
-  UserStats as UserLogs,
-} from "@/types";
+import { USER_STATUS, User } from "@/types";
 import SimpleContainer from "@/ui/SimpleContainer";
 import styled from "@emotion/styled";
 import React, { FC, useEffect, useState } from "react";
-
+import MobileIcon from "@/assets/icons/smartphone-icon.svg";
 const Colleagues: FC<{
   users: Omit<User, "isManager" | "active" | "manager" | "_id">[];
 }> = ({ users }) => {
@@ -42,6 +36,7 @@ const Colleagues: FC<{
                     <>- : -</>
                   )}
                 </span>
+                {user.status.isMobile || (true && <MobileIcon />)}
               </Time>
             </React.Fragment>
           );
@@ -126,6 +121,11 @@ const Time = styled.div`
     font-size: 14px;
     font-weight: bold;
     color: #4e4f53;
+  }
+  svg {
+    color: #4e4f53;
+    margin-left: 5px;
+    height: 30px;
   }
 `;
 const Status = styled.div<{ status: USER_STATUS }>`

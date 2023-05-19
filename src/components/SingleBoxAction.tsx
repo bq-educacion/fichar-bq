@@ -9,6 +9,8 @@ import IconConfussion from "@/assets/icons/icon-confussion.svg";
 import { useRouter } from "next/router";
 import TimedButton from "../ui/TimedButton";
 import { datetoHHMM } from "@/lib/utils";
+import getMobileDetect from "@/lib/getmobileDetect";
+import { userAgent } from "next/server";
 
 const SingleBoxAction: FC<{
   action: LOG_TYPE;
@@ -39,12 +41,14 @@ const SingleBoxAction: FC<{
   );
 
   const logActivity = async (type: LOG_TYPE) => {
+    // check if mobile device
+    const device = getMobileDetect();
     const res = await fetch("/api/logActivity", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ type }),
+      body: JSON.stringify({ type, isMobile: device.isMobile }),
     });
     //const data = await res.json();
     if (res.status !== 200) router.push("/login");

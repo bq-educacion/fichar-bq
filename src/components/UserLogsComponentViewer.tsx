@@ -9,6 +9,7 @@ import IconOut from "@/assets/icons/icon-left-arrow.svg";
 import IconIn from "@/assets/icons/icon-right-arrow.svg";
 import IconEdit from "@/assets/icons/icon-edit.svg";
 import IconTick from "@/assets/icons/icon-tick.svg";
+import IconMobile from "@/assets/icons/smartphone-icon.svg";
 
 const EditErrorLog: FC<{ log: Log }> = ({ log }) => {
   const [text, setText] = useState<string>(log.error_text || "");
@@ -210,7 +211,10 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
                     </Icon>
                     <div>{LogType[log.type]}</div>
                     {log.type !== LOG_TYPE.error ? (
-                      <div>{datetoHHMM(new Date(log.date))}</div>
+                      <Time>
+                        {datetoHHMM(new Date(log.date))}
+                        {log.isMobile && <IconMobile />}
+                      </Time>
                     ) : (
                       <EditErrorLog log={log} />
                     )}
@@ -229,11 +233,23 @@ const Icon = styled.div<{ color: string }>`
   color: ${(props) => props.color};
   svg {
     width: 16px;
-    height: 16px;
+    //height: 16px;
     margin: 0 12px 0 12px;
   }
 `;
 
+const Time = styled.div`
+  height: 100%;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  svg {
+    color: #4e4f53;
+    margin-left: 10px;
+    height: 20px;
+  }
+`;
 const Container = styled.div`
   border-top: 2px solid #fff;
   width: 100%;
