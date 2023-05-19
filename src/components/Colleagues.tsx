@@ -107,7 +107,8 @@ const Time = styled.div`
   width: 100%;
   border-bottom: 1px solid #fff;
   display: flex;
-  justify-content: center;
+  margin-left: 30px;
+  justify-content: flex-start;
   align-items: center;
   span {
     display: flex;
