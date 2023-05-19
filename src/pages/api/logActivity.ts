@@ -12,10 +12,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   const email = session.user.email;
-  const { type } = req.body;
+  const { type, isMobile } = req.body;
 
   try {
-    const lastLog = await addLog(email!, type);
+    const lastLog = await addLog(email!, type, isMobile);
     res.status(200).json(lastLog);
     res.end();
     return;

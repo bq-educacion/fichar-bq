@@ -23,6 +23,7 @@ const computeUserStatus = async (email: string): Promise<UserStatus> => {
     const lastDate = logsOfToday[0].date;
     const startDate = logsOfToday.at(-1)?.date;
     const hoursToday = getHoursToday(logsOfToday.reverse());
+    const isMobile = logsOfToday[0].isMobile;
 
     // if there is any type with USER_STATUS.error
     if (logsOfToday.some((log) => log.type === LOG_TYPE.error)) {
@@ -33,6 +34,7 @@ const computeUserStatus = async (email: string): Promise<UserStatus> => {
         date: lastDate,
         startDate,
         hoursToday,
+        isMobile,
       };
     } else if (lastType === "pause") {
       return {
@@ -40,6 +42,7 @@ const computeUserStatus = async (email: string): Promise<UserStatus> => {
         date: lastDate,
         startDate,
         hoursToday,
+        isMobile,
       };
     } else {
       return {
@@ -47,6 +50,7 @@ const computeUserStatus = async (email: string): Promise<UserStatus> => {
         date: lastDate,
         startDate,
         hoursToday,
+        isMobile,
       };
     }
   }
