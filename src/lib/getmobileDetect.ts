@@ -1,6 +1,7 @@
 const getMobileDetect = () => {
   const userAgent =
     typeof navigator === "undefined" ? "SSR" : navigator.userAgent;
+
   const isAndroid = () => Boolean(userAgent.match(/Android/i));
   const isIos = () => Boolean(userAgent.match(/iPhone|iPad|iPod/i));
   const isOpera = () => Boolean(userAgent.match(/Opera Mini/i));
@@ -10,11 +11,11 @@ const getMobileDetect = () => {
     Boolean(isAndroid() || isIos() || isOpera() || isWindows());
   const isDesktop = () => Boolean(!isMobile() && !isSSR());
   return {
-    isMobile,
-    isDesktop,
-    isAndroid,
-    isIos,
-    isSSR,
+    isMobile: isMobile(),
+    isDesktop: isDesktop(),
+    isAndroid: isAndroid(),
+    isIos: isIos(),
+    isSSR: isSSR(),
   };
 };
 

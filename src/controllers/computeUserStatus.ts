@@ -22,8 +22,8 @@ const computeUserStatus = async (email: string): Promise<UserStatus> => {
     const lastType = logsOfToday[0].type;
     const lastDate = logsOfToday[0].date;
     const startDate = logsOfToday.at(-1)?.date;
-    const hoursToday = getHoursToday(logsOfToday.reverse());
     const isMobile = logsOfToday[0].isMobile;
+    const hoursToday = getHoursToday([...logsOfToday].reverse());
 
     // if there is any type with USER_STATUS.error
     if (logsOfToday.some((log) => log.type === LOG_TYPE.error)) {
