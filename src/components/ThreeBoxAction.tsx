@@ -6,6 +6,7 @@ import IconCoputerOff from "@/assets/icons/icon-computer-off.svg";
 import IconConfussion from "@/assets/icons/icon-confussion.svg";
 import { useRouter } from "next/router";
 import TimedButton from "../ui/TimedButton";
+import getMobileDetect from "@/lib/getmobileDetect";
 
 const ThreeBoxAction: FC<{
   refreshStatus: () => void;
@@ -28,12 +29,13 @@ const ThreeBoxAction: FC<{
   );
 
   const logActivity = async (type: LOG_TYPE) => {
+    const device = getMobileDetect();
     const res = await fetch("/api/logActivity", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ type }),
+      body: JSON.stringify({ type, isMobile: device.isMobile }),
     });
     //const data = await res.json();
     if (res.status !== 200) router.push("/login");

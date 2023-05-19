@@ -72,7 +72,6 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 
     user.status.status = USER_STATUS.not_started;
     user.status.date = new Date();
-    console.log("user: ", user.status);
     await user?.save();
 
     message = "El último día se te olvidó desfichar";

@@ -10,7 +10,6 @@ import { useRouter } from "next/router";
 import TimedButton from "../ui/TimedButton";
 import { datetoHHMM } from "@/lib/utils";
 import getMobileDetect from "@/lib/getmobileDetect";
-import { userAgent } from "next/server";
 
 const SingleBoxAction: FC<{
   action: LOG_TYPE;

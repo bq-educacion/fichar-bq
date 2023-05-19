@@ -28,6 +28,7 @@ const addLog = async (
       throw new Error("Bad Request");
     }
     lastLog.type = LOG_TYPE.pause;
+    //lastLog.isMobile = isMobile;
     await lastLog.save();
     const log = await LogModel.create({
       type: LOG_TYPE.in,
