@@ -36,7 +36,7 @@ const Colleagues: FC<{
                     <>- : -</>
                   )}
                 </span>
-                {user.status.isMobile || (true && <MobileIcon />)}
+                {user.status.isMobile && <MobileIcon />}
               </Time>
             </React.Fragment>
           );
