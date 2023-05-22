@@ -16,6 +16,10 @@ export enum LOG_TYPE {
   goback = "goback",
 }
 
+export enum LOG_NOTES {
+  doctor = "doctor",
+}
+
 export type UserStats = {
   totalThisWeek: number;
   totalThisMonth: number;
@@ -56,6 +60,7 @@ export type Log = {
   error_text?: string;
   error_hours?: number;
   isMobile?: boolean;
+  note?: LOG_NOTES;
 };
 
 export type UserStatus = {

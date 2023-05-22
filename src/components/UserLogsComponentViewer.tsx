@@ -1,8 +1,8 @@
 import { datetoHHMM, decimalToHours, getHoursToday } from "@/lib/utils";
-import { LOG_TYPE, Log, USER_STATUS, UserStats as UserLogs } from "@/types";
+import { LOG_NOTES, LOG_TYPE, Log } from "@/types";
 import DisplayContent from "@/ui/DisplayContent";
 import styled from "@emotion/styled";
-import React, { FC, useEffect, useState } from "react";
+import React, { FC, useEffect, useRef, useState } from "react";
 import IconError from "@/assets/icons/icon-close.svg";
 import IconPause from "@/assets/icons/icon-munukebab.svg";
 import IconOut from "@/assets/icons/icon-left-arrow.svg";
@@ -10,6 +10,7 @@ import IconIn from "@/assets/icons/icon-right-arrow.svg";
 import IconEdit from "@/assets/icons/icon-edit.svg";
 import IconTick from "@/assets/icons/icon-tick.svg";
 import IconMobile from "@/assets/icons/smartphone-icon.svg";
+import IconDoctor from "@/assets/icons/icon-doctor.svg";
 
 const EditErrorLog: FC<{ log: Log }> = ({ log }) => {
   const [text, setText] = useState<string>(log.error_text || "");
@@ -102,6 +103,34 @@ const EditingContainer = styled.div`
 `;
 
 const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
+  const inputFile = useRef<HTMLInputElement>(null);
+
+  const onUpload = async (logid: string) => {
+    if (inputFile.current && inputFile.current.files) {
+      const file = inputFile.current.files[0];
+      const filename = `${logid}/${encodeURIComponent(file.name)}`;
+      inputFile.current.value = "";
+      const res = await fetch(`/api/upload-url?file=${filename}`);
+      const { url, fields } = await res.json();
+      const formData = new FormData();
+
+      Object.entries({ ...fields, file }).forEach(([key, value]) => {
+        formData.append(key, value as string);
+      });
+
+      const upload = await fetch(url, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (upload.ok) {
+        console.log("Uploaded successfully!");
+      } else {
+        console.error("Upload failed.");
+      }
+    }
+  };
+
   const processLogs = (logs: Log[]) => {
     const processedLogs = logs.reduce((acc, log) => {
       const date = new Date(log.date);
@@ -210,14 +239,34 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
                       {LogIcon[log.type].icon}
                     </Icon>
                     <div>{LogType[log.type]}</div>
-                    {log.type !== LOG_TYPE.error ? (
+                    {log.type !== LOG_TYPE.error && (
                       <Time>
                         {datetoHHMM(new Date(log.date))}
                         {log.isMobile && <IconMobile />}
+                        {log.type === LOG_TYPE.pause && (
+                          <Doctor
+                            data-tooltip="Adjunta justificante médico de la Seguridad Social"
+                            active={log.note === LOG_NOTES.doctor}
+                            onClick={() => {
+                              if (log.note !== LOG_NOTES.doctor) {
+                                inputFile.current?.click();
+                              }
+                            }}
+                          >
+                            <IconDoctor />
+
+                            <input
+                              type="file"
+                              ref={inputFile}
+                              onChange={() => {
+                                onUpload(log._id.toString());
+                              }}
+                            />
+                          </Doctor>
+                        )}
                       </Time>
-                    ) : (
-                      <EditErrorLog log={log} />
                     )}
+                    {log.type === LOG_TYPE.error && <EditErrorLog log={log} />}
                   </Log>
                 ))}
               </>
@@ -235,6 +284,48 @@ const Icon = styled.div<{ color: string }>`
     width: 16px;
     //height: 16px;
     margin: 0 12px 0 12px;
+  }
+`;
+
+const Doctor = styled.span<{ active: boolean }>`
+  position: relative; /* making the .tooltip span a container for the tooltip text */
+  input {
+    display: none;
+  }
+
+  cursor: ${(props) => (props.active ? "default" : "pointer")};
+  svg {
+    width: 16px;
+    //height: 16px;
+    margin: 2px 12px 0 12px;
+    color: ${(props) => (props.active ? "#ff0000" : "#a1a2a5")};
+  }
+
+  &:hover::before {
+    display: ${(props) => (props.active ? "none" : "block")};
+  }
+
+  &::before {
+    content: attr(data-tooltip);
+    position: absolute;
+
+    top: 50%;
+    transform: translateY(-50%);
+
+    left: 100%;
+    margin-left: 10px;
+
+    width: 200px;
+    padding: 10px;
+    border-radius: 10px;
+    //background: #000;
+    color: #4e4f53;
+    text-align: center;
+    font-size: 14px;
+    border: 1px solid #4e4f53;
+    border-radius: 10px;
+
+    display: none;
   }
 `;
 
