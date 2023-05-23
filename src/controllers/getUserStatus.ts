@@ -10,6 +10,12 @@ const getUserStatus = async (email: string): Promise<UserStatus> => {
     throw new Error("User not found");
   }
 
+  if (!user.status) {
+    const status = await computeUserStatus(email);
+    user.status = status;
+    await user.save();
+  }
+
   // if status is finished or error, recompute in case it is from yesterday
   if (
     user.status.status === USER_STATUS.finished ||

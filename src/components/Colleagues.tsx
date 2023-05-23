@@ -24,7 +24,7 @@ const Colleagues: FC<{
                   <Ball status={user.status.status}></Ball>
                 </Status>
               </div>
-              <UserName>{user.name}</UserName>
+              <UserName>{user.name.toLowerCase()}</UserName>
               <UserStatus status={user.status.status}>
                 <div>{StatusType[user.status.status].text}</div>
               </UserStatus>
@@ -78,6 +78,7 @@ const StatusType = {
 const Name = styled.div``;
 
 const UserName = styled.div`
+  text-transform: capitalize;
   font-weight: bold;
   height: 100%;
   width: 100%;
