@@ -26,6 +26,47 @@ const addLog = async (
     return log;
   }
 
+  // if I pass through midnight
+  if (lastLog.date < new Date(new Date().setHours(0, 0, 0, 0))) {
+    if (lastLog.type === LOG_TYPE.in) {
+      // create log out at 23.59 of yesterday
+      const log = await LogModel.create({
+        type: LOG_TYPE.out,
+        isMobile,
+        date: new Date(new Date().setHours(0, 0, 0, 0) - 1).setHours(
+          23,
+          59,
+          0,
+          0
+        ),
+        user: email,
+      });
+
+      // create log in at 00.00 of today
+      const log2 = await LogModel.create({
+        type: LOG_TYPE.in,
+        isMobile,
+        date: new Date(new Date().setHours(0, 0, 0, 0)),
+        user: email,
+      });
+
+      await updateUserStatus(email);
+      return log2;
+    } else if (lastLog.type === LOG_TYPE.pause) {
+      // set laslog as out and current log as in
+      lastLog.type = LOG_TYPE.out;
+      await lastLog.save();
+      const log = await LogModel.create({
+        type: LOG_TYPE.in,
+        isMobile,
+        date: new Date(new Date().setHours(0, 0, 0, 0)),
+        user: email,
+      });
+      await updateUserStatus(email);
+      return log;
+    }
+  }
+
   // if lastlog date is before today
   if (
     lastLog &&
