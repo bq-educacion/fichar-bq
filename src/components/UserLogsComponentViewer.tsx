@@ -103,17 +103,32 @@ const EditingContainer = styled.div`
 `;
 
 const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
-  const inputFile = useRef<HTMLInputElement>(null);
+  const createRefs = (
+    logs: Log[]
+  ): {
+    [key: string]: React.RefObject<HTMLInputElement>;
+  } => {
+    const refs: { [key: string]: React.RefObject<HTMLInputElement> } = {};
+    for (let log of logs) {
+      refs[log._id.toString()] = useRef<HTMLInputElement>(null);
+    }
+    return refs;
+  };
 
-  const onUpload = async (logid: string) => {
-    if (inputFile.current && inputFile.current.files) {
-      const file = inputFile.current.files[0];
-      const filename = `${logid}/${encodeURIComponent(file.name)}`;
-      inputFile.current.value = "";
+  const onUpload = async (
+    inputFileRef: React.RefObject<HTMLInputElement>,
+    log: Log,
+    logs: Log[]
+  ) => {
+    if (inputFileRef.current && inputFileRef.current.files) {
+      const file = inputFileRef.current.files[0];
+      // encode email as valid folder name removing what is after @
+      const path = log.user.split("@")[0].split(".").join("_");
+      const filename = `${path}/${log._id}/${encodeURIComponent(file.name)}`;
+      inputFileRef.current.value = "";
       const res = await fetch(`/api/upload-url?file=${filename}`);
       const { url, fields } = await res.json();
       const formData = new FormData();
-
       Object.entries({ ...fields, file }).forEach(([key, value]) => {
         formData.append(key, value as string);
       });
@@ -124,7 +139,27 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
       });
 
       if (upload.ok) {
+        // attach upload url to log through api
+        const res = await fetch(`/api/logDoctorFile`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            _id: log._id,
+            logFile: `${url}/${filename}`,
+          }),
+        });
+
         console.log("Uploaded successfully!");
+
+        // refresh logs
+
+        const updatedLog = logs.find((l) => l._id === log._id);
+
+        updatedLog!.note = LOG_NOTES.doctor;
+        updatedLog!.logFile = `${url}/${filename}`;
+        setProcessedLogs({ ...processLogs(logs) });
       } else {
         console.error("Upload failed.");
       }
@@ -165,6 +200,8 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
   const [processedLogs, setProcessedLogs] = useState<{ [key: string]: Log[] }>({
     ...processLogs(logs),
   });
+
+  const inputFileRefs = createRefs(logs);
 
   if (Object.keys(processedLogs).length === 0) {
     return null;
@@ -249,7 +286,9 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
                             active={log.note === LOG_NOTES.doctor}
                             onClick={() => {
                               if (log.note !== LOG_NOTES.doctor) {
-                                inputFile.current?.click();
+                                inputFileRefs[
+                                  log._id.toString()
+                                ].current?.click();
                               }
                             }}
                           >
@@ -257,9 +296,13 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
 
                             <input
                               type="file"
-                              ref={inputFile}
+                              ref={inputFileRefs[log._id.toString()]}
                               onChange={() => {
-                                onUpload(log._id.toString());
+                                onUpload(
+                                  inputFileRefs[log._id.toString()],
+                                  log,
+                                  logs
+                                );
                               }}
                             />
                           </Doctor>

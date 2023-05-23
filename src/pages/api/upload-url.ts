@@ -10,7 +10,13 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return;
   }
 
-  if (!process.env.BUCKET_NAME || !process.env.GCLOUD_PROJECT_ID) {
+  if (
+    !process.env.GCLOUD_BUCKET_NAME ||
+    !process.env.GCLOUD_PROJECT_ID ||
+    !process.env.GCLOUD_CLIENT_EMAIL ||
+    !process.env.GCLOUD_PRIVATE_KEY ||
+    typeof process.env.GCLOUD_BUCKET_NAME !== "string"
+  ) {
     res.status(400).send("Bad Request");
     return;
   }
@@ -20,8 +26,14 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return;
   }
 
-  const storage = new Storage({ projectId: process.env.GCLOUD_PROJECT_ID });
-  const bucket = storage.bucket(process.env.BUCKET_NAME);
+  const storage = new Storage({
+    projectId: process.env.GCLOUD_PROJECT_ID,
+    credentials: {
+      client_email: process.env.GCLOUD_CLIENT_EMAIL,
+      private_key: process.env.GCLOUD_PRIVATE_KEY,
+    },
+  });
+  const bucket = storage.bucket(process.env.GCLOUD_BUCKET_NAME);
   const file = bucket.file(req.query.file);
   const options = {
     expires: Date.now() + 1 * 60 * 1000, //  1 minute,
