@@ -64,6 +64,21 @@ const addLog = async (
       });
       await updateUserStatus(email);
       return log;
+    } else {
+      // add error log
+      const log = await LogModel.create({
+        type: LOG_TYPE.error,
+        isMobile,
+        date: new Date(new Date().setHours(0, 0, 0, 0) - 1).setHours(
+          23,
+          59,
+          0,
+          0
+        ),
+        user: email,
+      });
+      await updateUserStatus(email);
+      return log;
     }
   }
 
