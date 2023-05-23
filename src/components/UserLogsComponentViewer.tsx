@@ -110,7 +110,8 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
   } => {
     const refs: { [key: string]: React.RefObject<HTMLInputElement> } = {};
     for (let log of logs) {
-      refs[log._id.toString()] = useRef<HTMLInputElement>(null);
+      if (log.type === LOG_TYPE.pause)
+        refs[log._id.toString()] = useRef<HTMLInputElement>(null);
     }
     return refs;
   };
