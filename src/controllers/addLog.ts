@@ -14,6 +14,18 @@ const addLog = async (
     .sort({ date: -1 })
     .exec();
 
+  // new user --> first log
+  if (!lastLog) {
+    const log = await LogModel.create({
+      type: LOG_TYPE.in,
+      isMobile,
+      date: new Date(),
+      user: email,
+    });
+    await updateUserStatus(email);
+    return log;
+  }
+
   // if lastlog date is before today
   if (
     lastLog &&
