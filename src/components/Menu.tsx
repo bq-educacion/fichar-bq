@@ -1,4 +1,4 @@
-import React, { FC, useState } from "react";
+import React, { FC, useEffect, useState } from "react";
 import IconClock from "@/assets/icons/icon-clock.svg";
 import IconPalm from "@/assets/icons/icon-palm.svg";
 import IconTeam from "@/assets/icons/icon-team.svg";
@@ -12,35 +12,57 @@ type MenuItems = {
   link?: string;
 };
 
-const menuItems: MenuItems[] = [
-  {
-    icon: <IconClock />,
-    text: "Fichar",
-    enabled: "true",
-    link: "/",
-  },
-  {
-    icon: <IconTeam />,
-    text: "Compañeros",
-    enabled: "true",
-    link: "/colleagues",
-  },
-  {
-    icon: <IconPalm />,
-    text: "Mi equipo",
-    enabled: "true",
-    link: "/manager",
-  },
-];
-
 const Menu: FC = () => {
+  useEffect(() => {
+    const fetchUser = async () => {
+      const response = await fetch(`/api/me`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+      });
+      const data = await response.json();
+      console.log(data);
+      if (data.isManager) {
+        const newMenuItems = [...menuItems];
+        newMenuItems[2].enabled = "true";
+        setMenuItems(newMenuItems);
+      }
+    };
+    fetchUser();
+  }, []);
+
   const [selected, setSelected] = useState<number>(0);
+  const [menuItems, setMenuItems] = useState<MenuItems[]>([
+    {
+      icon: <IconClock />,
+      text: "Fichar",
+      enabled: "true",
+      link: "/",
+    },
+    {
+      icon: <IconTeam />,
+      text: "Compañeros",
+      enabled: "true",
+      link: "/colleagues",
+    },
+    {
+      icon: <IconPalm />,
+      text: "Mi equipo",
+      enabled: "false",
+      link: "/manager",
+    },
+  ]);
   return (
     <MenuContainer>
       {menuItems.map((item, index) => (
         <MenuItem
-          onClick={() => setSelected(index)}
-          href={item.link || ""}
+          items={menuItems.length}
+          onClick={() => {
+            item.enabled === "true" && setSelected(index);
+          }}
+          href={item.enabled === "true" ? item.link! : ""}
           //passHref={true}
           key={index}
           selected={index === selected}
@@ -64,9 +86,13 @@ const MenuContainer = styled.div`
   margin-top: -15px;
 `;
 
-const MenuItem = styled(Link)<{ selected: boolean; enabled: string }>`
+const MenuItem = styled(Link)<{
+  selected: boolean;
+  enabled: string;
+  items: number;
+}>`
   display: flex;
-  flex: 0 0 ${100 / menuItems.length}%;
+  flex: 0 0 ${(props) => 100 / props.items}%;
   flex-direction: row;
   align-items: center;
   height: 50px;
