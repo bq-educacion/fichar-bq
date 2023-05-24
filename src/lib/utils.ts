@@ -22,7 +22,6 @@ export const logsIn = (logs: Log[]) =>
   logs
     .filter((log) => log.type === LOG_TYPE.in)
     .reduce((acc, log) => acc + log.date.getTime(), 0);
-
 export const logsOut = (logs: Log[]) =>
   logs
     .filter((log) => log.type === LOG_TYPE.out || log.type === LOG_TYPE.pause)

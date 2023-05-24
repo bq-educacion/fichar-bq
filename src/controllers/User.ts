@@ -23,7 +23,6 @@ export const addUser = async (
     });
     await user.save();
     //const user = await UserModel.create({ mail, active: true });
-    console.log("addUser", email, "created");
     return user;
   }
 

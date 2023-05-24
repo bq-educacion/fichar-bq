@@ -11,6 +11,12 @@ const getAllActiveUsers = async () => {
     .exec();
 
   for (let user of users) {
+    if (!user.status) {
+      const status = await computeUserStatus(user.email);
+      user.status = status;
+      await user.save();
+    }
+
     if (user.status.status === USER_STATUS.finished) {
       const status = await computeUserStatus(user.email);
       user.status = status;
