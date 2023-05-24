@@ -2,7 +2,7 @@ import { datetoHHMM, decimalToHours, getHoursToday } from "@/lib/utils";
 import { LOG_NOTES, LOG_TYPE, Log } from "@/types";
 import DisplayContent from "@/ui/DisplayContent";
 import styled from "@emotion/styled";
-import React, { FC, useEffect, useRef, useState } from "react";
+import React, { FC, useRef, useState } from "react";
 import IconError from "@/assets/icons/icon-close.svg";
 import IconPause from "@/assets/icons/icon-munukebab.svg";
 import IconOut from "@/assets/icons/icon-left-arrow.svg";
@@ -13,30 +13,19 @@ import IconDoctor from "@/assets/icons/icon-doctor.svg";
 import EditErrorLog from "./EditErrorLog";
 
 const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
-  const createRefs = (
-    logs: Log[]
-  ): {
-    [key: string]: React.RefObject<HTMLInputElement>;
-  } => {
-    const refs: { [key: string]: React.RefObject<HTMLInputElement> } = {};
-    for (let log of logs) {
-      if (log.type === LOG_TYPE.pause)
-        refs[log._id.toString()] = useRef<HTMLInputElement>(null);
-    }
-    return refs;
-  };
-
   const onUpload = async (
-    inputFileRef: React.RefObject<HTMLInputElement>,
+    inputFileRef: HTMLInputElement,
     log: Log,
     logs: Log[]
   ) => {
-    if (inputFileRef.current && inputFileRef.current.files) {
-      const file = inputFileRef.current.files[0];
+    if (inputFileRef && inputFileRef.files) {
+      const file = inputFileRef.files[0];
       // encode email as valid folder name removing what is after @
       const path = log.user.split("@")[0].split(".").join("_");
-      const filename = `${path}/${log._id}/${encodeURIComponent(file.name)}`;
-      inputFileRef.current.value = "";
+      // filename extension
+      const extension = file.name.split(".").pop();
+      const filename = `${path}/${log._id}.${extension}`;
+      inputFileRef.value = "";
       const res = await fetch(`/api/upload-url?file=${filename}`);
       const { url, fields } = await res.json();
       const formData = new FormData();
@@ -58,18 +47,16 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
           },
           body: JSON.stringify({
             _id: log._id,
-            logFile: `${url}/${filename}`,
+            logFile: `${url}${filename}`,
           }),
         });
-
-        console.log("Uploaded successfully!");
 
         // refresh logs
 
         const updatedLog = logs.find((l) => l._id === log._id);
 
         updatedLog!.note = LOG_NOTES.doctor;
-        updatedLog!.logFile = `${url}/${filename}`;
+        updatedLog!.logFile = `${url}${filename}`;
         setProcessedLogs({ ...processLogs(logs) });
       } else {
         console.error("Upload failed.");
@@ -112,7 +99,9 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
     ...processLogs(logs),
   });
 
-  const inputFileRefs = createRefs(logs);
+  const inputFileRefs = useRef<{
+    [key: string]: HTMLInputElement;
+  }>({});
 
   if (Object.keys(processedLogs).length === 0) {
     return null;
@@ -197,9 +186,11 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
                             active={log.note === LOG_NOTES.doctor}
                             onClick={() => {
                               if (log.note !== LOG_NOTES.doctor) {
-                                inputFileRefs[
+                                inputFileRefs.current[
                                   log._id.toString()
-                                ].current?.click();
+                                ].click();
+                              } else {
+                                window.open(log.logFile);
                               }
                             }}
                           >
@@ -207,10 +198,13 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
 
                             <input
                               type="file"
-                              ref={inputFileRefs[log._id.toString()]}
+                              ref={(i) =>
+                                (inputFileRefs.current[log._id.toString()] =
+                                  i as HTMLInputElement)
+                              }
                               onChange={() => {
                                 onUpload(
-                                  inputFileRefs[log._id.toString()],
+                                  inputFileRefs.current[log._id.toString()],
                                   log,
                                   logs
                                 );
@@ -247,7 +241,7 @@ const Doctor = styled.span<{ active: boolean }>`
     display: none;
   }
 
-  cursor: ${(props) => (props.active ? "default" : "pointer")};
+  cursor: ${(props) => (props.active ? "pointer" : "pointer")};
   svg {
     width: 16px;
     //height: 16px;

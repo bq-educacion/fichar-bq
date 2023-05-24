@@ -9,6 +9,7 @@ const LogSchema = new mongoose.Schema({
   error_hours: { type: Number, required: false },
   isMobile: { type: Boolean, required: true, default: false },
   note: { type: String, enum: LOG_NOTES, required: false },
+  logFile: { type: String, required: false },
 });
 
 const UserStatusSchema = new mongoose.Schema(
@@ -38,7 +39,6 @@ const UserSchema = new mongoose.Schema(
     isManager: { type: Boolean, required: true, default: false },
     status: { type: UserStatusSchema, required: false },
     legal: { type: Boolean, default: false },
-    logFile: { type: String, required: false },
   },
   {
     id: false,
