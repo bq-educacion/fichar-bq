@@ -14,8 +14,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return;
     }
 
-    const email = session!.user!.email;
-
     // get logid and logFile from body
     const { _id, logFile } = req.body;
 
