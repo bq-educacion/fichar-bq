@@ -23,7 +23,7 @@ const Menu: FC = () => {
         body: JSON.stringify({}),
       });
       const data = await response.json();
-      console.log(data);
+
       if (data.isManager) {
         const newMenuItems = [...menuItems];
         newMenuItems[2].enabled = "true";

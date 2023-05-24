@@ -58,7 +58,6 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     new Date(lastLog.date).setHours(0, 0, 0, 0) !==
       new Date().setHours(0, 0, 0, 0)
   ) {
-    console.log("last log not correct");
     await LogModel.create({
       type: LOG_TYPE.error,
       user: session.user.email,

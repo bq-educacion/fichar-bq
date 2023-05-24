@@ -27,14 +27,17 @@ const addLog = async (
   }
 
   // if I pass through midnight
-  if (lastLog.date < new Date(new Date().setHours(0, 0, 0, 0))) {
+  if (
+    lastLog.date < new Date(new Date().setHours(0, 0, 0, 0)) &&
+    type !== LOG_TYPE.out
+  ) {
     if (lastLog.type === LOG_TYPE.in) {
       // create log out at 23.59 of yesterday
       const log = await LogModel.create({
         type: LOG_TYPE.out,
         isMobile,
         date: new Date(new Date().setHours(0, 0, 0, 0) - 1).setHours(
-          23,
+          21,
           59,
           0,
           0
@@ -46,7 +49,7 @@ const addLog = async (
       const log2 = await LogModel.create({
         type: LOG_TYPE.in,
         isMobile,
-        date: new Date(new Date().setHours(0, 0, 0, 0)),
+        date: new Date(new Date().setHours(0, 0, 0, 1)),
         user: email,
       });
 
@@ -59,22 +62,7 @@ const addLog = async (
       const log = await LogModel.create({
         type: LOG_TYPE.in,
         isMobile,
-        date: new Date(new Date().setHours(0, 0, 0, 0)),
-        user: email,
-      });
-      await updateUserStatus(email);
-      return log;
-    } else {
-      // add error log
-      const log = await LogModel.create({
-        type: LOG_TYPE.error,
-        isMobile,
-        date: new Date(new Date().setHours(0, 0, 0, 0) - 1).setHours(
-          23,
-          59,
-          0,
-          0
-        ),
+        date: new Date(new Date()),
         user: email,
       });
       await updateUserStatus(email);
