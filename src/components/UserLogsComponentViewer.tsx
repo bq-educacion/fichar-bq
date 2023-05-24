@@ -102,20 +102,20 @@ const EditingContainer = styled.div`
   }
 `;
 
-const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
-  const createRefs = (
-    logs: Log[]
-  ): {
-    [key: string]: React.RefObject<HTMLInputElement>;
-  } => {
-    const refs: { [key: string]: React.RefObject<HTMLInputElement> } = {};
-    for (let log of logs) {
-      if (log.type === LOG_TYPE.pause)
-        refs[log._id.toString()] = useRef<HTMLInputElement>(null);
-    }
-    return refs;
-  };
+const UseCreateRefs = (
+  logs: Log[]
+): {
+  [key: string]: React.RefObject<HTMLInputElement>;
+} => {
+  const refs: { [key: string]: React.RefObject<HTMLInputElement> } = {};
+  for (let log of logs) {
+    if (log.type === LOG_TYPE.pause)
+      refs[log._id.toString()] = useRef<HTMLInputElement>(null);
+  }
+  return refs;
+};
 
+const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
   const onUpload = async (
     inputFileRef: React.RefObject<HTMLInputElement>,
     log: Log,
@@ -202,7 +202,7 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
     ...processLogs(logs),
   });
 
-  const inputFileRefs = createRefs(logs);
+  const inputFileRefs = UseCreateRefs(logs);
 
   if (Object.keys(processedLogs).length === 0) {
     return null;
