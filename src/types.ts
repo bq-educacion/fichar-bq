@@ -16,6 +16,10 @@ export enum LOG_TYPE {
   goback = "goback",
 }
 
+export enum LOG_NOTES {
+  doctor = "doctor",
+}
+
 export type UserStats = {
   totalThisWeek: number;
   totalThisMonth: number;
@@ -52,10 +56,12 @@ export type Log = {
   _id: mongoose.Schema.Types.ObjectId | string;
   type: LOG_TYPE;
   date: Date;
-  user: User;
+  user: string;
   error_text?: string;
   error_hours?: number;
   isMobile?: boolean;
+  note?: LOG_NOTES;
+  logFile?: string;
 };
 
 export type UserStatus = {

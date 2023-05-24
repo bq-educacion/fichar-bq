@@ -1,17 +1,82 @@
 import { datetoHHMM, decimalToHours, getHoursToday } from "@/lib/utils";
-import { LOG_TYPE, Log, USER_STATUS, UserStats as UserLogs } from "@/types";
+import { LOG_NOTES, LOG_TYPE, Log } from "@/types";
 import DisplayContent from "@/ui/DisplayContent";
 import styled from "@emotion/styled";
-import React, { FC, useEffect, useState } from "react";
+import React, { FC, useEffect, useRef, useState } from "react";
 import IconError from "@/assets/icons/icon-close.svg";
 import IconPause from "@/assets/icons/icon-munukebab.svg";
 import IconOut from "@/assets/icons/icon-left-arrow.svg";
 import IconIn from "@/assets/icons/icon-right-arrow.svg";
-
 import IconMobile from "@/assets/icons/smartphone-icon.svg";
+import IconDoctor from "@/assets/icons/icon-doctor.svg";
+
 import EditErrorLog from "./EditErrorLog";
 
 const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
+  const createRefs = (
+    logs: Log[]
+  ): {
+    [key: string]: React.RefObject<HTMLInputElement>;
+  } => {
+    const refs: { [key: string]: React.RefObject<HTMLInputElement> } = {};
+    for (let log of logs) {
+      if (log.type === LOG_TYPE.pause)
+        refs[log._id.toString()] = useRef<HTMLInputElement>(null);
+    }
+    return refs;
+  };
+
+  const onUpload = async (
+    inputFileRef: React.RefObject<HTMLInputElement>,
+    log: Log,
+    logs: Log[]
+  ) => {
+    if (inputFileRef.current && inputFileRef.current.files) {
+      const file = inputFileRef.current.files[0];
+      // encode email as valid folder name removing what is after @
+      const path = log.user.split("@")[0].split(".").join("_");
+      const filename = `${path}/${log._id}/${encodeURIComponent(file.name)}`;
+      inputFileRef.current.value = "";
+      const res = await fetch(`/api/upload-url?file=${filename}`);
+      const { url, fields } = await res.json();
+      const formData = new FormData();
+      Object.entries({ ...fields, file }).forEach(([key, value]) => {
+        formData.append(key, value as string);
+      });
+
+      const upload = await fetch(url, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (upload.ok) {
+        // attach upload url to log through api
+        const res = await fetch(`/api/logDoctorFile`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            _id: log._id,
+            logFile: `${url}/${filename}`,
+          }),
+        });
+
+        console.log("Uploaded successfully!");
+
+        // refresh logs
+
+        const updatedLog = logs.find((l) => l._id === log._id);
+
+        updatedLog!.note = LOG_NOTES.doctor;
+        updatedLog!.logFile = `${url}/${filename}`;
+        setProcessedLogs({ ...processLogs(logs) });
+      } else {
+        console.error("Upload failed.");
+      }
+    }
+  };
+
   const processLogs = (logs: Log[]) => {
     const processedLogs = logs.reduce((acc, log) => {
       const date = new Date(log.date);
@@ -46,6 +111,8 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
   const [processedLogs, setProcessedLogs] = useState<{ [key: string]: Log[] }>({
     ...processLogs(logs),
   });
+
+  const inputFileRefs = createRefs(logs);
 
   if (Object.keys(processedLogs).length === 0) {
     return null;
@@ -120,14 +187,40 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
                       {LogIcon[log.type].icon}
                     </Icon>
                     <div>{LogType[log.type]}</div>
-                    {log.type !== LOG_TYPE.error ? (
+                    {log.type !== LOG_TYPE.error && (
                       <Time>
                         {datetoHHMM(new Date(log.date))}
                         {log.isMobile && <IconMobile />}
+                        {log.type === LOG_TYPE.pause && (
+                          <Doctor
+                            data-tooltip="Adjunta justificante médico de la Seguridad Social"
+                            active={log.note === LOG_NOTES.doctor}
+                            onClick={() => {
+                              if (log.note !== LOG_NOTES.doctor) {
+                                inputFileRefs[
+                                  log._id.toString()
+                                ].current?.click();
+                              }
+                            }}
+                          >
+                            <IconDoctor />
+
+                            <input
+                              type="file"
+                              ref={inputFileRefs[log._id.toString()]}
+                              onChange={() => {
+                                onUpload(
+                                  inputFileRefs[log._id.toString()],
+                                  log,
+                                  logs
+                                );
+                              }}
+                            />
+                          </Doctor>
+                        )}
                       </Time>
-                    ) : (
-                      <EditErrorLog log={log} />
                     )}
+                    {log.type === LOG_TYPE.error && <EditErrorLog log={log} />}
                   </Log>
                 ))}
               </>
@@ -145,6 +238,48 @@ const Icon = styled.div<{ color: string }>`
     width: 16px;
     //height: 16px;
     margin: 0 12px 0 12px;
+  }
+`;
+
+const Doctor = styled.span<{ active: boolean }>`
+  position: relative; /* making the .tooltip span a container for the tooltip text */
+  input {
+    display: none;
+  }
+
+  cursor: ${(props) => (props.active ? "default" : "pointer")};
+  svg {
+    width: 16px;
+    //height: 16px;
+    margin: 2px 12px 0 12px;
+    color: ${(props) => (props.active ? "#ff0000" : "#a1a2a5")};
+  }
+
+  &:hover::before {
+    display: ${(props) => (props.active ? "none" : "block")};
+  }
+
+  &::before {
+    content: attr(data-tooltip);
+    position: absolute;
+
+    top: 50%;
+    transform: translateY(-50%);
+
+    left: 100%;
+    margin-left: 10px;
+
+    width: 200px;
+    padding: 10px;
+    border-radius: 10px;
+    //background: #000;
+    color: #4e4f53;
+    text-align: center;
+    font-size: 14px;
+    border: 1px solid #4e4f53;
+    border-radius: 10px;
+
+    display: none;
   }
 `;
 
