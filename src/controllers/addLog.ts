@@ -37,7 +37,7 @@ const addLog = async (
         type: LOG_TYPE.out,
         isMobile,
         date: new Date(new Date().setHours(0, 0, 0, 0) - 1).setHours(
-          23,
+          21,
           59,
           0,
           0

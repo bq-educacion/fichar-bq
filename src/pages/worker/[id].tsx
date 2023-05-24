@@ -52,7 +52,6 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   }
 
   const worker = await UserModel.findById(context.params?.id).exec();
-  //console.log(worker);
   if (!worker) {
     return {
       redirect: {
