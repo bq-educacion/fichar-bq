@@ -27,7 +27,7 @@ const WorkersViewer: FC<{ workers: Array<User & { stats: LogsStats }> }> = ({
           <Header>Errores</Header>
           {workers.map((worker) => (
             <Row href={`/worker/${worker.id}`} key={worker.id}>
-              <Data>{worker.name}</Data>
+              <Data>{worker.name.toLowerCase()}</Data>
               <Data>{decimalToHours(worker.stats.average)}</Data>
               <Data>{worker.stats.logsDays}</Data>
               <Data>{worker.stats.errorLogs}</Data>
@@ -64,6 +64,7 @@ const Row = styled(Link)`
 `;
 
 const Data = styled.span`
+  text-transform: capitalize;
   font-size: 14px;
   font-weight: normal;
   color: #4e4f53;
