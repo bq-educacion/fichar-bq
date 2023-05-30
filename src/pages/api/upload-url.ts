@@ -17,11 +17,13 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     !process.env.GCLOUD_PRIVATE_KEY ||
     typeof process.env.GCLOUD_BUCKET_NAME !== "string"
   ) {
+    console.error("Missing env variables");
     res.status(400).send("Bad Request");
     return;
   }
 
   if (!req.query.file || typeof req.query.file !== "string") {
+    console.error("Missing file query param");
     res.status(400).send("Bad Request");
     return;
   }
@@ -30,7 +32,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     projectId: process.env.GCLOUD_PROJECT_ID,
     credentials: {
       client_email: process.env.GCLOUD_CLIENT_EMAIL,
-      private_key: process.env.GCLOUD_PRIVATE_KEY,
+      private_key: process.env.GCLOUD_PRIVATE_KEY.split(String.raw`\n`).join(
+        "\n"
+      ),
     },
   });
   const bucket = storage.bucket(process.env.GCLOUD_BUCKET_NAME);
