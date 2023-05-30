@@ -14,8 +14,8 @@ const Legal = () => {
       <h1>Política de uso de la aplicación de registro de horas de trabajo</h1>
       <div>
         <p>
-          Bienvenido(a) a nuestra aplicación de registro de horas de trabajo.
-          Esta aplicación es utilizada por los empleados de nuestra empresa para
+          Bienvenido a nuestra aplicación de registro de horas de trabajo. Esta
+          aplicación es utilizada por los empleados de nuestra empresa para
           registrar su horario de trabajo, incluyendo la hora de inicio y de
           finalización de la jornada laboral, así como todas las pausas
           realizadas a excepción de la pausa de la mañana de 15 minutos. La
