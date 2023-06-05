@@ -28,13 +28,20 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return;
   }
 
+  console.log("process.env.GOOGLE_PRIVATE_KEY", process.env.GCLOUD_PRIVATE_KEY);
+
+  // decode base64 encoded private key
+  const private_key = Buffer.from(
+    process.env.GCLOUD_PRIVATE_KEY as string,
+    "base64"
+  ).toString();
+
+  console.log("private_key", private_key);
   const storage = new Storage({
     projectId: process.env.GCLOUD_PROJECT_ID,
     credentials: {
       client_email: process.env.GCLOUD_CLIENT_EMAIL,
-      private_key: process.env.GCLOUD_PRIVATE_KEY.split(String.raw`\n`).join(
-        "\n"
-      ),
+      private_key: private_key,
     },
   });
   const bucket = storage.bucket(process.env.GCLOUD_BUCKET_NAME);
