@@ -35,8 +35,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       .replace(/\n/g, "")
   );
 
-  console.log("credentials", credentials);
-
   const storage = new Storage({
     projectId: process.env.GCLOUD_PROJECT_ID,
     credentials: {

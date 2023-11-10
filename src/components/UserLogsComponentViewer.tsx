@@ -180,7 +180,7 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
                       <Time>
                         {datetoHHMM(new Date(log.date))}
                         {log.isMobile && <IconMobile />}
-                        {log.type === LOG_TYPE.pause && (
+                        {/* {log.type === LOG_TYPE.pause && (
                           <Doctor
                             data-tooltip="Adjunta justificante médico de la Seguridad Social"
                             active={log.note === LOG_NOTES.doctor}
@@ -211,7 +211,7 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
                               }}
                             />
                           </Doctor>
-                        )}
+                        )} */}
                       </Time>
                     )}
                     {log.type === LOG_TYPE.error && <EditErrorLog log={log} />}
