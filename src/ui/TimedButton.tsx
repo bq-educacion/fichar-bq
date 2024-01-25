@@ -73,6 +73,7 @@ const Button = styled.div<{
   margin: string;
   fontSize?: string;
 }>`
+  cursor: pointer;
   background-image: ${({ background }) => background};
   display: flex;
   align-items: center;

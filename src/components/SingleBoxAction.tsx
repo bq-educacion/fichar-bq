@@ -5,6 +5,7 @@ import IconClock from "@/assets/icons/icon-clock.svg";
 import IconFork from "@/assets/icons/icon-fork-and-spoon.svg";
 import IconCoputerOff from "@/assets/icons/icon-computer-off.svg";
 import IconConfussion from "@/assets/icons/icon-confussion.svg";
+import IconBrainup from "@/assets/icons/icon-brainup.svg";
 
 import { useRouter } from "next/router";
 import TimedButton from "../ui/TimedButton";
@@ -31,7 +32,7 @@ const SingleBoxAction: FC<{
       new Date().getMinutes() < 10
         ? "0" + new Date().getMinutes()
         : new Date().getMinutes()
-    }`
+    }`,
   );
   const [date, setDate] = useState<string>(
     new Date().toLocaleDateString("es-ES", {
@@ -39,7 +40,7 @@ const SingleBoxAction: FC<{
       year: "numeric",
       month: "long",
       day: "numeric",
-    })
+    }),
   );
 
   const logActivity = async (type: LOG_TYPE) => {
@@ -65,18 +66,17 @@ const SingleBoxAction: FC<{
           year: "numeric",
           month: "long",
           day: "numeric",
-        })
+        }),
       );
     }, 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    if(status.status === USER_STATUS.not_started){
+    if (status.status === USER_STATUS.not_started) {
       setOpenModal(true);
     }
   }, []);
-
 
   let background = "";
   let buttonbakground = "";
@@ -136,7 +136,6 @@ const SingleBoxAction: FC<{
       icon = <IconConfussion />;
   }
 
-  
   return (
     <Container background={background} status={status.status}>
       <Modal
@@ -144,15 +143,25 @@ const SingleBoxAction: FC<{
         style={modalStyles}
         contentLabel="Kindly reminder matutino"
       >
-        <HeaderLine>¿Qué tal si empezamos el día con un BrainUp?</HeaderLine>
-        <SubHeaderLine>
-          <button
+        <ModalContent>
+          <Icon
+            background="linear-gradient(225deg, #b68fbb, #ff5776)"
+            style={{ margin: "0 0 20px 0" }}
+          >
+            <IconBrainup />
+          </Icon>
+          <p>
+            ¿Qué tal si empezamos el día con un <b>BrainUp</b>?
+          </p>
+          <ModalButton
             onClick={() => {
               setOpenModal(false);
               window.open("https://brainup-main.cluster.bq.com/", "_blank");
             }}
-          >¡Vamos!</button>
-        </SubHeaderLine>
+          >
+            ¡Vamos!
+          </ModalButton>
+        </ModalContent>
       </Modal>
 
       <Icon background={iconbackground}>{icon}</Icon>
@@ -263,13 +272,42 @@ const modalStyles = {
   content: {
     top: "50%",
     left: "50%",
-    right: "auto",
-    bottom: "auto",
-    marginRight: "-50%",
+    height: "240px",
+    width: "320px",
     transform: "translate(-50%, -50%)",
     backgroundImage: "linear-gradient(230deg, #6d2077 100%, #e4002b)",
     color: "#fff",
+    border: "none",
   },
 };
+
+const ModalContent = styled.div`
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  padding: 20px;
+
+  p {
+    text-align: center;
+    margin: 0 0 30px 0;
+    line-height: 1.5;
+  }
+`;
+
+const ModalButton = styled.div`
+  width: auto;
+  cursor: pointer;
+  background-image: linear-gradient(256deg, #b68fbb 100%, #ff5776);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  height: 50px;
+  width: 100px;
+`;
 
 export default SingleBoxAction;
