@@ -149,7 +149,7 @@ const SingleBoxAction: FC<{
           <button
             onClick={() => {
               setOpenModal(false);
-              window.open("https://brainup-develop.cluster.bq.com/", "_blank");
+              window.open("https://brainup-main.cluster.bq.com/", "_blank");
             }}
           >¡Vamos!</button>
         </SubHeaderLine>
@@ -173,7 +173,7 @@ const SingleBoxAction: FC<{
             }
           }}
         >
-          {buttonText} TEXTO
+          {buttonText}
         </TimedButton>
       ) : (
         <>
