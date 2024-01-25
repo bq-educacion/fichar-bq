@@ -1,6 +1,6 @@
 import { LOG_TYPE, UserStatus, USER_STATUS } from "@/types";
 import styled from "@emotion/styled";
-import React, { FC, useEffect, useState } from "react";
+import React, { FC, use, useEffect, useState } from "react";
 import IconClock from "@/assets/icons/icon-clock.svg";
 import IconFork from "@/assets/icons/icon-fork-and-spoon.svg";
 import IconCoputerOff from "@/assets/icons/icon-computer-off.svg";
@@ -11,6 +11,9 @@ import TimedButton from "../ui/TimedButton";
 import { datetoHHMM } from "@/lib/utils";
 import getMobileDetect from "@/lib/getmobileDetect";
 
+import Modal from "react-modal";
+import { set } from "mongoose";
+
 const SingleBoxAction: FC<{
   action: LOG_TYPE;
   status: UserStatus;
@@ -18,7 +21,7 @@ const SingleBoxAction: FC<{
 }> = ({ action, status, refreshStatus }) => {
   const router = useRouter();
   const [clickable, setClickable] = useState<boolean>(true);
-
+  const [openModal, setOpenModal] = useState(false);
   useEffect(() => {
     setClickable(true);
   }, [status]);
@@ -67,6 +70,13 @@ const SingleBoxAction: FC<{
     }, 60 * 1000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if(status.status === USER_STATUS.not_started){
+      setOpenModal(true);
+    }
+  }, []);
+
 
   let background = "";
   let buttonbakground = "";
@@ -126,8 +136,25 @@ const SingleBoxAction: FC<{
       icon = <IconConfussion />;
   }
 
+  
   return (
     <Container background={background} status={status.status}>
+      <Modal
+        isOpen={openModal}
+        style={modalStyles}
+        contentLabel="Kindly reminder matutino"
+      >
+        <HeaderLine>¿Qué tal si empezamos el día con un BrainUp?</HeaderLine>
+        <SubHeaderLine>
+          <button
+            onClick={() => {
+              setOpenModal(false);
+              window.open("https://brainup-develop.cluster.bq.com/", "_blank");
+            }}
+          >¡Vamos!</button>
+        </SubHeaderLine>
+      </Modal>
+
       <Icon background={iconbackground}>{icon}</Icon>
       {headerLine}
       {subHeaderLine}
@@ -146,7 +173,7 @@ const SingleBoxAction: FC<{
             }
           }}
         >
-          {buttonText}
+          {buttonText} TEXTO
         </TimedButton>
       ) : (
         <>
@@ -231,5 +258,18 @@ const SubHeaderLine = styled.div`
   color: #fff;
   text-transform: titlecase;
 `;
+
+const modalStyles = {
+  content: {
+    top: "50%",
+    left: "50%",
+    right: "auto",
+    bottom: "auto",
+    marginRight: "-50%",
+    transform: "translate(-50%, -50%)",
+    backgroundImage: "linear-gradient(230deg, #6d2077 100%, #e4002b)",
+    color: "#fff",
+  },
+};
 
 export default SingleBoxAction;

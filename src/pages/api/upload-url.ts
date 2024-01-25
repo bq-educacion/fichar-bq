@@ -11,7 +11,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   if (
-    !process.env.GCLOUD_BUCKET_NAME ||
+    !process.env.GCLOUD_BUCKET_NAME || //GCLOUD_STORAGE_BUCKET
     !process.env.GCLOUD_PROJECT_ID ||
     !process.env.GCLOUD_CLIENT_EMAIL ||
     !process.env.GCLOUD_PRIVATE_KEY ||
