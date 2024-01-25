@@ -14,6 +14,7 @@ import getMobileDetect from "@/lib/getmobileDetect";
 
 import Modal from "react-modal";
 import { set } from "mongoose";
+import { frasesBrainUp } from "@/usebrainup";
 
 const SingleBoxAction: FC<{
   action: LOG_TYPE;
@@ -151,7 +152,7 @@ const SingleBoxAction: FC<{
             <IconBrainup />
           </Icon>
           <p>
-            ¿Qué tal si empezamos el día con un <b>BrainUp</b>?
+            {frasesBrainUp[Math.floor(Math.random() * frasesBrainUp.length)]}
           </p>
           <ModalButton
             onClick={() => {
@@ -272,12 +273,13 @@ const modalStyles = {
   content: {
     top: "50%",
     left: "50%",
-    height: "240px",
+    height: "250px",
     width: "320px",
     transform: "translate(-50%, -50%)",
     backgroundImage: "linear-gradient(230deg, #6d2077 100%, #e4002b)",
     color: "#fff",
     border: "none",
+    overflow: "hidden",
   },
 };
 

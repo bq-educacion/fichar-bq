@@ -3,24 +3,3 @@ body {
   margin: 0px;
   font-family: Roboto;
 }
-
-.Modal {
-  position:relative;
-  top: "50%";
-  left: "50%";
-  right: "auto";
-  bottom: "auto";
-  margin-right: "-50%";
-  transform: "translate(-50%, -50%)";
-  background-image: "linear-gradient(230deg, #6d2077 100%, #e4002b)";
-  color: "#fff";
-}
-
-.Overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: aliceblue;
-}
