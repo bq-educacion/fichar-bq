@@ -18,18 +18,20 @@ const getUserStats = async (email: string): Promise<UserStats> => {
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
 
-  // all logs of from previous monday until current
+  // all logs from monday until yesterday
   const logsThisWeek = await LogModel.find({
     user: email,
     date: {
       $gte: new Date(
         new Date().setHours(0, 0, 0, 0) - daysPassedWeek * 24 * 60 * 60 * 1000
       ),
-      $lt: new Date(),
+      $lt: new Date(new Date().setHours(0, 0, 0, 0)),
     },
   });
 
-  const realLogsThisWeek = realLogs(logsThisWeek);
+  //const realLogsThisWeek = realLogs(logsThisWeek);
+
+  const realLogsThisWeek = [...logsThisWeek];
 
   // remove logs from days in which there is an error
   const logsThisWeekFiltered = removeErrorLogs(realLogsThisWeek);
@@ -61,11 +63,13 @@ const getUserStats = async (email: string): Promise<UserStats> => {
       $gte: new Date(
         new Date(currentYear, currentMonth, 1).setHours(0, 0, 0, 0)
       ),
-      $lt: new Date(),
+      $lt: new Date().setHours(0, 0, 0, 0),
     },
   });
 
-  const realLogsThisMonth = realLogs(logsThisMonth);
+  const realLogsThisMonth = [...logsThisMonth];
+
+  //realLogs(logsThisMonth);
 
   // remove logs from days in which there is an error
   const logsThisMonthFiltered = removeErrorLogs(realLogsThisMonth);
@@ -94,13 +98,15 @@ const getUserStats = async (email: string): Promise<UserStats> => {
     user: email,
     date: {
       $gte: new Date(new Date(currentYear, 0, 1).setHours(0, 0, 0, 0)),
-      $lt: new Date(),
+      $lt: new Date().setHours(0, 0, 0, 0),
     },
   });
 
   // get last index with type error or type out
 
-  const realLogsThisYear = realLogs(logsThisYear);
+  const realLogsThisYear = [...logsThisYear];
+
+  //realLogs(logsThisYear);
 
   // remove logs from days in which there is an error
   const logsThisYearFiltered = removeErrorLogs(realLogsThisYear);

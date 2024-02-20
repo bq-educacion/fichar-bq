@@ -18,10 +18,11 @@ export const numberOfErrorLogs = (logs: Log[]) =>
     return acc;
   }, 0);
 
-export const logsIn = (logs: Log[]) =>
-  logs
-    .filter((log) => log.type === LOG_TYPE.in)
-    .reduce((acc, log) => acc + log.date.getTime(), 0);
+export const logsIn = (logs: Log[]) => {
+  const filteredLogs = logs.filter((log) => log.type === LOG_TYPE.in);
+  const result = filteredLogs.reduce((acc, log) => acc + log.date.getTime(), 0);
+  return result;
+};
 export const logsOut = (logs: Log[]) =>
   logs
     .filter((log) => log.type === LOG_TYPE.out || log.type === LOG_TYPE.pause)
@@ -41,22 +42,26 @@ export const getHoursToday = (logs: Log[]) => {
   const logsIn: { date: Date; type: LOG_TYPE }[] = logs.filter(
     (log) => log.type === LOG_TYPE.in
   );
+
+  // if some error today return 0 hours
+  if (logs.some((log) => log.type === LOG_TYPE.error)) {
+    return 0;
+  }
+
+  console.log("LOGS IN\n", logsIn);
   const logsOut: { date: Date; type: LOG_TYPE }[] = logs.filter(
     (log) => log.type === LOG_TYPE.out || log.type === LOG_TYPE.pause
   );
 
-  if (logsOut.length === 0) {
-    logsOut.push({
-      date: new Date(),
-      type: LOG_TYPE.out,
-    });
+  console.log("LOGS OUT\n", logsOut);
+
+  // not started yet today
+  if (logsIn.length === 0) {
+    return 0;
   }
 
-  if (
-    logsOut.length > 0 &&
-    logsIn.length > 0 &&
-    logsOut.at(-1)!.date < logsIn.at(-1)!.date
-  ) {
+  // if last log is an in log, add a new out log, just to count hours until now
+  if (logs.length > 0 && logs.at(-1)?.type === LOG_TYPE.in) {
     logsOut.push({
       date: new Date(),
       type: LOG_TYPE.out,

@@ -1,13 +1,13 @@
 # docker compose file that launches next.js app and mongodb
 
-version: '3.7'
+version: "3.7"
 
 services:
   app:
     image: node:20
     ports:
       - 3000:3000
-      - 9229:9229
+      - 9228:9229
     volumes:
       - .:/app
     environment:
