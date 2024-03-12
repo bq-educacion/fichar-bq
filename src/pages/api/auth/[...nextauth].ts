@@ -19,7 +19,8 @@ export const authOptions = {
       if (account!.provider === "google") {
         if (
           (profile! as any).email_verified &&
-          profile!.email!.endsWith("@bq.com")
+          (profile!.email!.endsWith("@bq.com") ||
+            profile!.email!.endsWith("@bqeducacion.cc"))
         ) {
           await connectMongo();
           await addUser(profile?.email!, profile?.picture!, profile?.name!);
@@ -27,7 +28,8 @@ export const authOptions = {
 
         return (
           (profile! as any).email_verified &&
-          profile!.email!.endsWith("@bq.com")
+          (profile!.email!.endsWith("@bq.com") ||
+            profile!.email!.endsWith("@bqeducacion.cc"))
         );
       }
 

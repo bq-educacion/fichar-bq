@@ -33,7 +33,7 @@ const SingleBoxAction: FC<{
       new Date().getMinutes() < 10
         ? "0" + new Date().getMinutes()
         : new Date().getMinutes()
-    }`,
+    }`
   );
   const [date, setDate] = useState<string>(
     new Date().toLocaleDateString("es-ES", {
@@ -41,7 +41,7 @@ const SingleBoxAction: FC<{
       year: "numeric",
       month: "long",
       day: "numeric",
-    }),
+    })
   );
 
   const logActivity = async (type: LOG_TYPE) => {
@@ -67,7 +67,7 @@ const SingleBoxAction: FC<{
           year: "numeric",
           month: "long",
           day: "numeric",
-        }),
+        })
       );
     }, 60 * 1000);
     return () => clearInterval(interval);
@@ -139,7 +139,7 @@ const SingleBoxAction: FC<{
 
   return (
     <Container background={background} status={status.status}>
-      <Modal
+      {/* <Modal
         isOpen={openModal}
         style={modalStyles}
         contentLabel="Kindly reminder matutino"
@@ -163,7 +163,7 @@ const SingleBoxAction: FC<{
             ¡Vamos!
           </ModalButton>
         </ModalContent>
-      </Modal>
+      </Modal> */}
 
       <Icon background={iconbackground}>{icon}</Icon>
       {headerLine}
