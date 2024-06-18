@@ -59,11 +59,11 @@ const Home: NextPage<{}> = () => {
     getAllUsersStatus();
   }, []);
 
-  // refetch every 10 seconds
+  // refetch every 60 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       getAllUsersStatus();
-    }, 10 * 1000);
+    }, 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 

@@ -19,7 +19,7 @@ const UserToday = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       fetchUserToday();
-    }, 1 * 60 * 1000);
+    }, 3 * 60 * 1000); // every 3 minutes
     return () => clearInterval(interval);
   }, []);
 
