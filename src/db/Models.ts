@@ -5,9 +5,8 @@ const LogSchema = new mongoose.Schema({
   type: { type: String, ENUM: LOG_TYPE, required: true },
   date: { type: Date, required: true },
   user: { type: String, required: true },
-  error_text: { type: String, required: false },
-  error_hours: { type: Number, required: false },
   isMobile: { type: Boolean, required: true, default: false },
+  manual: { type: Boolean, required: false, default: false },
   note: { type: String, enum: LOG_NOTES, required: false },
   logFile: { type: String, required: false },
 });

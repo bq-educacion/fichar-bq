@@ -45,35 +45,34 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 
   let message = "";
 
-  // if last log is not out and it is from yesterday, add a error log width date of yesterday
+  // if last log is not out and it is from a previous day, auto-close with an 'out' log
 
   const lastLog = await LogModel.findOne({
     user: session.user.email,
   }).sort({ date: -1 });
 
-  // if lastlog is not correct, create an error log and set user status to not_started
   if (
     lastLog &&
-    ![LOG_TYPE.out, LOG_TYPE.error].includes(lastLog.type) &&
+    lastLog.type !== LOG_TYPE.out &&
     new Date(lastLog.date).setHours(0, 0, 0, 0) !==
       new Date().setHours(0, 0, 0, 0)
   ) {
+    // auto-close the previous day at 23:59 of that day
+    const lastLogDate = new Date(lastLog.date);
+    const autoOutDate = new Date(lastLogDate);
+    autoOutDate.setHours(23, 59, 0, 0);
+
     await LogModel.create({
-      type: LOG_TYPE.error,
+      type: LOG_TYPE.out,
       user: session.user.email,
-      // lastLog.date + 1 minute
-      date: new Date(lastLog.date).setMinutes(
-        new Date(lastLog.date).getMinutes() + 1
-      ),
+      date: autoOutDate,
     });
     const user = await getUserByEmail(session.user.email || "foo");
-    // set user status to not_started
-
     user.status.status = USER_STATUS.not_started;
     user.status.date = new Date();
     await user?.save();
 
-    message = "El último día se te olvidó desfichar";
+    message = "El último día se te olvidó desfichar (cerrado automáticamente)";
   }
 
   return {
@@ -127,7 +126,6 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
           USER_STATUS.not_started,
           USER_STATUS.paused,
           USER_STATUS.finished,
-          USER_STATUS.error,
         ].includes(status.status) && (
           <SingleBoxAction
             status={status}

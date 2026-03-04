@@ -13,7 +13,7 @@ const UserStatsViewer: FC<{ stats: UserStats }> = ({ stats }) => {
           <Header>Horas/día</Header>
           <Header>Total</Header>
           <Header>Días</Header>
-          <Header>Días mal fichados</Header>
+          <Header>Días manuales</Header>
           <Title>Esta semana</Title>
           <Data>{decimalToHours(stats.averageThisWeek)}</Data>
           <Data>
@@ -21,7 +21,7 @@ const UserStatsViewer: FC<{ stats: UserStats }> = ({ stats }) => {
           </Data>
           <Data>{stats.logsThisWeekDays.toFixed(2).replace(/\.?0+$/, "")}</Data>
           <Data>
-            {stats.errorLogsThisWeek.toFixed(2).replace(/\.?0+$/, "")}
+            {(stats.manualLogsThisWeek ?? 0).toFixed(0)}
           </Data>
           <Title>Este mes</Title>
           <Data>{decimalToHours(stats.averageThisMonth)}&nbsp;</Data>
@@ -32,7 +32,7 @@ const UserStatsViewer: FC<{ stats: UserStats }> = ({ stats }) => {
             {stats.logsThisMonthDays.toFixed(2).replace(/\.?0+$/, "")}{" "}
           </Data>
           <Data>
-            {stats.errorLogsThisMonth.toFixed(2).replace(/\.?0+$/, "")}
+            {(stats.manualLogsThisMonth ?? 0).toFixed(0)}
           </Data>
           <Title>Este año</Title>
           <Data>{decimalToHours(stats.averageThisYear)}&nbsp;</Data>
@@ -41,7 +41,7 @@ const UserStatsViewer: FC<{ stats: UserStats }> = ({ stats }) => {
           </Data>
           <Data>{stats.logsThisYearDays.toFixed(2).replace(/\.?0+$/, "")}</Data>
           <Data>
-            {stats.errorLogsThisYear.toFixed(2).replace(/\.?0+$/, "")}
+            {(stats.manualLogsThisYear ?? 0).toFixed(0)}
           </Data>
         </Table>
       </Container>

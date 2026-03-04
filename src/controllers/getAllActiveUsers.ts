@@ -24,7 +24,7 @@ const getAllActiveUsers = async () => {
     }
     // if status in but status is before today
     if (
-      ![USER_STATUS.finished, USER_STATUS.error].includes(user.status.status) &&
+      user.status.status !== USER_STATUS.finished &&
       user.status.date < new Date(new Date().setHours(0, 0, 0, 0))
     ) {
       const status = await computeUserStatus(user.email);

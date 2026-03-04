@@ -3,14 +3,13 @@ import { LOG_NOTES, LOG_TYPE, Log } from "@/types";
 import DisplayContent from "@/ui/DisplayContent";
 import styled from "@emotion/styled";
 import React, { FC, useRef, useState } from "react";
-import IconError from "@/assets/icons/icon-close.svg";
 import IconPause from "@/assets/icons/icon-munukebab.svg";
 import IconOut from "@/assets/icons/icon-left-arrow.svg";
 import IconIn from "@/assets/icons/icon-right-arrow.svg";
 import IconMobile from "@/assets/icons/smartphone-icon.svg";
 import IconDoctor from "@/assets/icons/icon-doctor.svg";
+import IconManual from "@/assets/icons/icon-manual.svg";
 
-import EditErrorLog from "./EditErrorLog";
 
 const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
   const onUpload = async (
@@ -81,19 +80,7 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
       return acc;
     }, {} as { [key: string]: Log[] });
 
-    // if a day has an error, keep only the error
-    const simplifiedLogs: { [key: string]: Log[] } = {};
-    for (const key in processedLogs) {
-      const errorLog = processedLogs[key].find(
-        (log) => log.type === LOG_TYPE.error
-      );
-      if (errorLog) {
-        simplifiedLogs[key] = [errorLog];
-      } else {
-        simplifiedLogs[key] = [...processedLogs[key]];
-      }
-    }
-    return simplifiedLogs;
+    return processedLogs;
   };
   const [processedLogs, setProcessedLogs] = useState<{ [key: string]: Log[] }>({
     ...processLogs(logs),
@@ -111,7 +98,6 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
     [LOG_TYPE.in]: "Entrada",
     [LOG_TYPE.out]: "Salida",
     [LOG_TYPE.pause]: "Pausa",
-    [LOG_TYPE.error]: "Error",
     [LOG_TYPE.goback]: "Entrada",
   };
 
@@ -127,10 +113,6 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
     [LOG_TYPE.pause]: {
       color: "#f6a001",
       icon: <IconPause />,
-    },
-    [LOG_TYPE.error]: {
-      color: "#4e4f53",
-      icon: <IconError />,
     },
     [LOG_TYPE.goback]: {
       color: "#82ad3a",
@@ -149,19 +131,14 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
           // first letter of key in upper case
           const title = key.charAt(0).toUpperCase() + key.slice(1);
           // title and number of hours worked (except if there is an error)
-          const title_full = `${title} ${
-            !processedLogs[key].some((log) => log.type === LOG_TYPE.error)
-              ? `(${decimalToHours(
-                  getHoursToday(
-                    processedLogs[key].map((log) => ({
-                      ...log,
-                      date: new Date(log.date),
-                    }))
-                  )
-                )})
-            `
-              : ""
-          }`;
+          const title_full = `${title} (${decimalToHours(
+            getHoursToday(
+              processedLogs[key].map((log) => ({
+                ...log,
+                date: new Date(log.date),
+              }))
+            )
+          )})`;
           return (
             <DisplayContent
               opened={index === 0}
@@ -176,45 +153,11 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
                       {LogIcon[log.type].icon}
                     </Icon>
                     <div>{LogType[log.type]}</div>
-                    {log.type !== LOG_TYPE.error && (
-                      <Time>
-                        {datetoHHMM(new Date(log.date))}
-                        {log.isMobile && <IconMobile />}
-                        {/* {log.type === LOG_TYPE.pause && (
-                          <Doctor
-                            data-tooltip="Adjunta justificante médico de la Seguridad Social"
-                            active={log.note === LOG_NOTES.doctor}
-                            onClick={() => {
-                              if (log.note !== LOG_NOTES.doctor) {
-                                inputFileRefs.current[
-                                  log._id.toString()
-                                ].click();
-                              } else {
-                                window.open(log.logFile);
-                              }
-                            }}
-                          >
-                            <IconDoctor />
-
-                            <input
-                              type="file"
-                              ref={(i) =>
-                                (inputFileRefs.current[log._id.toString()] =
-                                  i as HTMLInputElement)
-                              }
-                              onChange={() => {
-                                onUpload(
-                                  inputFileRefs.current[log._id.toString()],
-                                  log,
-                                  logs
-                                );
-                              }}
-                            />
-                          </Doctor>
-                        )} */}
-                      </Time>
-                    )}
-                    {log.type === LOG_TYPE.error && <EditErrorLog log={log} />}
+                    <Time>
+                      {datetoHHMM(new Date(log.date))}
+                      {log.manual && <ManualBadge title="Fichaje manual"><IconManual /></ManualBadge>}
+                      {log.isMobile && <IconMobile />}
+                    </Time>
                   </Log>
                 ))}
               </>
@@ -305,6 +248,17 @@ const Log = styled.div`
   font-size: 14px;
   color: #4e4f53;
   align-items: center;
+`;
+
+const ManualBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  svg {
+    width: 14px;
+    height: 14px;
+    margin-left: 6px;
+    color: #8a4d92;
+  }
 `;
 
 export default UserLogsComponentViewer;

@@ -1,3 +1,4 @@
+import { decimalToHours } from "@/lib/utils";
 import { UserToday } from "@/types";
 import styled from "@emotion/styled";
 import React, { useEffect, useState } from "react";
@@ -38,8 +39,7 @@ const UserToday = () => {
         Tiempo trabajado
       </Line>
       <Time>
-        {Math.floor(stats.hoursToday)}h{Math.floor((stats.hoursToday % 1) * 60)}
-        m
+        {decimalToHours(stats.hoursToday)}
       </Time>
     </Container>
   );

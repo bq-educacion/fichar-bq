@@ -5,10 +5,6 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 First, run the development server:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
 pnpm dev
 ```
 
@@ -21,6 +17,63 @@ You can start editing the page by modifying `pages/index.tsx`. The page auto-upd
 The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
 
 This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+
+## Testing
+
+Run unit tests with:
+
+```bash
+pnpm test
+```
+
+Tests are located in `src/__tests__/` and cover all utility functions in `src/lib/utils.ts`:
+
+- `computeElapsedHours` — pair-based elapsed time calculation (core function)
+- `getHoursToday` — today's worked hours, optionally including current open session
+- `statsFromLogs` — computes total, average, days, and manual days count from a log set
+- `numberOfManualDays` — counts distinct days with manually introduced logs
+- `numberOfDays` — counts distinct days in a log set
+- `realLogs` — truncates logs after the last `out` event
+- `decimalToHours` — formats decimal hours as `Xh Ym`
+- `datetoHHMM` — formats a Date as `H:MM`
+- `logsIn` / `logsOut` — backward-compatible helpers
+
+## Key Utility Functions (`src/lib/utils.ts`)
+
+### `computeElapsedHours(logs, addCurrentTime?, now?)`
+
+The core elapsed time function. Pairs each `in` log with the next `out`/`pause` log and sums the durations. If `addCurrentTime` is true and the last log is `in`, it counts time up to `now`.
+
+### `statsFromLogs(logs)`
+
+Computes `{ total, average, logsDays, manualLogsDays }` for a set of logs. Uses `realLogs` to strip incomplete trailing sessions and `computeElapsedHours` for the time calculation.
+
+### `getHoursToday(logs, now?)`
+
+Wrapper around `computeElapsedHours` for today's logs. Automatically detects if the user is currently clocked in (last log is `in`) and adds current time accordingly.
+
+## Manual Log Entry
+
+The application no longer uses error logs (`LOG_TYPE.error` and `USER_STATUS.error` have been removed). Instead, when a user clicks "Corregir fichaje", a modal opens allowing the user to manually enter:
+
+- **Start hour** — when the work day started
+- **Pauses** — zero or more pause periods (start/end time each)
+- **End hour** — when the work day ended
+
+On submit, all existing logs for the day are cleared and replaced with the manually entered ones. These logs are flagged with `manual: true` in the database.
+
+- A pencil icon appears next to manually entered logs in the log viewer (for both user and manager)
+- The stats table shows a "Días manuales" column counting how many days have manually introduced logs per period
+
+### API: `POST /api/manualLogs`
+
+Body: `{ startHour: "HH:MM", endHour: "HH:MM", pauses: [{ start: "HH:MM", end: "HH:MM" }] }`
+
+Clears today's logs and creates manual entries. Requires authentication.
+
+### Auto-close on forgotten clock-out
+
+If a user forgets to clock out and their last log is from a previous day (not `out`), the system automatically creates an `out` log at 23:59 of that day and resets the user status to `not_started`.
 
 ## Learn More
 

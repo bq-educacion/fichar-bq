@@ -5,14 +5,12 @@ export enum USER_STATUS {
   working = "working",
   finished = "finished",
   paused = "paused",
-  error = "error",
 }
 
 export enum LOG_TYPE {
   in = "in",
   out = "out",
   pause = "pause",
-  error = "error",
   goback = "goback",
 }
 
@@ -27,12 +25,12 @@ export type UserStats = {
   averageThisWeek: number;
   averageThisMonth: number;
   averageThisYear: number;
-  errorLogsThisWeek: number;
-  errorLogsThisMonth: number;
-  errorLogsThisYear: number;
   logsThisWeekDays: number;
   logsThisMonthDays: number;
   logsThisYearDays: number;
+  manualLogsThisWeek: number;
+  manualLogsThisMonth: number;
+  manualLogsThisYear: number;
 };
 
 export type UserToday = {
@@ -57,9 +55,8 @@ export type Log = {
   type: LOG_TYPE;
   date: Date;
   user: string;
-  error_text?: string;
-  error_hours?: number;
   isMobile?: boolean;
+  manual?: boolean;
   note?: LOG_NOTES;
   logFile?: string;
 };
@@ -76,5 +73,5 @@ export type LogsStats = {
   total: number;
   average: number;
   logsDays: number;
-  errorLogs: number;
+  manualLogsDays: number;
 };

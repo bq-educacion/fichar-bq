@@ -4,12 +4,11 @@ import React, { FC, use, useEffect, useState } from "react";
 import IconClock from "@/assets/icons/icon-clock.svg";
 import IconFork from "@/assets/icons/icon-fork-and-spoon.svg";
 import IconCoputerOff from "@/assets/icons/icon-computer-off.svg";
-import IconConfussion from "@/assets/icons/icon-confussion.svg";
 import IconBrainup from "@/assets/icons/icon-brainup.svg";
 
 import { useRouter } from "next/router";
 import TimedButton from "../ui/TimedButton";
-import { datetoHHMM } from "@/lib/utils";
+import { datetoHHMM, decimalToHours } from "@/lib/utils";
 import getMobileDetect from "@/lib/getmobileDetect";
 
 import Modal from "react-modal";
@@ -116,25 +115,13 @@ const SingleBoxAction: FC<{
 
       subHeaderLine = (
         <SubHeaderLine>
-          A las {status.date?.getHours()}:{status.date?.getMinutes()} (Has
-          trabajado {Math.floor(hoursToday)}h{Math.floor((hoursToday % 1) * 60)}
-          m)
+          A las {datetoHHMM(status.date!)} (Has
+          trabajado {decimalToHours(hoursToday)})
         </SubHeaderLine>
       );
       iconbackground = "linear-gradient(225deg, #b68fbb, #ff5776)";
       icon = <IconCoputerOff />;
       break;
-    case USER_STATUS.error:
-      background = "linear-gradient(230deg, #434242, #434242)";
-      buttonbakground = "linear-gradient(256deg, #6d6c6c, #6d6c6c)";
-      buttonText = "Cancelar";
-      headerLine = <HeaderLine>Hoy la he liado</HeaderLine>;
-
-      subHeaderLine = (
-        <SubHeaderLine>A las {datetoHHMM(status.date!)}</SubHeaderLine>
-      );
-      iconbackground = "linear-gradient(225deg, #6d6c6c, #6d6c6c)";
-      icon = <IconConfussion />;
   }
 
   return (
@@ -168,7 +155,7 @@ const SingleBoxAction: FC<{
       <Icon background={iconbackground}>{icon}</Icon>
       {headerLine}
       {subHeaderLine}
-      {![USER_STATUS.error, USER_STATUS.finished].includes(status.status) ? (
+      {status.status !== USER_STATUS.finished ? (
         <TimedButton
           width="199px"
           height="50px"
@@ -186,31 +173,22 @@ const SingleBoxAction: FC<{
           {buttonText}
         </TimedButton>
       ) : (
-        <>
-          {USER_STATUS.finished === status.status ? (
-            <TimedButton
-              width="199px"
-              height="50px"
-              time={5}
-              background={buttonbakground}
-              margin="20px 0 40px 0"
-              onClick={async () => {
-                if (clickable) {
-                  setClickable(false);
-                  await logActivity(LOG_TYPE.goback);
-                  refreshStatus();
-                }
-              }}
-            >
-              {"I'm back!"}
-            </TimedButton>
-          ) : (
-            <>
-              <br />
-              <br />
-            </>
-          )}
-        </>
+        <TimedButton
+          width="199px"
+          height="50px"
+          time={5}
+          background={buttonbakground}
+          margin="20px 0 40px 0"
+          onClick={async () => {
+            if (clickable) {
+              setClickable(false);
+              await logActivity(LOG_TYPE.goback);
+              refreshStatus();
+            }
+          }}
+        >
+          {"I'm back!"}
+        </TimedButton>
       )}
     </Container>
   );

@@ -37,7 +37,7 @@ const addLog = async (
         type: LOG_TYPE.out,
         isMobile,
         date: new Date(new Date().setHours(0, 0, 0, 0) - 1).setHours(
-          21,
+          23,
           59,
           0,
           0
@@ -106,7 +106,7 @@ const addLog = async (
 
   if (
     type === LOG_TYPE.in &&
-    ![LOG_TYPE.pause, LOG_TYPE.error, LOG_TYPE.out].includes(lastLog?.type)
+    ![LOG_TYPE.pause, LOG_TYPE.out].includes(lastLog?.type)
   ) {
     throw new Error("Bad Request");
   }

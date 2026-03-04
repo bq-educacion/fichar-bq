@@ -1,32 +1,51 @@
-// remove logs from days in which there is an error
-
 import { LOG_TYPE, Log, LogsStats } from "@/types";
 
-export const removeErrorLogs = (logs: Log[]) =>
-  logs.filter((log) => {
-    const date = new Date(log.date).setHours(0, 0, 0, 0);
-    const logsThisDay = logs.filter(
-      (log) => new Date(log.date).setHours(0, 0, 0, 0) === date
-    );
-    return !logsThisDay.some((log) => log.type === LOG_TYPE.error);
-  });
+// Compute elapsed hours from a list of logs using pair-based subtraction.
+// Pairs each "in" with the next "out"/"pause" to get precise durations.
+// If addCurrentTime is true and the last log is "in", pairs it with Date.now().
+export const computeElapsedHours = (
+  logs: Log[],
+  addCurrentTime: boolean = false,
+  now?: Date
+): number => {
+  if (logs.length === 0) return 0;
 
-// count the number of days in which there is an error log
-export const numberOfErrorLogs = (logs: Log[]) =>
-  logs.reduce((acc, log) => {
-    if (log.type === LOG_TYPE.error) return acc + 1;
-    return acc;
-  }, 0);
+  const currentTime = now ?? new Date();
+  let totalMs = 0;
+  let lastInDate: Date | null = null;
 
+  for (const log of logs) {
+    if (log.type === LOG_TYPE.in) {
+      lastInDate = new Date(log.date);
+    } else if (
+      (log.type === LOG_TYPE.out || log.type === LOG_TYPE.pause) &&
+      lastInDate !== null
+    ) {
+      totalMs += new Date(log.date).getTime() - lastInDate.getTime();
+      lastInDate = null;
+    }
+  }
+
+  // if still clocked in and addCurrentTime is true, count time until now
+  if (lastInDate !== null && addCurrentTime) {
+    totalMs += currentTime.getTime() - lastInDate.getTime();
+  }
+
+  return totalMs / 1000 / 60 / 60;
+};
+
+// Sum of timestamps for "in" logs (kept for backward compatibility)
 export const logsIn = (logs: Log[]) => {
   const filteredLogs = logs.filter((log) => log.type === LOG_TYPE.in);
-  const result = filteredLogs.reduce((acc, log) => acc + log.date.getTime(), 0);
+  const result = filteredLogs.reduce((acc, log) => acc + new Date(log.date).getTime(), 0);
   return result;
 };
+
+// Sum of timestamps for "out"/"pause" logs (kept for backward compatibility)
 export const logsOut = (logs: Log[]) =>
   logs
     .filter((log) => log.type === LOG_TYPE.out || log.type === LOG_TYPE.pause)
-    .reduce((acc, log) => acc + log.date.getTime(), 0);
+    .reduce((acc, log) => acc + new Date(log.date).getTime(), 0);
 
 export const numberOfDays = (logs: Log[]) =>
   // count how many logs of different days there are
@@ -38,55 +57,24 @@ export const numberOfDays = (logs: Log[]) =>
     return acc;
   }, []).length;
 
-export const getHoursToday = (logs: Log[]) => {
-  const logsIn: { date: Date; type: LOG_TYPE }[] = logs.filter(
-    (log) => log.type === LOG_TYPE.in
-  );
-
-  // if some error today return 0 hours
-  if (logs.some((log) => log.type === LOG_TYPE.error)) {
-    return 0;
-  }
-
-  console.log("LOGS IN\n", logsIn);
-  const logsOut: { date: Date; type: LOG_TYPE }[] = logs.filter(
-    (log) => log.type === LOG_TYPE.out || log.type === LOG_TYPE.pause
-  );
-
-  console.log("LOGS OUT\n", logsOut);
-
+export const getHoursToday = (logs: Log[], now?: Date) => {
   // not started yet today
-  if (logsIn.length === 0) {
+  if (!logs.some((log) => log.type === LOG_TYPE.in)) {
     return 0;
   }
 
-  // if last log is an in log, add a new out log, just to count hours until now
-  if (logs.length > 0 && logs.at(-1)?.type === LOG_TYPE.in) {
-    logsOut.push({
-      date: new Date(),
-      type: LOG_TYPE.out,
-    });
-  }
-
-  // sum of todays in
-  const sumIn = logsIn.reduce((acc, log) => {
-    return acc + log.date.getTime();
-  }, 0);
-
-  // sum of todays out
-  const sumOut = logsOut.reduce((acc, log) => {
-    return acc + log.date.getTime();
-  }, 0);
-
-  const hoursToday = (sumOut - sumIn) / 1000 / 60 / 60;
-  return hoursToday;
+  // use pair-based computation; add current time if last log is "in"
+  const addCurrentTime = logs.length > 0 && logs.at(-1)?.type === LOG_TYPE.in;
+  return computeElapsedHours(logs, addCurrentTime, now);
 };
 
 // decimal hours to hh:mm
 export const decimalToHours = (decimal: number) => {
-  const hours = Math.floor(decimal);
-  const minutes = Math.floor((decimal - hours) * 60);
-  return `${hours}h${minutes}m`;
+  const absDecimal = Math.abs(decimal);
+  const sign = decimal < 0 ? "-" : "";
+  const hours = Math.floor(absDecimal);
+  const minutes = Math.floor((absDecimal - hours) * 60);
+  return `${sign}${hours}h${minutes}m`;
 };
 
 export const datetoHHMM = (date: Date) => {
@@ -95,48 +83,49 @@ export const datetoHHMM = (date: Date) => {
   return `${hours}:${minutes < 10 ? `0${minutes}` : minutes}`;
 };
 
+// count the number of DAYS in which there is a manual log
+export const numberOfManualDays = (logs: Log[]) => {
+  const manualDays = new Set<number>();
+  logs.forEach((log) => {
+    if (log.manual) {
+      manualDays.add(new Date(log.date).setHours(0, 0, 0, 0));
+    }
+  });
+  return manualDays.size;
+};
+
 export const realLogs = (logs: Log[]) => {
-  // get last index with type error or type out
-  let lastErrorOutIndex = -1;
+  // get last index with type out (truncate trailing incomplete sessions)
+  let lastOutIndex = -1;
   for (let i = logs.length - 1; i >= 0; i--) {
-    if (logs[i].type === LOG_TYPE.error || logs[i].type === LOG_TYPE.out) {
-      lastErrorOutIndex = i;
+    if (logs[i].type === LOG_TYPE.out) {
+      lastOutIndex = i;
       break;
     }
   }
 
-  return logs.slice(0, lastErrorOutIndex + 1);
+  return logs.slice(0, lastOutIndex + 1);
 };
 
 export const statsFromLogs = (logs: Log[]): LogsStats => {
   const rlogs = realLogs(logs);
 
-  // remove logs from days in which there is an error
-  const logsFiltered = removeErrorLogs(rlogs);
-
-  // number of days with error logs this week
-  const errorLogs = numberOfErrorLogs(rlogs);
-
-  // sum date of all logs with type "in"
-  const rlogsIn = logsIn(logsFiltered);
-
-  // sum date of all logs with type "out" or pause
-  const rlogsOut = logsOut(logsFiltered);
-
   // count how many logs of different days there are
-  const logsDays = numberOfDays(logsFiltered);
+  const logsDays = numberOfDays(rlogs);
 
-  // average time worked this week
-  const average =
-    logsDays === 0 ? 0 : (rlogsOut - rlogsIn) / logsDays / 1000 / 60 / 60;
+  // compute total hours using pair-based calculation
+  const total = computeElapsedHours(rlogs);
 
-  // totoal hours worked this week
-  const total = (rlogsOut - rlogsIn) / 1000 / 60 / 60;
+  // average time worked per day
+  const average = logsDays === 0 ? 0 : total / logsDays;
+
+  // number of days with manually introduced logs
+  const manualLogsDays = numberOfManualDays(rlogs);
 
   return {
     total,
     average,
     logsDays,
-    errorLogs,
+    manualLogsDays,
   };
 };

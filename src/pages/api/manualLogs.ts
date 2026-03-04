@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "./auth/[...nextauth]";
 
-import updateLog from "@/controllers/updateLog";
+import replaceLogsWithManual from "@/controllers/replaceLogsWithManual";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const session = await getServerSession(req, res, authOptions);
@@ -11,13 +11,26 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return;
   }
 
+  if (req.method !== "POST") {
+    res.status(405).send("Method Not Allowed");
+    return;
+  }
+
   const email = session.user.email;
-  const { _id, error_text, error_hours } = req.body;
+  const { startHour, endHour, pauses } = req.body;
+
+  if (!startHour || !endHour) {
+    res.status(400).send("Bad Request: startHour and endHour are required");
+    return;
+  }
 
   try {
-    const lastLog = await updateLog(_id, error_text, error_hours);
-    res.status(200).json(lastLog);
-    res.end();
+    const logs = await replaceLogsWithManual(email!, {
+      startHour,
+      endHour,
+      pauses: pauses || [],
+    });
+    res.status(200).json(logs);
     return;
   } catch (e) {
     res.status(400).send("Bad Request");

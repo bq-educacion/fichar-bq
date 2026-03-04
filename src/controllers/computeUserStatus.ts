@@ -1,6 +1,6 @@
 import { LogModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
-import { LOG_TYPE, Log, USER_STATUS, UserStatus } from "@/types";
+import { Log, USER_STATUS, UserStatus } from "@/types";
 import { getHoursToday } from "@/lib/utils";
 
 const computeUserStatus = async (email: string): Promise<UserStatus> => {
@@ -25,10 +25,7 @@ const computeUserStatus = async (email: string): Promise<UserStatus> => {
     const isMobile = logsOfToday[0].isMobile;
     const hoursToday = getHoursToday([...logsOfToday].reverse());
 
-    // if there is any type with USER_STATUS.error
-    if (logsOfToday.some((log) => log.type === LOG_TYPE.error)) {
-      return { status: USER_STATUS.error, date: lastDate };
-    } else if (lastType === "in") {
+    if (lastType === "in") {
       return {
         status: USER_STATUS.working,
         date: lastDate,

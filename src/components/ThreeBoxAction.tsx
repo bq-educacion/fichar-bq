@@ -7,26 +7,13 @@ import IconConfussion from "@/assets/icons/icon-confussion.svg";
 import { useRouter } from "next/router";
 import TimedButton from "../ui/TimedButton";
 import getMobileDetect from "@/lib/getmobileDetect";
+import ManualLogsModal, { ManualLogsData } from "./ManualLogsModal";
 
 const ThreeBoxAction: FC<{
   refreshStatus: () => void;
 }> = ({ refreshStatus }) => {
   const router = useRouter();
-  const [time, setTime] = useState<string>(
-    `${new Date().getHours()}:${
-      new Date().getMinutes() < 10
-        ? "0" + new Date().getMinutes()
-        : new Date().getMinutes()
-    }`
-  );
-  const [date, setDate] = useState<string>(
-    new Date().toLocaleDateString("es-ES", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
-  );
+  const [manualModalOpen, setManualModalOpen] = useState(false);
 
   const logActivity = async (type: LOG_TYPE) => {
     const device = getMobileDetect();
@@ -37,24 +24,22 @@ const ThreeBoxAction: FC<{
       },
       body: JSON.stringify({ type, isMobile: device.isMobile }),
     });
-    //const data = await res.json();
     if (res.status !== 200) router.push("/login");
   };
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTime(new Date().getHours() + ":" + new Date().getMinutes());
-      setDate(
-        new Date().toLocaleDateString("es-ES", {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })
-      );
-    }, 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
+  const submitManualLogs = async (data: ManualLogsData) => {
+    const res = await fetch("/api/manualLogs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (res.status !== 200) {
+      router.push("/login");
+      return;
+    }
+    setManualModalOpen(false);
+    refreshStatus();
+  };
 
   const boxes = [
     {
@@ -66,6 +51,7 @@ const ThreeBoxAction: FC<{
       iconbackground: "linear-gradient(225deg, #fea77f, #facf7f)",
       icon: <IconFork />,
       action: LOG_TYPE.pause,
+      openModal: false,
     },
     {
       background: "linear-gradient(220deg, #6d2077, #e4002b)",
@@ -76,21 +62,28 @@ const ThreeBoxAction: FC<{
       iconbackground: "linear-gradient(256deg, #b68fbb, #ff5776)",
       icon: <IconCoputerOff />,
       action: LOG_TYPE.out,
+      openModal: false,
     },
     {
       background: "linear-gradient(220deg, #434242, #434242)",
       buttonbakground: "linear-gradient(256deg, #6d6c6c, #6d6c6c)",
-      buttonText: "Marcaje erróneo",
+      buttonText: "Corregir fichaje",
       headerLine: <HeaderLine>Hoy la he liado</HeaderLine>,
-      subHeaderLine: <SubHeaderLine>...y no cuenta</SubHeaderLine>,
+      subHeaderLine: <SubHeaderLine>Introduce las horas</SubHeaderLine>,
       iconbackground: "linear-gradient(247deg, #6d6c6c, #6d6c6c)",
       icon: <IconConfussion />,
-      action: LOG_TYPE.error,
+      action: LOG_TYPE.in, // unused when openModal is true
+      openModal: true,
     },
   ];
 
   return (
     <>
+      <ManualLogsModal
+        isOpen={manualModalOpen}
+        onClose={() => setManualModalOpen(false)}
+        onSubmit={submitManualLogs}
+      />
       <Container>
         {boxes.map((box, index) => (
           <Box key={index} background={box.background}>
@@ -104,8 +97,12 @@ const ThreeBoxAction: FC<{
               background={box.buttonbakground}
               margin="15px 0 20px 0"
               onClick={async () => {
-                await logActivity(box.action);
-                refreshStatus();
+                if (box.openModal) {
+                  setManualModalOpen(true);
+                } else {
+                  await logActivity(box.action);
+                  refreshStatus();
+                }
               }}
               fontSize="14px"
             >

@@ -24,13 +24,13 @@ const WorkersViewer: FC<{ workers: Array<User & { stats: LogsStats }> }> = ({
             <br /> (30 días)
           </Header>
           <Header>Correctos</Header>
-          <Header>Errores</Header>
+          <Header>Manuales</Header>
           {workers.map((worker) => (
             <Row href={`/worker/${worker.id}`} key={worker.id}>
               <Data>{worker.name.toLowerCase()}</Data>
               <Data>{decimalToHours(worker.stats.average)}</Data>
               <Data>{worker.stats.logsDays}</Data>
-              <Data>{worker.stats.errorLogs}</Data>
+              <Data>{worker.stats.manualLogsDays}</Data>
             </Row>
           ))}
         </Table>

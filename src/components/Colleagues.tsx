@@ -57,11 +57,6 @@ const StatusType = {
     color: "#f6a001",
     border: "#f6a001",
   },
-  [USER_STATUS.error]: {
-    text: "Error en el fichaje",
-    color: "#4e4f53",
-    border: "#4e4f53",
-  },
   [USER_STATUS.finished]: {
     text: "Finalizado",
     color: "#4e4f53",

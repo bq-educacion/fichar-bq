@@ -12,8 +12,6 @@ const getUserToday = async (email: string): Promise<number> => {
     },
   });
 
-  console.log("LOGS TODAY\n", logsToday);
-
   const hoursToday = getHoursToday(logsToday);
 
   return hoursToday;
