@@ -118,15 +118,19 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
     <>
       <WelcomeUser data={data!} />
       {status &&
-        [USER_STATUS.working, USER_STATUS.paused].includes(status.status) && (
+        ([USER_STATUS.working, USER_STATUS.paused] as USER_STATUS[]).includes(
+          status.status
+        ) && (
           <UserToday />
         )}
       {status &&
-        [
-          USER_STATUS.not_started,
-          USER_STATUS.paused,
-          USER_STATUS.finished,
-        ].includes(status.status) && (
+        (
+          [
+            USER_STATUS.not_started,
+            USER_STATUS.paused,
+            USER_STATUS.finished,
+          ] as USER_STATUS[]
+        ).includes(status.status) && (
           <SingleBoxAction
             status={status}
             action={LOG_TYPE.in}

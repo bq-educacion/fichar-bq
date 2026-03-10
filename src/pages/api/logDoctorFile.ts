@@ -1,12 +1,21 @@
+import { LogModel } from "@/db/Models";
+import connectMongo from "@/lib/connectMongo";
+import { formatZodError, isZodError, parseWithSchema, toPlainObject } from "@/lib/validation";
+import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import {
+  logDoctorFileBodySchema,
+  logDoctorFileResponseSchema,
+} from "@/schemas/api";
+import { LOG_NOTES } from "@/types";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "./auth/[...nextauth]";
-import getUserByEmail from "@/controllers/getUser";
-import connectMongo from "@/lib/connectMongo";
-import { LogModel } from "@/db/Models";
-import { LOG_NOTES, Log } from "@/types";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
+  if (req.method !== "POST") {
+    res.status(405).send("Method Not Allowed");
+    return;
+  }
+
   try {
     const session = await getServerSession(req, res, authOptions);
     if (!session || !session.user) {
@@ -14,28 +23,31 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return;
     }
 
-    // get logid and logFile from body
-    const { _id, logFile } = req.body;
+    const body = parseWithSchema(logDoctorFileBodySchema, req.body);
 
-    if (!_id || !logFile) {
-      res.status(400).send("Bad Request");
-      return;
-    }
-
-    connectMongo();
-    const log = await LogModel.findById(_id).exec();
+    await connectMongo();
+    const log = await LogModel.findById(body._id).exec();
     if (!log) {
       res.status(400).send("Bad Request");
       return;
     }
 
-    (log as Log).logFile = logFile;
-    (log as Log).note = LOG_NOTES.doctor;
+    log.logFile = body.logFile;
+    log.note = LOG_NOTES.doctor;
     await log.save();
 
-    res.status(200).json(log);
-    res.end();
-  } catch (e) {
+    const payload = parseWithSchema(
+      logDoctorFileResponseSchema,
+      toPlainObject(log)
+    );
+
+    res.status(200).json(payload);
+  } catch (error) {
+    if (isZodError(error)) {
+      res.status(400).send(`Bad Request: ${formatZodError(error)}`);
+      return;
+    }
+
     res.status(500).end();
   }
 };

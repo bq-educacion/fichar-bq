@@ -1,39 +1,51 @@
-import connectMongo from "@/lib/connectMongo";
 import { addUser } from "@/controllers/User";
+import connectMongo from "@/lib/connectMongo";
+import { parseWithSchema } from "@/lib/validation";
+import { authGoogleProfileSchema } from "@/schemas/api";
 import NextAuth, {
   Account,
   Profile,
-  Session,
   SessionStrategy,
 } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 
 type SignInParams = {
   account: Account | null;
-  profile: (Profile & { picture: string }) | undefined;
+  profile: Profile | undefined;
 };
 
 export const authOptions = {
   callbacks: {
     async signIn({ account, profile }: SignInParams) {
-      if (account!.provider === "google") {
-        if (
-          (profile! as any).email_verified &&
-          (profile!.email!.endsWith("@bq.com") ||
-            profile!.email!.endsWith("@bqeducacion.cc"))
-        ) {
-          await connectMongo();
-          await addUser(profile?.email!, profile?.picture!, profile?.name!);
-        }
-
-        return (
-          (profile! as any).email_verified &&
-          (profile!.email!.endsWith("@bq.com") ||
-            profile!.email!.endsWith("@bqeducacion.cc"))
-        );
+      if (account?.provider !== "google" || !profile) {
+        return false;
       }
 
-      return false;
+      const parsedProfile = parseWithSchema(authGoogleProfileSchema, {
+        email: profile.email,
+        email_verified: Boolean(
+          (profile as Profile & { email_verified?: boolean }).email_verified
+        ),
+        picture: (profile as Profile & { picture?: string }).picture,
+        name: profile.name ?? undefined,
+      });
+
+      const isAllowedDomain =
+        parsedProfile.email.endsWith("@bq.com") ||
+        parsedProfile.email.endsWith("@bqeducacion.cc");
+
+      if (!parsedProfile.email_verified || !isAllowedDomain) {
+        return false;
+      }
+
+      await connectMongo();
+      await addUser(
+        parsedProfile.email,
+        parsedProfile.picture ?? "",
+        parsedProfile.name ?? parsedProfile.email
+      );
+
+      return true;
     },
   },
   providers: [
@@ -44,7 +56,6 @@ export const authOptions = {
   ],
   session: {
     strategy: "jwt" as SessionStrategy,
-    // expires after 6 hours idle
     maxAge: 6 * 60 * 60,
   },
   secret: process.env.JWT_SECRET,

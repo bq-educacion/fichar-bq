@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { User } from "@/types";
+import type { AllUsersStatusResponse } from "@/schemas/api";
 import React from "react";
 import Colleagues from "@/components/Colleagues";
 import connectMongo from "@/lib/connectMongo";
@@ -52,9 +52,7 @@ const Home: NextPage<{}> = () => {
   };
 
   const router = useRouter();
-  const [usersStatus, setUsersStatus] = useState<
-    Omit<User, "isManager" | "active" | "manager" | "_id">[]
-  >([]);
+  const [usersStatus, setUsersStatus] = useState<AllUsersStatusResponse>([]);
   useEffect(() => {
     getAllUsersStatus();
   }, []);

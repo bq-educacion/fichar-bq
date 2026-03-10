@@ -1,13 +1,10 @@
 import { dateToTimeInputValue, validateManualHoursRange } from "@/lib/utils";
+import type { ManualLogsBody } from "@/schemas/api";
 import styled from "@emotion/styled";
 import React, { FC, useEffect, useState } from "react";
 import Modal from "react-modal";
 
-export type ManualLogsData = {
-  startHour: string;
-  endHour: string;
-  pauses: { start: string; end: string }[];
-};
+export type ManualLogsData = ManualLogsBody;
 
 const ManualLogsModal: FC<{
   isOpen: boolean;

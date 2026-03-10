@@ -1,15 +1,22 @@
 import { LogModel, UserModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
 import { statsFromLogs } from "@/lib/utils";
+import { parseWithSchema, toPlainObject } from "@/lib/validation";
+import { logsStatsSchema, userSchema } from "@/schemas/db";
 import { LogsStats, User } from "@/types";
+import { z } from "zod";
+
+const managerEmailSchema = z.string().email();
+const workerWithStatsSchema = userSchema.extend({ stats: logsStatsSchema }).strict();
 
 const getMyWorkers = async (
   manager: string
 ): Promise<Array<User & { stats: LogsStats }>> => {
-  await connectMongo();
-  const workers = await getWorkers(manager);
+  const parsedManager = parseWithSchema(managerEmailSchema, manager);
 
-  // get las 30 days stats of my workers
+  await connectMongo();
+  const workers = await getWorkers(parsedManager);
+
   const last30Days = new Date(new Date().setDate(new Date().getDate() - 30));
   const last30DaysWorkers = await Promise.all(
     workers.map(async (worker) => {
@@ -22,38 +29,42 @@ const getMyWorkers = async (
 
   const fullWorkers = workers.map((worker, index) => {
     return {
-      ...(worker as any).toObject(),
+      ...worker,
       stats: statsFromLogs(last30DaysWorkers[index]),
     };
   });
 
-  return fullWorkers;
+  return parseWithSchema(workerWithStatsSchema.array(), toPlainObject(fullWorkers));
 };
 
 const getWorkers = async (manager: string): Promise<User[]> => {
-  const workers: User[] = await UserModel.find({
+  const parsedManager = parseWithSchema(managerEmailSchema, manager);
+
+  const workersDocs = await UserModel.find({
     active: true,
-    manager,
+    manager: parsedManager,
   }).exec();
 
-  return [
-    ...workers,
-    ...(
-      await Promise.all(
-        workers
-          .filter((w) => w.email !== manager && w.isManager)
-          .map((worker) => getWorkers(worker.email))
-      )
-    ).flatMap((x) => x),
-  ];
+  const workers = parseWithSchema(userSchema.array(), toPlainObject(workersDocs));
+
+  const nestedWorkers = await Promise.all(
+    workers
+      .filter((worker) => worker.email !== parsedManager && worker.isManager)
+      .map((worker) => getWorkers(worker.email))
+  );
+
+  return [...workers, ...nestedWorkers.flatMap((x) => x)];
 };
 
 export const isMyWorker = async (
   manager: string,
   worker: string
 ): Promise<boolean> => {
-  const workers = await getMyWorkers(manager);
-  return workers.some((w) => w.email === worker);
+  const parsedManager = parseWithSchema(managerEmailSchema, manager);
+  const parsedWorker = parseWithSchema(managerEmailSchema, worker);
+
+  const workers = await getMyWorkers(parsedManager);
+  return workers.some((w) => w.email === parsedWorker);
 };
 
 export default getMyWorkers;

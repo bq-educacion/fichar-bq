@@ -1,11 +1,12 @@
 import { datetoHHMM } from "@/lib/utils";
-import { USER_STATUS, User } from "@/types";
+import type { AllUsersStatusResponse } from "@/schemas/api";
+import { USER_STATUS } from "@/types";
 import SimpleContainer from "@/ui/SimpleContainer";
 import styled from "@emotion/styled";
-import React, { FC, useEffect, useState } from "react";
+import React, { FC } from "react";
 import MobileIcon from "@/assets/icons/smartphone-icon.svg";
 const Colleagues: FC<{
-  users: Omit<User, "isManager" | "active" | "manager" | "_id">[];
+  users: AllUsersStatusResponse;
 }> = ({ users }) => {
   return (
     <SimpleContainer

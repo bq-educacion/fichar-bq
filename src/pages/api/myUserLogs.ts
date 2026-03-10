@@ -1,27 +1,38 @@
+import getUserLogs from "@/controllers/getUserLogs";
+import { formatZodError, isZodError, parseWithSchema, toPlainObject } from "@/lib/validation";
+import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import {
+  myUserLogsBodySchema,
+  myUserLogsResponseSchema,
+} from "@/schemas/api";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "./auth/[...nextauth]";
-import getUserLogs from "@/controllers/getUserLogs";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
+  if (req.method !== "POST") {
+    res.status(405).send("Method Not Allowed");
+    return;
+  }
+
   try {
     const session = await getServerSession(req, res, authOptions);
-    if (!session || !session.user) {
+    if (!session || !session.user || !session.user.email) {
       res.status(401).send("Unauthorized");
       return;
     }
 
-    const email = session!.user!.email;
+    const body = parseWithSchema(myUserLogsBodySchema, req.body);
 
-    // get body page and pagesize params
-    const { page, numberofdays } = req.body;
+    const logs = await getUserLogs(session.user.email, body.page, body.numberofdays);
+    const payload = parseWithSchema(myUserLogsResponseSchema, toPlainObject(logs));
 
-    const logs = await getUserLogs(email!, page, numberofdays!);
+    res.status(200).json(payload);
+  } catch (error) {
+    if (isZodError(error)) {
+      res.status(400).send(`Bad Request: ${formatZodError(error)}`);
+      return;
+    }
 
-    // return logs
-    res.status(200).json(logs);
-    res.end();
-  } catch (e) {
     res.status(500).end();
   }
 };

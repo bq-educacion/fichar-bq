@@ -1,27 +1,34 @@
+import getUserToday from "@/controllers/getUserToday";
+import { formatZodError, isZodError, parseWithSchema, toPlainObject } from "@/lib/validation";
+import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { userTodayResponseSchema } from "@/schemas/api";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "./auth/[...nextauth]";
-import getUserToday from "@/controllers/getUserToday";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
+  if (req.method !== "GET") {
+    res.status(405).send("Method Not Allowed");
+    return;
+  }
+
   try {
     const session = await getServerSession(req, res, authOptions);
-    if (!session || !session.user) {
+    if (!session || !session.user || !session.user.email) {
       res.status(401).send("Unauthorized");
       return;
     }
 
-    const email = session!.user!.email;
+    const hoursToday = await getUserToday(session.user.email);
+    const payload = parseWithSchema(userTodayResponseSchema, toPlainObject({ hoursToday }));
 
-    const hoursToday = await getUserToday(email!);
+    res.status(200).json(payload);
+  } catch (error) {
+    if (isZodError(error)) {
+      res.status(400).send(`Bad Request: ${formatZodError(error)}`);
+      return;
+    }
 
-    res.status(200).json({
-      hoursToday,
-    });
-
-    res.end();
-  } catch (e) {
-    console.error(e);
+    console.error(error);
     res.status(500).end();
   }
 };

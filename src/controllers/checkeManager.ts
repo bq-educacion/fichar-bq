@@ -1,23 +1,35 @@
 import { UserModel } from "@/db/Models";
+import { parseWithSchema } from "@/lib/validation";
+import { z } from "zod";
 import { isMyWorker } from "./getMyWorkers";
+
+const checkIfManagerInputSchema = z
+  .object({
+    managerEmail: z.string().email(),
+    workerEmail: z.string().email(),
+  })
+  .strict();
 
 const checkIfManager = async (
   managerEmail: string,
   workerEmail: string
 ): Promise<boolean> => {
-  // user requesting stats must be a manager
-  const manager = await UserModel.findOne({ email: managerEmail });
+  const input = parseWithSchema(checkIfManagerInputSchema, {
+    managerEmail,
+    workerEmail,
+  });
+
+  const manager = await UserModel.findOne({ email: input.managerEmail });
   if (!manager || !manager.isManager) {
     throw new Error("Unauthorized");
   }
 
-  const worker = await UserModel.findOne({ email: workerEmail });
+  const worker = await UserModel.findOne({ email: input.workerEmail });
   if (!worker) {
     throw new Error("Worker not found");
   }
 
-  // worker manager must be the same  as the manager requesting the stats (or manager of manager)
-  return await isMyWorker(manager.email, workerEmail);
+  return await isMyWorker(manager.email, input.workerEmail);
 };
 
 export default checkIfManager;

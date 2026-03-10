@@ -1,125 +1,142 @@
 import { LogModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
+import { parseWithSchema, toPlainObject } from "@/lib/validation";
+import { logCreateSchema, logSchema, logTypeEnumSchema } from "@/schemas/db";
 import { LOG_TYPE, Log } from "@/types";
+import { z } from "zod";
 import updateUserStatus from "./updateUserStatus";
+
+const addLogInputSchema = z
+  .object({
+    email: z.string().email(),
+    type: logTypeEnumSchema,
+    isMobile: z.boolean(),
+  })
+  .strict();
+
+const createValidatedLog = async (data: z.input<typeof logCreateSchema>) => {
+  const payload = parseWithSchema(logCreateSchema, data);
+  return await LogModel.create(payload);
+};
 
 const addLog = async (
   email: string,
   type: LOG_TYPE,
   isMobile: boolean
 ): Promise<Log> => {
+  const input = parseWithSchema(addLogInputSchema, { email, type, isMobile });
+
   await connectMongo();
 
-  const lastLog = await LogModel.findOne({ user: email })
+  const lastLog = await LogModel.findOne({ user: input.email })
     .sort({ date: -1 })
     .exec();
 
-  // new user --> first log
   if (!lastLog) {
-    const log = await LogModel.create({
+    const log = await createValidatedLog({
       type: LOG_TYPE.in,
-      isMobile,
+      isMobile: input.isMobile,
       date: new Date(),
-      user: email,
+      user: input.email,
     });
-    await updateUserStatus(email);
-    return log;
+
+    await updateUserStatus(input.email);
+    return parseWithSchema(logSchema, toPlainObject(log));
   }
 
-  // if I pass through midnight
   if (
     lastLog.date < new Date(new Date().setHours(0, 0, 0, 0)) &&
-    type !== LOG_TYPE.out
+    input.type !== LOG_TYPE.out
   ) {
     if (lastLog.type === LOG_TYPE.in) {
-      // create log out at 23.59 of yesterday
-      const log = await LogModel.create({
+      const midnight = new Date(new Date().setHours(0, 0, 0, 0));
+      const outDate = new Date(midnight.getTime() - 1);
+      const inDate = new Date(midnight.getTime() + 1);
+
+      await createValidatedLog({
         type: LOG_TYPE.out,
-        isMobile,
-        date: new Date(new Date().setHours(0, 0, 0, 0) - 1).setHours(
-          23,
-          59,
-          0,
-          0
-        ),
-        user: email,
+        isMobile: input.isMobile,
+        date: outDate,
+        user: input.email,
       });
 
-      // create log in at 00.00 of today
-      const log2 = await LogModel.create({
+      const reopenedLog = await createValidatedLog({
         type: LOG_TYPE.in,
-        isMobile,
-        date: new Date(new Date().setHours(0, 0, 0, 1)),
-        user: email,
+        isMobile: input.isMobile,
+        date: inDate,
+        user: input.email,
       });
 
-      await updateUserStatus(email);
-      return log2;
-    } else if (lastLog.type === LOG_TYPE.pause) {
-      // set laslog as out and current log as in
+      await updateUserStatus(input.email);
+      return parseWithSchema(logSchema, toPlainObject(reopenedLog));
+    }
+
+    if (lastLog.type === LOG_TYPE.pause) {
       lastLog.type = LOG_TYPE.out;
       await lastLog.save();
-      const log = await LogModel.create({
+
+      const resumedLog = await createValidatedLog({
         type: LOG_TYPE.in,
-        isMobile,
-        date: new Date(new Date()),
-        user: email,
+        isMobile: input.isMobile,
+        date: new Date(),
+        user: input.email,
       });
-      await updateUserStatus(email);
-      return log;
+
+      await updateUserStatus(input.email);
+      return parseWithSchema(logSchema, toPlainObject(resumedLog));
     }
   }
 
-  // if lastlog date is before today
   if (
-    lastLog &&
     lastLog.date < new Date(new Date().setHours(0, 0, 0, 0)) &&
-    type !== LOG_TYPE.in
+    input.type !== LOG_TYPE.in
   ) {
     throw new Error("Bad Request");
   }
 
-  if (type === LOG_TYPE.goback) {
-    if (!lastLog || lastLog.type !== LOG_TYPE.out) {
+  if (input.type === LOG_TYPE.goback) {
+    if (lastLog.type !== LOG_TYPE.out) {
       throw new Error("Bad Request");
     }
+
     lastLog.type = LOG_TYPE.pause;
-    //lastLog.isMobile = isMobile;
     await lastLog.save();
-    const log = await LogModel.create({
+
+    const log = await createValidatedLog({
       type: LOG_TYPE.in,
-      isMobile,
+      isMobile: input.isMobile,
       date: new Date(),
-      user: email,
+      user: input.email,
     });
-    await updateUserStatus(email);
-    return log;
+
+    await updateUserStatus(input.email);
+    return parseWithSchema(logSchema, toPlainObject(log));
   }
 
-  if (type === LOG_TYPE.pause && lastLog?.type !== LOG_TYPE.in) {
+  if (input.type === LOG_TYPE.pause && lastLog.type !== LOG_TYPE.in) {
     throw new Error("Bad Request");
   }
 
-  if (type === LOG_TYPE.out && lastLog?.type !== LOG_TYPE.in) {
+  if (input.type === LOG_TYPE.out && lastLog.type !== LOG_TYPE.in) {
     throw new Error("Bad Request");
   }
 
   if (
-    type === LOG_TYPE.in &&
-    ![LOG_TYPE.pause, LOG_TYPE.out].includes(lastLog?.type)
+    input.type === LOG_TYPE.in &&
+    ![LOG_TYPE.pause, LOG_TYPE.out].includes(lastLog.type)
   ) {
     throw new Error("Bad Request");
   }
 
-  const log = await LogModel.create({
-    type,
+  const log = await createValidatedLog({
+    type: input.type,
     date: new Date(),
-    user: email,
-    isMobile,
+    user: input.email,
+    isMobile: input.isMobile,
   });
 
-  await updateUserStatus(email);
-  return log;
+  await updateUserStatus(input.email);
+  return parseWithSchema(logSchema, toPlainObject(log));
 };
 
 export default addLog;

@@ -1,40 +1,61 @@
-// add User if it doesn't exist
-
 import { UserModel } from "@/db/Models";
+import { parseWithSchema, toPlainObject } from "@/lib/validation";
+import { userCreateSchema, userSchema, userStatusSchema } from "@/schemas/db";
 import { USER_STATUS, User } from "@/types";
+import { z } from "zod";
+
+const addUserInputSchema = z
+  .object({
+    email: z.string().email(),
+    image: z.string(),
+    name: z.string().min(1),
+  })
+  .strict();
 
 export const addUser = async (
   email: string,
   image: string,
   name: string
 ): Promise<User> => {
-  const user = await UserModel.findOne({ email }).exec();
+  const input = parseWithSchema(addUserInputSchema, { email, image, name });
+
+  const user = await UserModel.findOne({ email: input.email }).exec();
   if (!user) {
-    const user = new UserModel({
-      email,
-      active: true,
-      image,
-      name,
-      status: {
-        status: USER_STATUS.not_started,
-        date: new Date(),
-        hoursToday: 0,
-      },
+    const status = parseWithSchema(userStatusSchema, {
+      status: USER_STATUS.not_started,
+      date: new Date(),
+      hoursToday: 0,
     });
-    await user.save();
-    //const user = await UserModel.create({ mail, active: true });
-    return user;
+
+    const newUserData = parseWithSchema(userCreateSchema, {
+      email: input.email,
+      active: true,
+      image: input.image,
+      name: input.name,
+      status,
+    });
+
+    const newUser = new UserModel(newUserData);
+    await newUser.save();
+    return parseWithSchema(userSchema, toPlainObject(newUser));
   }
 
-  if (user.image !== image || user.name !== name) {
-    user.image = image;
-    user.name = name;
+  if (user.image !== input.image || user.name !== input.name) {
+    user.image = input.image;
+    user.name = input.name;
     await user.save();
   }
 
-  return user;
+  return parseWithSchema(userSchema, toPlainObject(user));
 };
 
-export const getUser = async (mail: string): Promise<User> => {
-  return UserModel.findOne({ mail }).exec();
+export const getUser = async (mail: string): Promise<User | null> => {
+  const email = parseWithSchema(z.string().email(), mail);
+  const user = await UserModel.findOne({ email }).exec();
+
+  if (!user) {
+    return null;
+  }
+
+  return parseWithSchema(userSchema, toPlainObject(user));
 };

@@ -1,25 +1,29 @@
 import { LogModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
 import { hhmmToMinutes, validateManualHoursRange } from "@/lib/utils";
-import { LOG_TYPE, Log } from "@/types";
+import { parseWithSchema, toPlainObject } from "@/lib/validation";
+import { manualLogsBodySchema } from "@/schemas/api";
+import { logCreateSchema, logSchema } from "@/schemas/db";
+import { Log } from "@/types";
+import { z } from "zod";
 import updateUserStatus from "./updateUserStatus";
 
-export type ManualEntry = {
-  startHour: string; // "HH:MM"
-  endHour: string; // "HH:MM"
-  pauses: { start: string; end: string }[]; // each "HH:MM"
-};
+export type ManualEntry = z.infer<typeof manualLogsBodySchema>;
 
 const replaceLogsWithManual = async (
   email: string,
   entry: ManualEntry
 ): Promise<Log[]> => {
+  const parsedEmail = parseWithSchema(z.string().email(), email);
+  const parsedEntry = parseWithSchema(manualLogsBodySchema, entry);
+
   const rangeValidation = validateManualHoursRange(
-    entry.startHour,
-    entry.endHour,
+    parsedEntry.startHour,
+    parsedEntry.endHour,
     new Date(),
     { enforceNowLimit: false }
   );
+
   if (!rangeValidation.isValid) {
     throw new Error(rangeValidation.error);
   }
@@ -29,9 +33,8 @@ const replaceLogsWithManual = async (
   const today = new Date();
   const todayMidnight = new Date(today).setHours(0, 0, 0, 0);
 
-  // Delete all logs for today
   await LogModel.deleteMany({
-    user: email,
+    user: parsedEmail,
     date: { $gte: new Date(todayMidnight) },
   });
 
@@ -43,53 +46,62 @@ const replaceLogsWithManual = async (
 
     const hh = Math.floor(totalMinutes / 60);
     const mm = totalMinutes % 60;
-    const d = new Date(todayMidnight);
-    d.setHours(hh, mm, 0, 0);
-    return d;
+    const date = new Date(todayMidnight);
+    date.setHours(hh, mm, 0, 0);
+    return date;
   };
 
-  const logsToCreate: { type: LOG_TYPE; date: Date; user: string; manual: boolean }[] = [];
+  const logsToCreate: z.infer<typeof logCreateSchema>[] = [];
 
-  // Initial clock-in
-  logsToCreate.push({
-    type: LOG_TYPE.in,
-    date: makeDate(entry.startHour),
-    user: email,
-    manual: true,
-  });
+  logsToCreate.push(
+    parseWithSchema(logCreateSchema, {
+      type: "in",
+      date: makeDate(parsedEntry.startHour),
+      user: parsedEmail,
+      manual: true,
+      isMobile: false,
+    })
+  );
 
-  // Pauses: each pause is a pause event + a resume (in) event
-  for (const pause of entry.pauses) {
-    logsToCreate.push({
-      type: LOG_TYPE.pause,
-      date: makeDate(pause.start),
-      user: email,
-      manual: true,
-    });
-    logsToCreate.push({
-      type: LOG_TYPE.in,
-      date: makeDate(pause.end),
-      user: email,
-      manual: true,
-    });
+  for (const pause of parsedEntry.pauses) {
+    logsToCreate.push(
+      parseWithSchema(logCreateSchema, {
+        type: "pause",
+        date: makeDate(pause.start),
+        user: parsedEmail,
+        manual: true,
+        isMobile: false,
+      })
+    );
+
+    logsToCreate.push(
+      parseWithSchema(logCreateSchema, {
+        type: "in",
+        date: makeDate(pause.end),
+        user: parsedEmail,
+        manual: true,
+        isMobile: false,
+      })
+    );
   }
 
-  // Final clock-out
-  logsToCreate.push({
-    type: LOG_TYPE.out,
-    date: makeDate(entry.endHour),
-    user: email,
-    manual: true,
-  });
+  logsToCreate.push(
+    parseWithSchema(logCreateSchema, {
+      type: "out",
+      date: makeDate(parsedEntry.endHour),
+      user: parsedEmail,
+      manual: true,
+      isMobile: false,
+    })
+  );
 
-  // Sort by date to ensure correct order
   logsToCreate.sort((a, b) => a.date.getTime() - b.date.getTime());
 
   const createdLogs = await LogModel.insertMany(logsToCreate);
 
-  await updateUserStatus(email);
+  await updateUserStatus(parsedEmail);
 
-  return createdLogs;
+  return parseWithSchema(logSchema.array(), toPlainObject(createdLogs));
 };
 
 export default replaceLogsWithManual;

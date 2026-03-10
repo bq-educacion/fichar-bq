@@ -16,7 +16,9 @@ const UserStats: FC<{ status: USER_STATUS }> = ({ status }) => {
 
   useEffect(() => {
     if (
-      [USER_STATUS.finished, USER_STATUS.working].includes(status)
+      ([USER_STATUS.finished, USER_STATUS.working] as USER_STATUS[]).includes(
+        status
+      )
     ) {
       fetchUserStats();
     }

@@ -1,15 +1,20 @@
 import { LogModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
+import { parseWithSchema, toPlainObject } from "@/lib/validation";
+import { logSchema } from "@/schemas/db";
 import { Log } from "@/types";
+import { z } from "zod";
 import updateUserStatus from "./updateUserStatus";
 
 const removeLastLogOfToday = async (email: string): Promise<Log> => {
+  const parsedEmail = parseWithSchema(z.string().email(), email);
+
   await connectMongo();
 
   const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
 
   const lastLogOfToday = await LogModel.findOne({
-    user: email,
+    user: parsedEmail,
     date: { $gte: todayStart },
   })
     .sort({ date: -1 })
@@ -21,9 +26,9 @@ const removeLastLogOfToday = async (email: string): Promise<Log> => {
 
   await LogModel.deleteOne({ _id: lastLogOfToday._id }).exec();
 
-  await updateUserStatus(email);
+  await updateUserStatus(parsedEmail);
 
-  return lastLogOfToday;
+  return parseWithSchema(logSchema, toPlainObject(lastLogOfToday));
 };
 
 export default removeLastLogOfToday;

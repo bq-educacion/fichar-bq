@@ -1,77 +1,30 @@
-import mongoose from "mongoose";
+import { z } from "zod";
+import {
+  logNotesEnumSchema,
+  logSchema,
+  logTypeEnumSchema,
+  logsStatsSchema,
+  projectSchema,
+  userSchema,
+  userStatsSchema,
+  userStatusEnumSchema,
+  userStatusSchema,
+  userTodaySchema,
+} from "@/schemas/db";
 
-export enum USER_STATUS {
-  not_started = "not_started",
-  working = "working",
-  finished = "finished",
-  paused = "paused",
-}
+export const USER_STATUS = userStatusEnumSchema.enum;
+export type USER_STATUS = z.infer<typeof userStatusEnumSchema>;
 
-export enum LOG_TYPE {
-  in = "in",
-  out = "out",
-  pause = "pause",
-  goback = "goback",
-}
+export const LOG_TYPE = logTypeEnumSchema.enum;
+export type LOG_TYPE = z.infer<typeof logTypeEnumSchema>;
 
-export enum LOG_NOTES {
-  doctor = "doctor",
-}
+export const LOG_NOTES = logNotesEnumSchema.enum;
+export type LOG_NOTES = z.infer<typeof logNotesEnumSchema>;
 
-export type UserStats = {
-  totalThisWeek: number;
-  totalThisMonth: number;
-  totalThisYear: number;
-  averageThisWeek: number;
-  averageThisMonth: number;
-  averageThisYear: number;
-  logsThisWeekDays: number;
-  logsThisMonthDays: number;
-  logsThisYearDays: number;
-  manualLogsThisWeek: number;
-  manualLogsThisMonth: number;
-  manualLogsThisYear: number;
-};
-
-export type UserToday = {
-  hoursToday: number;
-};
-
-export type User = {
-  _id: mongoose.Schema.Types.ObjectId;
-  id: string;
-  email: string;
-  active: boolean;
-  isManager: boolean;
-  image: string;
-  name: string;
-  status: UserStatus;
-  manager?: string;
-  legal: boolean;
-};
-
-export type Log = {
-  _id: mongoose.Schema.Types.ObjectId | string;
-  type: LOG_TYPE;
-  date: Date;
-  user: string;
-  isMobile?: boolean;
-  manual?: boolean;
-  note?: LOG_NOTES;
-  logFile?: string;
-};
-
-export type UserStatus = {
-  status: USER_STATUS;
-  date?: Date;
-  startDate?: Date;
-  hoursToday?: number;
-  isMobile?: boolean;
-};
-
-export type LogsStats = {
-  total: number;
-  average: number;
-  logsDays: number;
-  manualLogsDays: number;
-};
+export type UserStats = z.infer<typeof userStatsSchema>;
+export type UserToday = z.infer<typeof userTodaySchema>;
+export type User = z.infer<typeof userSchema>;
+export type Log = z.infer<typeof logSchema>;
+export type UserStatus = z.infer<typeof userStatusSchema>;
+export type LogsStats = z.infer<typeof logsStatsSchema>;
+export type Project = z.infer<typeof projectSchema>;

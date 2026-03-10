@@ -1,25 +1,34 @@
+import setLegal from "@/controllers/setLegal";
+import { formatZodError, isZodError, parseWithSchema } from "@/lib/validation";
+import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { setLegalResponseSchema } from "@/schemas/api";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "./auth/[...nextauth]";
-import setLegal from "@/controllers/setLegal";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
-  const session = await getServerSession(req, res, authOptions);
-  if (!session || !session.user || !session.user.email) {
-    res.status(401).send("Unauthorized");
+  if (req.method !== "GET") {
+    res.status(405).send("Method Not Allowed");
     return;
   }
 
-  const email = session.user.email;
-
   try {
-    await setLegal(email);
-    res.status(200).send("OK");
-    res.end();
-    return;
-  } catch (e) {
+    const session = await getServerSession(req, res, authOptions);
+    if (!session || !session.user || !session.user.email) {
+      res.status(401).send("Unauthorized");
+      return;
+    }
+
+    await setLegal(session.user.email);
+    const payload = parseWithSchema(setLegalResponseSchema, "OK");
+
+    res.status(200).send(payload);
+  } catch (error) {
+    if (isZodError(error)) {
+      res.status(400).send(`Bad Request: ${formatZodError(error)}`);
+      return;
+    }
+
     res.status(400).send("Bad Request");
-    return;
   }
 };
 
