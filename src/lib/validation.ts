@@ -1,5 +1,7 @@
 import { ZodError, ZodTypeAny, z } from "zod";
 
+const mongoMetadataKeys = new Set(["__v", "createdAt", "updatedAt"]);
+
 const stripMongoInternalFields = (value: unknown): unknown => {
   if (Array.isArray(value)) {
     return value.map((item) => stripMongoInternalFields(item));
@@ -8,7 +10,7 @@ const stripMongoInternalFields = (value: unknown): unknown => {
   if (value && typeof value === "object") {
     const out: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(value)) {
-      if (key === "__v") {
+      if (mongoMetadataKeys.has(key)) {
         continue;
       }
       out[key] = stripMongoInternalFields(val);
