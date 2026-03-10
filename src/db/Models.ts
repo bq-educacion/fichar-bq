@@ -5,6 +5,9 @@ import {
 } from "@/schemas/db";
 import mongoose from "mongoose";
 
+const DEFAULT_MANAGER_EMAIL =
+  process.env.DEFAULT_MANAGER_EMAIL || "alberto.valero@bqeducacion.cc";
+
 const LogSchema = new mongoose.Schema(
   {
     type: { type: String, enum: logTypeEnumSchema.options, required: true },
@@ -44,7 +47,7 @@ const UserSchema = new mongoose.Schema(
     manager: {
       type: String,
       required: false,
-      default: "alberto.valero@bq.com",
+      default: DEFAULT_MANAGER_EMAIL,
     },
     name: { type: String },
     image: { type: String },
