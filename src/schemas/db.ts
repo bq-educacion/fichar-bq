@@ -33,6 +33,15 @@ export const dateSchema = z.preprocess((value) => {
   return value;
 }, z.date());
 
+export const dedicationPercentageSchema = z
+  .number()
+  .int()
+  .min(0)
+  .max(100)
+  .refine((value) => value % 10 === 0, {
+    message: "dedication must be in 10% increments",
+  });
+
 export const userStatusEnumSchema = z.enum([
   "not_started",
   "working",
@@ -136,6 +145,48 @@ export const projectCreateSchema = z
     path: ["endData"],
   });
 
+export const projectDedicationItemSchema = z
+  .object({
+    projectId: mongoIdLikeSchema,
+    dedication: dedicationPercentageSchema,
+  })
+  .strict();
+
+export const projectDedicationSchema = z
+  .object({
+    _id: mongoIdLikeSchema,
+    date: dateSchema,
+    userId: mongoIdLikeSchema,
+    dedications: z.array(projectDedicationItemSchema).default([]),
+  })
+  .strict()
+  .refine(
+    (value) =>
+      value.dedications.length === 0 ||
+      value.dedications.reduce((acc, item) => acc + item.dedication, 0) === 100,
+    {
+      message: "dedications must sum 100",
+      path: ["dedications"],
+    }
+  );
+
+export const projectDedicationCreateSchema = z
+  .object({
+    date: dateSchema,
+    userId: mongoIdLikeSchema,
+    dedications: z.array(projectDedicationItemSchema).default([]),
+  })
+  .strict()
+  .refine(
+    (value) =>
+      value.dedications.length === 0 ||
+      value.dedications.reduce((acc, item) => acc + item.dedication, 0) === 100,
+    {
+      message: "dedications must sum 100",
+      path: ["dedications"],
+    }
+  );
+
 export const userStatsSchema = z
   .object({
     totalThisWeek: z.number(),
@@ -179,6 +230,9 @@ export type Log = z.infer<typeof logSchema>;
 export type LogCreate = z.infer<typeof logCreateSchema>;
 export type Project = z.infer<typeof projectSchema>;
 export type ProjectCreate = z.infer<typeof projectCreateSchema>;
+export type ProjectDedicationItem = z.infer<typeof projectDedicationItemSchema>;
+export type ProjectDedication = z.infer<typeof projectDedicationSchema>;
+export type ProjectDedicationCreate = z.infer<typeof projectDedicationCreateSchema>;
 export type UserStats = z.infer<typeof userStatsSchema>;
 export type UserToday = z.infer<typeof userTodaySchema>;
 export type LogsStats = z.infer<typeof logsStatsSchema>;

@@ -6,6 +6,7 @@ import { manualLogsBodySchema } from "@/schemas/api";
 import { logCreateSchema, logSchema } from "@/schemas/db";
 import { Log } from "@/types";
 import { z } from "zod";
+import { saveProjectDedicationsForToday } from "./projectDedications";
 import updateUserStatus from "./updateUserStatus";
 
 export type ManualEntry = z.infer<typeof manualLogsBodySchema>;
@@ -29,6 +30,8 @@ const replaceLogsWithManual = async (
   }
 
   await connectMongo();
+
+  await saveProjectDedicationsForToday(parsedEmail, parsedEntry.projectDedications);
 
   const todayMidnight = new Date(new Date().setHours(0, 0, 0, 0));
 

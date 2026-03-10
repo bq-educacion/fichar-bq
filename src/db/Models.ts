@@ -78,8 +78,47 @@ const ProjectSchema = new mongoose.Schema(
   }
 );
 
+const ProjectDedicationItemSchema = new mongoose.Schema(
+  {
+    projectId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Project",
+      required: true,
+    },
+    dedication: { type: Number, required: true, min: 0, max: 100 },
+  },
+  {
+    _id: false,
+  }
+);
+
+const ProjectDedicationSchema = new mongoose.Schema(
+  {
+    date: { type: Date, required: true, index: true },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    dedications: {
+      type: [ProjectDedicationItemSchema],
+      default: [],
+    },
+  },
+  {
+    id: false,
+    versionKey: false,
+  }
+);
+
+ProjectDedicationSchema.index({ userId: 1, date: 1 }, { unique: true });
+
 export const LogModel = mongoose.models.Log || mongoose.model("Log", LogSchema);
 export const UserModel =
   mongoose.models.User || mongoose.model("User", UserSchema);
 export const ProjectModel =
   mongoose.models.Project || mongoose.model("Project", ProjectSchema);
+export const ProjectDedicationModel =
+  mongoose.models.ProjectDedication ||
+  mongoose.model("ProjectDedication", ProjectDedicationSchema);

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   dateSchema,
+  dedicationPercentageSchema,
   logSchema,
   logsStatsSchema,
   mongoIdSchema,
@@ -23,10 +24,18 @@ export const paginationBodySchema = z
   })
   .strict();
 
+export const projectDedicationInputSchema = z
+  .object({
+    projectId: mongoIdSchema,
+    dedication: dedicationPercentageSchema,
+  })
+  .strict();
+
 export const logActivityBodySchema = z
   .object({
     type: logTypeEnumSchema,
     isMobile: z.boolean(),
+    projectDedications: z.array(projectDedicationInputSchema).default([]),
   })
   .strict();
 
@@ -53,6 +62,7 @@ export const manualLogsBodySchema = z
     startHour: hhmmSchema,
     endHour: hhmmSchema,
     pauses: z.array(manualPauseSchema).default([]),
+    projectDedications: z.array(projectDedicationInputSchema).default([]),
   })
   .strict();
 
@@ -67,6 +77,20 @@ export const myUserLogsResponseSchema = z.array(logSchema);
 export const myUserStatsResponseSchema = userStatsSchema;
 
 export const removeLastLogResponseSchema = logSchema;
+
+export const myProjectDedicationProjectSchema = z
+  .object({
+    _id: mongoIdSchema,
+    name: z.string().min(1),
+  })
+  .strict();
+
+export const myProjectDedicationsResponseSchema = z
+  .object({
+    projects: z.array(myProjectDedicationProjectSchema),
+    existingDedications: z.array(projectDedicationInputSchema).default([]),
+  })
+  .strict();
 
 export const setLegalResponseSchema = z.literal("OK");
 
@@ -202,6 +226,7 @@ export type LogActivityBody = z.infer<typeof logActivityBodySchema>;
 export type LogDoctorFileBody = z.infer<typeof logDoctorFileBodySchema>;
 export type ManualLogsBody = z.infer<typeof manualLogsBodySchema>;
 export type MyUserLogsBody = z.infer<typeof myUserLogsBodySchema>;
+export type ProjectDedicationInput = z.infer<typeof projectDedicationInputSchema>;
 export type WorkerLogsBody = z.infer<typeof workerLogsBodySchema>;
 export type WorkerStatsBody = z.infer<typeof workerStatsBodySchema>;
 export type UploadUrlQuery = z.infer<typeof uploadUrlQuerySchema>;
@@ -211,6 +236,7 @@ export type LogDoctorFileResponse = z.infer<typeof logDoctorFileResponseSchema>;
 export type ManualLogsResponse = z.infer<typeof manualLogsResponseSchema>;
 export type MeResponse = z.infer<typeof meResponseSchema>;
 export type MyUserLogsResponse = z.infer<typeof myUserLogsResponseSchema>;
+export type MyProjectDedicationsResponse = z.infer<typeof myProjectDedicationsResponseSchema>;
 export type MyUserStatsResponse = z.infer<typeof myUserStatsResponseSchema>;
 export type RemoveLastLogResponse = z.infer<typeof removeLastLogResponseSchema>;
 export type SetLegalResponse = z.infer<typeof setLegalResponseSchema>;

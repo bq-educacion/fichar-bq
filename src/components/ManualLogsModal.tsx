@@ -1,8 +1,16 @@
 import { dateToTimeInputValue, validateManualHoursRange } from "@/lib/utils";
-import type { ManualLogsBody } from "@/schemas/api";
+import {
+  myProjectDedicationsResponseSchema,
+  ProjectDedicationInput,
+  type ManualLogsBody,
+} from "@/schemas/api";
 import styled from "@emotion/styled";
 import React, { FC, useEffect, useState } from "react";
 import Modal from "react-modal";
+import ProjectDedicationsPicker, {
+  ProjectDedicationOption,
+  buildDefaultProjectDedications,
+} from "./ProjectDedicationsPicker";
 
 export type ManualLogsData = ManualLogsBody;
 
@@ -17,9 +25,24 @@ const ManualLogsModal: FC<{
   const [endHour, setEndHour] = useState(getCurrentBrowserHour);
   const [pauses, setPauses] = useState<{ id: string; start: string; end: string }[]>([]);
   const [currentTimeLimit, setCurrentTimeLimit] = useState(getCurrentBrowserHour);
+  const [projects, setProjects] = useState<ProjectDedicationOption[]>([]);
+  const [projectDedications, setProjectDedications] = useState<ProjectDedicationInput[]>([]);
+  const [dedicationsLoading, setDedicationsLoading] = useState(false);
+  const [dedicationsError, setDedicationsError] = useState("");
 
   const validation = validateManualHoursRange(startHour, endHour);
   const validationError = validation.isValid ? null : validation.error;
+  const dedicationTotal = projectDedications.reduce(
+    (acc, item) => acc + item.dedication,
+    0
+  );
+  const dedicationRemaining = 100 - dedicationTotal;
+  const dedicationValidationError =
+    projects.length > 0 && dedicationRemaining !== 0
+      ? dedicationRemaining > 0
+        ? `Te falta asignar ${dedicationRemaining}% de dedicación`
+        : `Te has pasado ${Math.abs(dedicationRemaining)}% de dedicación`
+      : null;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -32,7 +55,54 @@ const ManualLogsModal: FC<{
       setCurrentTimeLimit(dateToTimeInputValue(new Date()));
     }, 30000);
 
-    return () => clearInterval(interval);
+    let isCancelled = false;
+    const fetchProjectDedications = async () => {
+      setDedicationsLoading(true);
+      setDedicationsError("");
+      try {
+        const res = await fetch("/api/myProjectDedications");
+        if (!res.ok) {
+          throw new Error(
+            (await res.text()) || "No se pudieron cargar los proyectos"
+          );
+        }
+
+        const payload = myProjectDedicationsResponseSchema.parse(await res.json());
+        if (isCancelled) {
+          return;
+        }
+
+        setProjects(payload.projects);
+        setProjectDedications(
+          buildDefaultProjectDedications(
+            payload.projects,
+            payload.existingDedications
+          )
+        );
+      } catch (err) {
+        if (isCancelled) {
+          return;
+        }
+        setDedicationsError(
+          err instanceof Error
+            ? err.message.replace(/^Bad Request:\s*/i, "")
+            : "No se pudieron cargar los proyectos"
+        );
+        setProjects([]);
+        setProjectDedications([]);
+      } finally {
+        if (!isCancelled) {
+          setDedicationsLoading(false);
+        }
+      }
+    };
+
+    fetchProjectDedications();
+
+    return () => {
+      isCancelled = true;
+      clearInterval(interval);
+    };
   }, [isOpen]);
 
   const addPause = () => {
@@ -54,8 +124,13 @@ const ManualLogsModal: FC<{
   };
 
   const handleSubmit = () => {
-    if (validationError) return;
-    onSubmit({ startHour, endHour, pauses: pauses.map(({ start, end }) => ({ start, end })) });
+    if (validationError || dedicationValidationError || dedicationsError) return;
+    onSubmit({
+      startHour,
+      endHour,
+      pauses: pauses.map(({ start, end }) => ({ start, end })),
+      projectDedications,
+    });
   };
 
   return (
@@ -109,11 +184,33 @@ const ManualLogsModal: FC<{
           />
         </FieldGroup>
 
+        {dedicationsLoading ? (
+          <LoadingText>Cargando proyectos...</LoadingText>
+        ) : (
+          <ProjectDedicationsPicker
+            projects={projects}
+            value={projectDedications}
+            onChange={setProjectDedications}
+          />
+        )}
+
         {validationError && <ValidationError>{validationError}</ValidationError>}
+        {dedicationValidationError && (
+          <ValidationError>{dedicationValidationError}</ValidationError>
+        )}
+        {dedicationsError && <ValidationError>{dedicationsError}</ValidationError>}
 
         <ButtonRow>
           <CancelButton onClick={onClose}>Cancelar</CancelButton>
-          <SubmitButton onClick={handleSubmit} disabled={!!validationError}>
+          <SubmitButton
+            onClick={handleSubmit}
+            disabled={
+              !!validationError ||
+              !!dedicationValidationError ||
+              !!dedicationsError ||
+              dedicationsLoading
+            }
+          >
             Guardar
           </SubmitButton>
         </ButtonRow>
@@ -266,6 +363,11 @@ const ValidationError = styled.p`
   margin: 0;
   color: #e4002b;
   font-size: 13px;
+`;
+
+const LoadingText = styled.div`
+  font-size: 14px;
+  color: #4e4f53;
 `;
 
 export default ManualLogsModal;

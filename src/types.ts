@@ -4,6 +4,7 @@ import {
   logSchema,
   logTypeEnumSchema,
   logsStatsSchema,
+  projectDedicationSchema,
   projectSchema,
   userSchema,
   userStatsSchema,
@@ -28,3 +29,4 @@ export type Log = z.infer<typeof logSchema>;
 export type UserStatus = z.infer<typeof userStatusSchema>;
 export type LogsStats = z.infer<typeof logsStatsSchema>;
 export type Project = z.infer<typeof projectSchema>;
+export type ProjectDedication = z.infer<typeof projectDedicationSchema>;

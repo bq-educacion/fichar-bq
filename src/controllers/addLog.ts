@@ -1,9 +1,14 @@
 import { LogModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
 import { parseWithSchema, toPlainObject } from "@/lib/validation";
+import { projectDedicationInputSchema } from "@/schemas/api";
 import { logCreateSchema, logSchema, logTypeEnumSchema } from "@/schemas/db";
 import { LOG_TYPE, Log } from "@/types";
 import { z } from "zod";
+import {
+  clearProjectDedicationsForToday,
+  saveProjectDedicationsForToday,
+} from "./projectDedications";
 import updateUserStatus from "./updateUserStatus";
 
 const addLogInputSchema = z
@@ -11,6 +16,7 @@ const addLogInputSchema = z
     email: z.string().email(),
     type: logTypeEnumSchema,
     isMobile: z.boolean(),
+    projectDedications: z.array(projectDedicationInputSchema).default([]),
   })
   .strict();
 
@@ -22,9 +28,19 @@ const createValidatedLog = async (data: z.input<typeof logCreateSchema>) => {
 const addLog = async (
   email: string,
   type: LOG_TYPE,
-  isMobile: boolean
+  isMobile: boolean,
+  projectDedications: z.infer<typeof projectDedicationInputSchema>[] = []
 ): Promise<Log> => {
-  const input = parseWithSchema(addLogInputSchema, { email, type, isMobile });
+  const input = parseWithSchema(addLogInputSchema, {
+    email,
+    type,
+    isMobile,
+    projectDedications,
+  });
+
+  if (input.type !== LOG_TYPE.out && input.projectDedications.length > 0) {
+    throw new Error("Bad Request");
+  }
 
   await connectMongo();
 
@@ -109,6 +125,7 @@ const addLog = async (
       user: input.email,
     });
 
+    await clearProjectDedicationsForToday(input.email);
     await updateUserStatus(input.email);
     return parseWithSchema(logSchema, toPlainObject(log));
   }
@@ -134,6 +151,15 @@ const addLog = async (
     user: input.email,
     isMobile: input.isMobile,
   });
+
+  if (input.type === LOG_TYPE.out) {
+    try {
+      await saveProjectDedicationsForToday(input.email, input.projectDedications);
+    } catch (error) {
+      await LogModel.deleteOne({ _id: log._id }).exec();
+      throw error;
+    }
+  }
 
   await updateUserStatus(input.email);
   return parseWithSchema(logSchema, toPlainObject(log));

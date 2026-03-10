@@ -1,4 +1,5 @@
 import { LOG_TYPE } from "@/types";
+import { ProjectDedicationInput } from "@/schemas/api";
 import styled from "@emotion/styled";
 import React, { FC, useEffect, useState } from "react";
 import IconFork from "@/assets/icons/icon-fork-and-spoon.svg";
@@ -8,6 +9,7 @@ import { useRouter } from "next/router";
 import TimedButton from "../ui/TimedButton";
 import getMobileDetect from "@/lib/getmobileDetect";
 import ManualLogsModal, { ManualLogsData } from "./ManualLogsModal";
+import ProjectDedicationsModal from "./ProjectDedicationsModal";
 
 type UndoFeedbackState = "idle" | "loading" | "success" | "error";
 
@@ -16,6 +18,7 @@ const ThreeBoxAction: FC<{
 }> = ({ refreshStatus }) => {
   const router = useRouter();
   const [manualModalOpen, setManualModalOpen] = useState(false);
+  const [dedicationModalOpen, setDedicationModalOpen] = useState(false);
   const [undoState, setUndoState] = useState<UndoFeedbackState>("idle");
   const [undoMessage, setUndoMessage] = useState("");
 
@@ -30,16 +33,31 @@ const ThreeBoxAction: FC<{
     return () => clearTimeout(timeout);
   }, [undoState]);
 
-  const logActivity = async (type: LOG_TYPE) => {
+  const logActivity = async (
+    type: LOG_TYPE,
+    projectDedications: ProjectDedicationInput[] = []
+  ) => {
     const device = getMobileDetect();
-    const res = await fetch("/api/logActivity", {
+    return await fetch("/api/logActivity", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ type, isMobile: device.isMobile }),
+      body: JSON.stringify({ type, isMobile: device.isMobile, projectDedications }),
     });
-    if (res.status !== 200) router.push("/login");
+  };
+
+  const submitOutDedications = async (dedications: ProjectDedicationInput[]) => {
+    const res = await logActivity(LOG_TYPE.out, dedications);
+    if (res.status === 401) {
+      router.push("/login");
+      return;
+    }
+    if (res.status !== 200) {
+      throw new Error((await res.text()) || "No se pudo registrar la salida");
+    }
+    setDedicationModalOpen(false);
+    refreshStatus();
   };
 
   const submitManualLogs = async (data: ManualLogsData) => {
@@ -134,6 +152,11 @@ const ThreeBoxAction: FC<{
         onClose={() => setManualModalOpen(false)}
         onSubmit={submitManualLogs}
       />
+      <ProjectDedicationsModal
+        isOpen={dedicationModalOpen}
+        onClose={() => setDedicationModalOpen(false)}
+        onSubmit={submitOutDedications}
+      />
       <Container>
         {boxes.map((box, index) => (
           <Box key={index} background={box.background}>
@@ -149,8 +172,17 @@ const ThreeBoxAction: FC<{
               onClick={async () => {
                 if (box.openModal) {
                   setManualModalOpen(true);
+                } else if (box.action === LOG_TYPE.out) {
+                  setDedicationModalOpen(true);
                 } else {
-                  await logActivity(box.action);
+                  const res = await logActivity(box.action);
+                  if (res.status === 401) {
+                    router.push("/login");
+                    return;
+                  }
+                  if (res.status !== 200) {
+                    return;
+                  }
                   refreshStatus();
                 }
               }}
