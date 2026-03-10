@@ -1,8 +1,10 @@
 import { z } from "zod";
 import {
+  dateSchema,
   logSchema,
   logsStatsSchema,
   mongoIdSchema,
+  projectSchema,
   userSchema,
   userStatsSchema,
   userStatusSchema,
@@ -125,6 +127,52 @@ export const authGoogleProfileSchema = z
   })
   .strict();
 
+const adminProjectFieldsObjectSchema = z
+  .object({
+    name: z.string().min(1),
+    startDate: dateSchema,
+    endData: dateSchema,
+    user: z.array(mongoIdSchema).default([]),
+  })
+  .strict();
+
+const adminProjectFieldsSchema = adminProjectFieldsObjectSchema
+  .refine((project) => project.endData >= project.startDate, {
+    message: "endData must be greater than or equal to startDate",
+    path: ["endData"],
+  });
+
+export const adminProjectCreateBodySchema = adminProjectFieldsSchema;
+
+export const adminProjectUpdateBodySchema = adminProjectFieldsObjectSchema
+  .extend({
+    _id: mongoIdSchema,
+  })
+  .strict()
+  .refine((project) => project.endData >= project.startDate, {
+    message: "endData must be greater than or equal to startDate",
+    path: ["endData"],
+  });
+
+export const adminProjectDeleteBodySchema = z
+  .object({
+    _id: mongoIdSchema,
+  })
+  .strict();
+
+export const adminProjectResponseSchema = projectSchema;
+export const adminProjectsResponseSchema = z.array(projectSchema);
+
+export const adminUserOptionSchema = z
+  .object({
+    _id: mongoIdSchema,
+    email: z.string().email(),
+    name: z.string().default(""),
+  })
+  .strict();
+
+export const adminUsersResponseSchema = z.array(adminUserOptionSchema);
+
 export type PaginationBody = z.infer<typeof paginationBodySchema>;
 export type LogActivityBody = z.infer<typeof logActivityBodySchema>;
 export type LogDoctorFileBody = z.infer<typeof logDoctorFileBodySchema>;
@@ -148,3 +196,10 @@ export type UserTodayResponse = z.infer<typeof userTodayResponseSchema>;
 export type WorkerLogsResponse = z.infer<typeof workerLogsResponseSchema>;
 export type WorkerStatsResponse = z.infer<typeof workerStatsResponseSchema>;
 export type AllUsersStatusResponse = z.infer<typeof allUsersStatusResponseSchema>;
+export type AdminProjectCreateBody = z.infer<typeof adminProjectCreateBodySchema>;
+export type AdminProjectUpdateBody = z.infer<typeof adminProjectUpdateBodySchema>;
+export type AdminProjectDeleteBody = z.infer<typeof adminProjectDeleteBodySchema>;
+export type AdminProjectResponse = z.infer<typeof adminProjectResponseSchema>;
+export type AdminProjectsResponse = z.infer<typeof adminProjectsResponseSchema>;
+export type AdminUserOption = z.infer<typeof adminUserOptionSchema>;
+export type AdminUsersResponse = z.infer<typeof adminUsersResponseSchema>;

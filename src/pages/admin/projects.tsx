@@ -1,0 +1,673 @@
+import getUserByEmail from "@/controllers/getUser";
+import connectMongo from "@/lib/connectMongo";
+import { AdminProjectsResponse, AdminUsersResponse, adminProjectsResponseSchema, adminUsersResponseSchema } from "@/schemas/api";
+import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import AdminSectionTabs from "@/components/AdminSectionTabs";
+import SimpleContainer from "@/ui/SimpleContainer";
+import styled from "@emotion/styled";
+import { GetServerSideProps, NextPage } from "next";
+import { getServerSession } from "next-auth";
+import { useRouter } from "next/router";
+import React, { useEffect, useMemo, useState } from "react";
+
+const toInputDate = (date: Date): string => {
+  const yyyy = date.getFullYear();
+  const mm = `${date.getMonth() + 1}`.padStart(2, "0");
+  const dd = `${date.getDate()}`.padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const todayInput = () => toInputDate(new Date());
+
+type ProjectFormState = {
+  name: string;
+  startDate: string;
+  endData: string;
+  user: string[];
+};
+
+const initialFormState = (): ProjectFormState => ({
+  name: "",
+  startDate: todayInput(),
+  endData: todayInput(),
+  user: [],
+});
+
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const session = await getServerSession(context.req, context.res, authOptions);
+
+  if (!session?.user?.email) {
+    return {
+      redirect: {
+        destination: "/login",
+        permanent: false,
+      },
+    };
+  }
+
+  await connectMongo();
+
+  const user = await getUserByEmail(session.user.email);
+  if (!user.legal) {
+    return {
+      redirect: {
+        destination: "/legal",
+        permanent: false,
+      },
+    };
+  }
+
+  if (!user.admin) {
+    return {
+      redirect: {
+        destination: "/",
+        permanent: false,
+      },
+    };
+  }
+
+  return {
+    props: {
+      session,
+    },
+  };
+};
+
+const AdminProjectsPage: NextPage = () => {
+  const router = useRouter();
+
+  const [projects, setProjects] = useState<AdminProjectsResponse>([]);
+  const [users, setUsers] = useState<AdminUsersResponse>([]);
+  const [form, setForm] = useState<ProjectFormState>(initialFormState);
+  const [selectedUserToAdd, setSelectedUserToAdd] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const userNameById = useMemo(
+    () =>
+      new Map(
+        users.map((user) => [user._id, user.name.trim() || user.email] as const)
+      ),
+    [users]
+  );
+
+  const availableUsers = useMemo(
+    () => users.filter((user) => !form.user.includes(user._id)),
+    [users, form.user]
+  );
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError("");
+
+      try {
+        const [projectsRes, usersRes] = await Promise.all([
+          fetch("/api/admin/projects"),
+          fetch("/api/admin/users"),
+        ]);
+
+        if (projectsRes.status === 401 || usersRes.status === 401) {
+          router.push("/login");
+          return;
+        }
+
+        if (projectsRes.status === 403 || usersRes.status === 403) {
+          router.push("/");
+          return;
+        }
+
+        if (!projectsRes.ok || !usersRes.ok) {
+          const projectsError = !projectsRes.ok ? await projectsRes.text() : "";
+          const usersError = !usersRes.ok ? await usersRes.text() : "";
+          throw new Error(projectsError || usersError || "No se pudo cargar administración");
+        }
+
+        const projectsData = adminProjectsResponseSchema.parse(
+          await projectsRes.json()
+        );
+        const usersData = adminUsersResponseSchema.parse(await usersRes.json());
+
+        setProjects(projectsData);
+        setUsers(usersData);
+      } catch (err) {
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError("No se pudo cargar administración");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [router]);
+
+  const resetForm = () => {
+    setForm(initialFormState());
+    setEditingId(null);
+    setSelectedUserToAdd("");
+  };
+
+  const onAddUserToProject = () => {
+    if (!selectedUserToAdd) {
+      return;
+    }
+
+    setForm((prev) => {
+      if (prev.user.includes(selectedUserToAdd)) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        user: [...prev.user, selectedUserToAdd],
+      };
+    });
+
+    setSelectedUserToAdd("");
+  };
+
+  const onRemoveUserFromProject = (userId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      user: prev.user.filter((id) => id !== userId),
+    }));
+  };
+
+  const onSubmit = async () => {
+    setSaving(true);
+    setError("");
+
+    try {
+      const payload = {
+        name: form.name.trim(),
+        startDate: form.startDate,
+        endData: form.endData,
+        user: form.user,
+      };
+
+      const isEditing = Boolean(editingId);
+
+      const res = await fetch("/api/admin/projects", {
+        method: isEditing ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(
+          isEditing
+            ? {
+                ...payload,
+                _id: editingId,
+              }
+            : payload
+        ),
+      });
+
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+
+      if (res.status === 403) {
+        router.push("/");
+        return;
+      }
+
+      if (!res.ok) {
+        throw new Error((await res.text()) || "No se pudo guardar el proyecto");
+      }
+
+      const refreshedProjects = adminProjectsResponseSchema.parse(
+        await (await fetch("/api/admin/projects")).json()
+      );
+      setProjects(refreshedProjects);
+      resetForm();
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("No se pudo guardar el proyecto");
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onEdit = (projectId: string) => {
+    const project = projects.find((item) => item._id === projectId);
+    if (!project) {
+      return;
+    }
+
+    setEditingId(project._id);
+    setForm({
+      name: project.name,
+      startDate: toInputDate(project.startDate),
+      endData: toInputDate(project.endData),
+      user: [...project.user],
+    });
+  };
+
+  const onDelete = async (projectId: string) => {
+    const confirmed = window.confirm("¿Eliminar este proyecto?");
+    if (!confirmed) {
+      return;
+    }
+
+    setError("");
+
+    try {
+      const res = await fetch("/api/admin/projects", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ _id: projectId }),
+      });
+
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+
+      if (res.status === 403) {
+        router.push("/");
+        return;
+      }
+
+      if (!res.ok) {
+        throw new Error((await res.text()) || "No se pudo eliminar el proyecto");
+      }
+
+      setProjects((prev) => prev.filter((project) => project._id !== projectId));
+
+      if (editingId === projectId) {
+        resetForm();
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("No se pudo eliminar el proyecto");
+      }
+    }
+  };
+
+  return (
+    <>
+      <AdminSectionTabs active="projects" />
+      <SimpleContainer
+        title="Administración · Proyectos"
+        textColor="#4e4f53"
+        fontSize="14px"
+        height="40px"
+        backgroundImage="linear-gradient(220deg, #eee, #eee)"
+      >
+        <Content>
+          <FormSection>
+            <SectionTitle>
+              {editingId ? "Editar proyecto" : "Nuevo proyecto"}
+            </SectionTitle>
+
+            <Field>
+              <Label>Nombre</Label>
+              <Input
+                value={form.name}
+                onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                placeholder="Nombre del proyecto"
+              />
+            </Field>
+
+            <Dates>
+              <Field>
+                <Label>Inicio</Label>
+                <Input
+                  type="date"
+                  value={form.startDate}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, startDate: e.target.value }))
+                  }
+                />
+              </Field>
+              <Field>
+                <Label>Fin</Label>
+                <Input
+                  type="date"
+                  value={form.endData}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, endData: e.target.value }))
+                  }
+                />
+              </Field>
+            </Dates>
+
+            <Field>
+              <Label>Usuarios del proyecto</Label>
+              <AddUserRow>
+                <Select
+                  value={selectedUserToAdd}
+                  onChange={(e) => setSelectedUserToAdd(e.target.value)}
+                >
+                  <option value="">Selecciona usuario</option>
+                  {availableUsers.map((user) => (
+                    <option key={user._id} value={user._id}>
+                      {(user.name || user.email).toLowerCase()}
+                    </option>
+                  ))}
+                </Select>
+                <SmallButton onClick={onAddUserToProject}>Añadir</SmallButton>
+              </AddUserRow>
+
+              <SelectedUsers>
+                {form.user.length === 0 ? (
+                  <EmptyText>Sin usuarios asignados</EmptyText>
+                ) : (
+                  form.user.map((userId) => (
+                    <UserChip key={userId}>
+                      <span>{(userNameById.get(userId) || userId).toLowerCase()}</span>
+                      <RemoveChipButton onClick={() => onRemoveUserFromProject(userId)}>
+                        ✕
+                      </RemoveChipButton>
+                    </UserChip>
+                  ))
+                )}
+              </SelectedUsers>
+            </Field>
+
+            <Actions>
+              <PrimaryButton onClick={onSubmit} disabled={saving}>
+                {saving
+                  ? "Guardando..."
+                  : editingId
+                    ? "Guardar cambios"
+                    : "Crear proyecto"}
+              </PrimaryButton>
+              {editingId && (
+                <SecondaryButton onClick={resetForm}>Cancelar edición</SecondaryButton>
+              )}
+            </Actions>
+
+            {error && <ErrorText>{error}</ErrorText>}
+          </FormSection>
+
+          <ListSection>
+            <SectionTitle>Proyectos</SectionTitle>
+
+            {loading ? (
+              <LoadingText>Cargando proyectos...</LoadingText>
+            ) : (
+              <ProjectsTable rows={Math.max(projects.length, 1)}>
+                <HeaderCell>Nombre</HeaderCell>
+                <HeaderCell>Inicio</HeaderCell>
+                <HeaderCell>Fin</HeaderCell>
+                <HeaderCell>Usuarios</HeaderCell>
+                <HeaderCell>Acciones</HeaderCell>
+
+                {projects.length === 0 ? (
+                  <EmptyRow>Sin proyectos todavía</EmptyRow>
+                ) : (
+                  projects.map((project) => (
+                    <React.Fragment key={project._id}>
+                      <Cell>{project.name}</Cell>
+                      <Cell>{toInputDate(project.startDate)}</Cell>
+                      <Cell>{toInputDate(project.endData)}</Cell>
+                      <Cell>
+                        {project.user.length === 0
+                          ? "-"
+                          : project.user
+                              .map((userId) => userNameById.get(userId) || userId)
+                              .join(", ")}
+                      </Cell>
+                      <Cell>
+                        <RowActions>
+                          <ActionButton onClick={() => onEdit(project._id)}>
+                            Editar
+                          </ActionButton>
+                          <ActionButton $danger onClick={() => onDelete(project._id)}>
+                            Eliminar
+                          </ActionButton>
+                        </RowActions>
+                      </Cell>
+                    </React.Fragment>
+                  ))
+                )}
+              </ProjectsTable>
+            )}
+          </ListSection>
+        </Content>
+      </SimpleContainer>
+      <br />
+      <br />
+    </>
+  );
+};
+
+const Content = styled.div`
+  width: 100%;
+  border-top: 2px solid #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const FormSection = styled.div`
+  background: #eee;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const ListSection = styled.div`
+  background: #eee;
+  padding: 0 0 1px 0;
+`;
+
+const SectionTitle = styled.div`
+  font-size: 14px;
+  font-weight: bold;
+  color: #4e4f53;
+`;
+
+const Field = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const Label = styled.label`
+  font-size: 12px;
+  font-weight: 600;
+  color: #4e4f53;
+  text-transform: uppercase;
+`;
+
+const Input = styled.input`
+  height: 38px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  padding: 0 10px;
+  font-size: 14px;
+  color: #4e4f53;
+  outline: none;
+
+  &:focus {
+    border-color: #8a4d92;
+  }
+`;
+
+const Dates = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+`;
+
+const AddUserRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+`;
+
+const Select = styled.select`
+  height: 38px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  padding: 0 10px;
+  font-size: 14px;
+  color: #4e4f53;
+`;
+
+const SmallButton = styled.button`
+  border: none;
+  border-radius: 4px;
+  height: 38px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: bold;
+  color: #fff;
+  cursor: pointer;
+  background-image: linear-gradient(256deg, #b68fbb, #ff5776);
+`;
+
+const SelectedUsers = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+`;
+
+const UserChip = styled.div`
+  height: 32px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 16px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #4e4f53;
+  font-size: 13px;
+`;
+
+const RemoveChipButton = styled.button`
+  border: none;
+  background: transparent;
+  color: #8a4d92;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+`;
+
+const EmptyText = styled.div`
+  font-size: 13px;
+  color: #8b8c90;
+`;
+
+const Actions = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const PrimaryButton = styled.button`
+  border: none;
+  border-radius: 4px;
+  height: 40px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #fff;
+  cursor: pointer;
+  background-image: linear-gradient(256deg, #b68fbb, #ff5776);
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: wait;
+  }
+`;
+
+const SecondaryButton = styled.button`
+  border: 1px solid #c9c9c9;
+  border-radius: 4px;
+  height: 40px;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #4e4f53;
+  cursor: pointer;
+  background: transparent;
+`;
+
+const ErrorText = styled.div`
+  font-size: 13px;
+  color: #b00020;
+  font-weight: 600;
+`;
+
+const LoadingText = styled.div`
+  padding: 16px;
+  color: #4e4f53;
+  font-size: 14px;
+`;
+
+const ProjectsTable = styled.div<{ rows: number }>`
+  width: 614px;
+  display: grid;
+  grid-template-columns: 1.8fr 0.9fr 0.9fr 2fr 1.2fr;
+  grid-template-rows: 45px ${(props) => `repeat(${props.rows}, minmax(44px, auto))`};
+  column-gap: 1px;
+  row-gap: 1px;
+  background-color: #fff;
+`;
+
+const HeaderCell = styled.div`
+  background: #eee;
+  color: #4e4f53;
+  font-size: 13px;
+  font-weight: bold;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+`;
+
+const Cell = styled.div`
+  background: #eee;
+  color: #4e4f53;
+  font-size: 13px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  word-break: break-word;
+`;
+
+const EmptyRow = styled.div`
+  grid-column: 1 / 6;
+  background: #eee;
+  color: #8b8c90;
+  font-size: 13px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+`;
+
+const RowActions = styled.div`
+  display: flex;
+  gap: 6px;
+`;
+
+const ActionButton = styled.button<{ $danger?: boolean }>`
+  border: 1px solid ${(props) => (props.$danger ? "#e4002b" : "#8a4d92")};
+  background: transparent;
+  color: ${(props) => (props.$danger ? "#e4002b" : "#8a4d92")};
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+`;
+
+export default AdminProjectsPage;

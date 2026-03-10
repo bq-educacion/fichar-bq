@@ -2,71 +2,98 @@ import React, { FC, useEffect, useState } from "react";
 import IconClock from "@/assets/icons/icon-clock.svg";
 import IconPalm from "@/assets/icons/icon-palm.svg";
 import IconTeam from "@/assets/icons/icon-team.svg";
+import IconBrainup from "@/assets/icons/icon-brainup.svg";
 import styled from "@emotion/styled";
 import Link from "next/link";
+import { useRouter } from "next/router";
 
 type MenuItems = {
   icon: React.ReactNode;
   text: string;
-  enabled: string;
-  link?: string;
+  link: string;
 };
 
 const Menu: FC = () => {
+  const router = useRouter();
+
+  const buildMenuItems = (flags: { isManager: boolean; admin: boolean }) => {
+    const items: MenuItems[] = [
+      {
+        icon: <IconClock />,
+        text: "Fichar",
+        link: "/",
+      },
+      {
+        icon: <IconTeam />,
+        text: "Compañeros",
+        link: "/colleagues",
+      },
+    ];
+
+    if (flags.isManager) {
+      items.push({
+        icon: <IconPalm />,
+        text: "Mi equipo",
+        link: "/manager",
+      });
+    }
+
+    if (flags.admin) {
+      items.push({
+        icon: <IconBrainup />,
+        text: "Admin",
+        link: "/admin/projects",
+      });
+    }
+
+    return items;
+  };
+
   useEffect(() => {
     const fetchUser = async () => {
       const response = await fetch(`/api/me`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({}),
+        method: "GET",
       });
-      const data = await response.json();
 
-      if (data.isManager) {
-        const newMenuItems = [...menuItems];
-        newMenuItems[2].enabled = "true";
-        setMenuItems(newMenuItems);
+      if (!response.ok) {
+        return;
       }
+
+      const data = await response.json();
+      setMenuItems(
+        buildMenuItems({
+          isManager: Boolean(data.isManager),
+          admin: Boolean(data.admin),
+        })
+      );
     };
     fetchUser();
   }, []);
 
-  const [selected, setSelected] = useState<number>(0);
-  const [menuItems, setMenuItems] = useState<MenuItems[]>([
-    {
-      icon: <IconClock />,
-      text: "Fichar",
-      enabled: "true",
-      link: "/",
-    },
-    {
-      icon: <IconTeam />,
-      text: "Compañeros",
-      enabled: "true",
-      link: "/colleagues",
-    },
-    {
-      icon: <IconPalm />,
-      text: "Mi equipo",
-      enabled: "false",
-      link: "/manager",
-    },
-  ]);
+  const [menuItems, setMenuItems] = useState<MenuItems[]>(
+    buildMenuItems({ isManager: false, admin: false })
+  );
+
+  const isSelected = (link: string) => {
+    if (link === "/manager") {
+      return router.pathname === "/manager" || router.pathname.startsWith("/worker/");
+    }
+
+    if (link === "/admin/projects") {
+      return router.pathname.startsWith("/admin");
+    }
+
+    return router.pathname === link;
+  };
+
   return (
     <MenuContainer>
       {menuItems.map((item, index) => (
         <MenuItem
           items={menuItems.length}
-          onClick={() => {
-            item.enabled === "true" && setSelected(index);
-          }}
-          href={item.enabled === "true" ? item.link! : ""}
-          //passHref={true}
+          href={item.link}
           key={index}
-          selected={index === selected}
-          enabled={item.enabled}
+          selected={isSelected(item.link)}
         >
           {item.icon}
           <div>{item.text}</div>
@@ -88,7 +115,6 @@ const MenuContainer = styled.div`
 
 const MenuItem = styled(Link)<{
   selected: boolean;
-  enabled: string;
   items: number;
 }>`
   display: flex;
@@ -97,7 +123,7 @@ const MenuItem = styled(Link)<{
   align-items: center;
   height: 50px;
   text-decoration: none;
-  cursor: ${(props) => (props.enabled === "true" ? "pointer" : "not-allowed")};
+  cursor: pointer;
   :first-of-type {
     border-top-left-radius: 10px;
   }

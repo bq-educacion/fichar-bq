@@ -13,24 +13,42 @@ const getAllActiveUsers = async () => {
     .exec();
 
   for (const user of users) {
+    let shouldSave = false;
+
+    // Backfill legacy docs that predate the `admin`/`isManager` fields.
+    if (typeof user.admin !== "boolean") {
+      user.admin = false;
+      shouldSave = true;
+    }
+
+    if (typeof user.isManager !== "boolean") {
+      user.isManager = false;
+      shouldSave = true;
+    }
+
     if (!user.status) {
       const status = await computeUserStatus(user.email);
       user.status = status;
-      await user.save();
+      shouldSave = true;
     }
 
     if (user.status.status === USER_STATUS.finished) {
       const status = await computeUserStatus(user.email);
       user.status = status;
-      await user.save();
+      shouldSave = true;
     }
 
     if (
       user.status.status !== USER_STATUS.finished &&
+      user.status.date &&
       user.status.date < new Date(new Date().setHours(0, 0, 0, 0))
     ) {
       const status = await computeUserStatus(user.email);
       user.status = status;
+      shouldSave = true;
+    }
+
+    if (shouldSave) {
       await user.save();
     }
   }

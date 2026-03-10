@@ -7,14 +7,14 @@ import { getServerSession } from "next-auth/next";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== "GET") {
-    res.status(405).send("Method Not Allowed");
+    res.status(405).json({ error: "Method Not Allowed" });
     return;
   }
 
   try {
     const session = await getServerSession(req, res, authOptions);
     if (!session || !session.user) {
-      res.status(401).send("Unauthorized");
+      res.status(401).json({ error: "Unauthorized" });
       return;
     }
 
@@ -34,11 +34,11 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     res.status(200).json(payload);
   } catch (error) {
     if (isZodError(error)) {
-      res.status(400).send(`Bad Request: ${formatZodError(error)}`);
+      res.status(400).json({ error: formatZodError(error) });
       return;
     }
 
-    res.status(500).end();
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 

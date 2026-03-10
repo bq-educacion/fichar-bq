@@ -3,7 +3,7 @@ import type { GetServerSideProps, NextPage } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { AllUsersStatusResponse } from "@/schemas/api";
 import React from "react";
 import Colleagues from "@/components/Colleagues";
@@ -44,18 +44,33 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 };
 
 const Home: NextPage<{}> = () => {
-  const getAllUsersStatus = async () => {
-    const res = await fetch("/api/allUsersStatus");
-    if (res.status !== 200) router.push("/login");
-    const data = await res.json();
-    setUsersStatus(data);
-  };
-
   const router = useRouter();
   const [usersStatus, setUsersStatus] = useState<AllUsersStatusResponse>([]);
+
+  const getAllUsersStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/allUsersStatus");
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+
+      if (!res.ok) {
+        const errorBody = await res.text();
+        console.error("Error fetching all users status:", errorBody);
+        return;
+      }
+
+      const data = (await res.json()) as AllUsersStatusResponse;
+      setUsersStatus(data);
+    } catch (error) {
+      console.error("Network error fetching all users status:", error);
+    }
+  }, [router]);
+
   useEffect(() => {
     getAllUsersStatus();
-  }, []);
+  }, [getAllUsersStatus]);
 
   // refetch every 60 seconds
   useEffect(() => {
@@ -63,7 +78,7 @@ const Home: NextPage<{}> = () => {
       getAllUsersStatus();
     }, 60 * 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [getAllUsersStatus]);
 
   const { data } = useSession({
     required: true,
