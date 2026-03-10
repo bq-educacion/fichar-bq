@@ -61,7 +61,7 @@ export const userSchema = z
     email: z.string().email(),
     active: z.boolean(),
     isManager: z.boolean(),
-    admin: z.boolean().default(false),
+    admin: z.boolean().optional().default(false),
     image: z.string().default(""),
     name: z.string().default(""),
     status: userStatusSchema,
@@ -78,7 +78,7 @@ export const userCreateSchema = z
     name: z.string().optional(),
     image: z.string().optional(),
     isManager: z.boolean().default(false),
-    admin: z.boolean().default(false),
+    admin: z.boolean().optional().default(false),
     status: userStatusSchema.optional(),
     legal: z.boolean().default(false),
   })

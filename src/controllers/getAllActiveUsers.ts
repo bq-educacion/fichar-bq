@@ -35,25 +35,7 @@ const getAllActiveUsers = async () => {
     }
   }
 
-  const plainUsers = toPlainObject(users);
-  if (!Array.isArray(plainUsers)) {
-    return [];
-  }
-
-  const validUsers = plainUsers.flatMap((candidate) => {
-    const parsed = userSchema.safeParse(candidate);
-    if (parsed.success) {
-      return [parsed.data];
-    }
-
-    console.warn(
-      "Skipping invalid user in getAllActiveUsers",
-      parsed.error.issues
-    );
-    return [];
-  });
-
-  return parseWithSchema(userSchema.array(), validUsers);
+  return parseWithSchema(userSchema.array(), toPlainObject(users));
 };
 
 export default getAllActiveUsers;
