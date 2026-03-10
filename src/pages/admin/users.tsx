@@ -83,6 +83,7 @@ const AdminUsersPage: NextPage = () => {
   const [error, setError] = useState("");
   const pendingSaveById = useRef<Record<string, AdminManagedUser | undefined>>({});
   const inFlightSaveById = useRef<Record<string, boolean>>({});
+  const usersByIdRef = useRef<Record<string, AdminManagedUser>>({});
 
   const managerOptions = useMemo(
     () => users.filter((user) => user.active && user.isManager),
@@ -104,6 +105,12 @@ const AdminUsersPage: NextPage = () => {
       ),
     [departments]
   );
+
+  useEffect(() => {
+    usersByIdRef.current = Object.fromEntries(
+      users.map((user) => [user._id, user] as const)
+    );
+  }, [users]);
 
   const persistUser = (nextUser: AdminManagedUser) => {
     pendingSaveById.current[nextUser._id] = nextUser;
@@ -157,8 +164,10 @@ const AdminUsersPage: NextPage = () => {
           const updatedUser = adminManagedUserSchema.parse(await res.json());
           if (!showAll && !updatedUser.active) {
             setUsers((prev) => prev.filter((item) => item._id !== userId));
+            delete usersByIdRef.current[userId];
             pendingSaveById.current[userId] = undefined;
           } else {
+            usersByIdRef.current[userId] = updatedUser;
             setUsers((prev) =>
               prev.map((item) => (item._id === userId ? updatedUser : item))
             );
@@ -257,20 +266,20 @@ const AdminUsersPage: NextPage = () => {
       Pick<AdminManagedUser, "admin" | "isManager" | "manager" | "active" | "department">
     >
   ) => {
-    let nextUser: AdminManagedUser | null = null;
-    setUsers((prev) =>
-      prev.map((user) => {
-        if (user._id !== userId) {
-          return user;
-        }
+    const currentUser = usersByIdRef.current[userId];
+    if (!currentUser) {
+      return;
+    }
 
-        const updatedUser: AdminManagedUser = {
-          ...user,
-          ...patch,
-        };
-        nextUser = updatedUser;
-        return updatedUser;
-      })
+    const nextUser: AdminManagedUser = {
+      ...currentUser,
+      ...patch,
+    };
+
+    usersByIdRef.current[userId] = nextUser;
+
+    setUsers((prev) =>
+      prev.map((user) => (user._id === userId ? nextUser : user))
     );
     setRowErrorById((prev) => {
       if (!prev[userId]) {
@@ -281,9 +290,7 @@ const AdminUsersPage: NextPage = () => {
       return next;
     });
 
-    if (nextUser) {
-      persistUser(nextUser);
-    }
+    persistUser(nextUser);
   };
 
   return (
