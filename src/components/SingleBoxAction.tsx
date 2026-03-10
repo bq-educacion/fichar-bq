@@ -57,6 +57,22 @@ const SingleBoxAction: FC<{
     if (res.status !== 200) router.push("/login");
   };
 
+  const removeLastLog = async () => {
+    const res = await fetch("/api/removeLastLog", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    if (res.status === 401) {
+      router.push("/login");
+      return;
+    }
+    if (res.status !== 200) return;
+
+    refreshStatus();
+  };
+
   useEffect(() => {
     const interval = setInterval(() => {
       setTime(new Date().getHours() + ":" + new Date().getMinutes());
@@ -76,7 +92,7 @@ const SingleBoxAction: FC<{
     if (status.status === USER_STATUS.not_started) {
       setOpenModal(true);
     }
-  }, []);
+  }, [status.status]);
 
   let background = "";
   let buttonbakground = "";
@@ -190,6 +206,10 @@ const SingleBoxAction: FC<{
           {"I'm back!"}
         </TimedButton>
       )}
+
+      {status.status !== USER_STATUS.not_started && (
+        <UndoButton onClick={removeLastLog}>Deshacer ultimo fichaje de hoy</UndoButton>
+      )}
     </Container>
   );
 };
@@ -245,6 +265,22 @@ const SubHeaderLine = styled.div`
   line-height: 1.43;
   color: #fff;
   text-transform: titlecase;
+`;
+
+const UndoButton = styled.button`
+  margin: -20px 0 30px 0;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: transparent;
+  color: #fff;
+  font-size: 13px;
+  font-weight: bold;
+  border-radius: 4px;
+  height: 36px;
+  padding: 0 12px;
+  cursor: pointer;
+  &:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
 `;
 
 const modalStyles = {

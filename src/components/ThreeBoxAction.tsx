@@ -44,6 +44,20 @@ const ThreeBoxAction: FC<{
     refreshStatus();
   };
 
+  const removeLastLog = async () => {
+    const res = await fetch("/api/removeLastLog", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (res.status === 401) {
+      router.push("/login");
+      return;
+    }
+    if (res.status !== 200) return;
+
+    refreshStatus();
+  };
+
   const boxes = [
     {
       background: "linear-gradient(220deg, #fe5000, #f6a001)",
@@ -114,6 +128,9 @@ const ThreeBoxAction: FC<{
           </Box>
         ))}
       </Container>
+      <UndoContainer>
+        <UndoButton onClick={removeLastLog}>Deshacer ultimo fichaje de hoy</UndoButton>
+      </UndoContainer>
     </>
   );
 };
@@ -125,8 +142,8 @@ const Container = styled.div`
   flex-direction: row;
   gap: 3px;
   margin-top: 1px;
-  border-bottom-left-radius: 5px;
-  border-bottom-right-radius: 5px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
   background-color: #eaeae9;
   padding: 10px 12px 10px 12px;
 `;
@@ -141,6 +158,31 @@ const Box = styled.div<{ background: string }>`
   border-radius: 3px;
   background-image: ${(props) => props.background};
   padding-bottom: 5px;
+`;
+
+const UndoContainer = styled.div`
+  width: 590px;
+  display: flex;
+  justify-content: flex-end;
+  background-color: #eaeae9;
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
+  padding: 0 12px 10px 12px;
+`;
+
+const UndoButton = styled.button`
+  border: 1px solid #434242;
+  border-radius: 4px;
+  background: transparent;
+  color: #434242;
+  font-size: 13px;
+  font-weight: bold;
+  height: 36px;
+  padding: 0 12px;
+  cursor: pointer;
+  &:hover {
+    background: #dfdfde;
+  }
 `;
 
 const Icon = styled.div<{ background: string }>`
