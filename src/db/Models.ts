@@ -86,6 +86,7 @@ const ProjectSchema = new mongoose.Schema(
 const DepartmentSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
+    costesGenerales: { type: Boolean, required: true, default: false },
   },
   {
     id: false,

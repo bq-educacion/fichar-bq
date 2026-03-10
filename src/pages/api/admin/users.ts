@@ -1,5 +1,5 @@
 import getUserByEmail from "@/controllers/getUser";
-import { DepartmentModel, UserModel } from "@/db/Models";
+import { DepartmentModel, ProjectModel, UserModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
 import {
   formatZodError,
@@ -70,10 +70,43 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const users = await UserModel.find(filter)
         .collation({ locale: "es" })
         .sort({ name: 1, email: 1 })
-        .select("_id email name")
+        .select("_id email name department")
         .exec();
 
-      const payload = parseWithSchema(adminUsersResponseSchema, toPlainObject(users));
+      const departmentIds = Array.from(
+        new Set(
+          users
+            .map((user) => user.department?.toString())
+            .filter((id): id is string => Boolean(id))
+        )
+      );
+
+      const generalCostDepartments = await DepartmentModel.find({
+        _id: { $in: departmentIds },
+        costesGenerales: true,
+      })
+        .select("_id")
+        .exec();
+      const generalCostDepartmentIds = new Set(
+        generalCostDepartments.map((department) => department._id.toString())
+      );
+
+      const payload = parseWithSchema(
+        adminUsersResponseSchema,
+        toPlainObject(
+          users.map((user) => {
+            const departmentId = user.department?.toString();
+            return {
+              _id: user._id,
+              email: user.email,
+              name: user.name,
+              department: departmentId ?? null,
+              departmentCostesGenerales:
+                departmentId ? generalCostDepartmentIds.has(departmentId) : false,
+            };
+          })
+        )
+      );
 
       res.status(200).json(payload);
       return;
@@ -134,14 +167,23 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       }
     }
 
+    let selectedDepartmentCostesGenerales = false;
+    let selectedDepartmentId: string | undefined;
     if (body.department) {
-      const departmentExists = await DepartmentModel.exists({
+      const selectedDepartment = await DepartmentModel.findOne({
         _id: body.department,
-      }).exec();
-      if (!departmentExists) {
+      })
+        .select("costesGenerales")
+        .exec();
+      if (!selectedDepartment) {
         res.status(400).send("El departamento seleccionado no existe");
         return;
       }
+
+      selectedDepartmentCostesGenerales = Boolean(selectedDepartment.costesGenerales);
+      selectedDepartmentId = body.department;
+    } else if (body.department === undefined && target.department) {
+      selectedDepartmentId = target.department.toString();
     }
 
     target.admin = body.admin;
@@ -161,6 +203,23 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     await target.save();
+
+    if (selectedDepartmentCostesGenerales) {
+      await ProjectModel.updateMany(
+        { user: target._id },
+        { $pull: { user: target._id } }
+      ).exec();
+    } else if (selectedDepartmentId) {
+      const department = await DepartmentModel.findById(selectedDepartmentId)
+        .select("costesGenerales")
+        .exec();
+      if (department?.costesGenerales) {
+        await ProjectModel.updateMany(
+          { user: target._id },
+          { $pull: { user: target._id } }
+        ).exec();
+      }
+    }
 
     const payload = parseWithSchema(
       adminManagedUserSchema,

@@ -1,5 +1,5 @@
 import getUserByEmail from "@/controllers/getUser";
-import { ProjectModel } from "@/db/Models";
+import { DepartmentModel, ProjectModel, UserModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
 import {
   formatZodError,
@@ -18,6 +18,49 @@ import {
 import { projectCreateSchema } from "@/schemas/db";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
+
+const ensureUsersCanBeAssignedToProjects = async (userIds: string[]) => {
+  if (userIds.length === 0) {
+    return;
+  }
+
+  const users = await UserModel.find({ _id: { $in: userIds } })
+    .select("_id department")
+    .exec();
+
+  const departmentIds = Array.from(
+    new Set(
+      users
+        .map((user) => user.department?.toString())
+        .filter((id): id is string => Boolean(id))
+    )
+  );
+
+  if (departmentIds.length === 0) {
+    return;
+  }
+
+  const generalCostDepartments = await DepartmentModel.find({
+    _id: { $in: departmentIds },
+    costesGenerales: true,
+  })
+    .select("_id")
+    .exec();
+  const blockedDepartmentIds = new Set(
+    generalCostDepartments.map((department) => department._id.toString())
+  );
+
+  const hasBlockedUser = users.some((user) => {
+    const departmentId = user.department?.toString();
+    return Boolean(departmentId && blockedDepartmentIds.has(departmentId));
+  });
+
+  if (hasBlockedUser) {
+    throw new Error(
+      "No puedes asignar usuarios de departamentos de costes generales a proyectos"
+    );
+  }
+};
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (!["GET", "POST", "PUT", "DELETE"].includes(req.method ?? "")) {
@@ -56,6 +99,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
     if (req.method === "POST") {
       const body = parseWithSchema(adminProjectCreateBodySchema, req.body);
+      await ensureUsersCanBeAssignedToProjects(body.user);
       const createPayload = parseWithSchema(projectCreateSchema, body);
 
       const created = await ProjectModel.create(createPayload);
@@ -70,6 +114,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
     if (req.method === "PUT") {
       const body = parseWithSchema(adminProjectUpdateBodySchema, req.body);
+      await ensureUsersCanBeAssignedToProjects(body.user);
       const updatePayload = parseWithSchema(projectCreateSchema, {
         name: body.name,
         startDate: body.startDate,
@@ -112,6 +157,11 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   } catch (error) {
     if (isZodError(error)) {
       res.status(400).send(`Bad Request: ${formatZodError(error)}`);
+      return;
+    }
+
+    if (error instanceof Error && error.message) {
+      res.status(400).send(error.message);
       return;
     }
 

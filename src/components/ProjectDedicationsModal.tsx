@@ -17,6 +17,7 @@ const ProjectDedicationsModal: FC<{
 }> = ({ isOpen, onClose, onSubmit }) => {
   const [projects, setProjects] = useState<ProjectDedicationOption[]>([]);
   const [dedications, setDedications] = useState<ProjectDedicationInput[]>([]);
+  const [showDedications, setShowDedications] = useState(true);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -37,6 +38,7 @@ const ProjectDedicationsModal: FC<{
         }
 
         const payload = myProjectDedicationsResponseSchema.parse(await res.json());
+        setShowDedications(payload.showDedications);
         setProjects(payload.projects);
         setDedications(
           buildDefaultProjectDedications(payload.projects, payload.existingDedications)
@@ -82,11 +84,18 @@ const ProjectDedicationsModal: FC<{
       <ModalContent>
         <Title>Dedicación a proyectos</Title>
         <Subtitle>
-          Antes de salir, indica el porcentaje dedicado a cada proyecto.
+          {showDedications
+            ? "Antes de salir, indica el porcentaje dedicado a cada proyecto."
+            : "Tu departamento no requiere registro de dedicaciones."}
         </Subtitle>
 
         {loading ? (
           <LoadingText>Cargando proyectos...</LoadingText>
+        ) : !showDedications ? (
+          <DisabledText>
+            Tu departamento está marcado como costes generales, no necesitas
+            registrar dedicaciones.
+          </DisabledText>
         ) : (
           <ProjectDedicationsPicker
             projects={projects}
@@ -150,6 +159,11 @@ const Subtitle = styled.p`
 `;
 
 const LoadingText = styled.div`
+  font-size: 14px;
+  color: #4e4f53;
+`;
+
+const DisabledText = styled.div`
   font-size: 14px;
   color: #4e4f53;
 `;

@@ -87,6 +87,7 @@ export const myProjectDedicationProjectSchema = z
 
 export const myProjectDedicationsResponseSchema = z
   .object({
+    showDedications: z.boolean().default(true),
     projects: z.array(myProjectDedicationProjectSchema),
     existingDedications: z.array(projectDedicationInputSchema).default([]),
   })
@@ -190,6 +191,7 @@ export const adminProjectsResponseSchema = z.array(projectSchema);
 const adminDepartmentFieldsSchema = z
   .object({
     name: z.string().min(1),
+    costesGenerales: z.boolean().default(false),
   })
   .strict();
 
@@ -211,6 +213,7 @@ export const adminDepartmentOptionSchema = z
   .object({
     _id: mongoIdSchema,
     name: z.string().min(1),
+    costesGenerales: z.boolean().default(false),
   })
   .strict();
 
@@ -238,6 +241,8 @@ export const adminUserOptionSchema = z
     _id: mongoIdSchema,
     email: z.string().email(),
     name: z.string().default(""),
+    department: mongoIdSchema.nullable().optional(),
+    departmentCostesGenerales: z.boolean().default(false),
   })
   .strict();
 

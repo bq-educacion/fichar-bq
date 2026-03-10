@@ -105,7 +105,10 @@ const AdminProjectsPage: NextPage = () => {
   );
 
   const availableUsers = useMemo(
-    () => users.filter((user) => !form.user.includes(user._id)),
+    () =>
+      users.filter(
+        (user) => !user.departmentCostesGenerales && !form.user.includes(user._id)
+      ),
     [users, form.user]
   );
 
@@ -178,6 +181,15 @@ const AdminProjectsPage: NextPage = () => {
 
   const onAddUserToProject = () => {
     if (!selectedUserToAdd) {
+      return;
+    }
+
+    const selectedUser = users.find((user) => user._id === selectedUserToAdd);
+    if (selectedUser?.departmentCostesGenerales) {
+      setError(
+        "No puedes asignar a proyectos usuarios de departamentos de costes generales"
+      );
+      setSelectedUserToAdd("");
       return;
     }
 
@@ -372,6 +384,10 @@ const AdminProjectsPage: NextPage = () => {
 
             <Field>
               <Label>Usuarios del proyecto</Label>
+              <HelperText>
+                Solo se pueden asignar usuarios que no pertenezcan a departamentos de
+                costes generales.
+              </HelperText>
               <AddUserRow>
                 <Select
                   value={selectedUserToAdd}
@@ -536,6 +552,11 @@ const Field = styled.div`
   display: flex;
   flex-direction: column;
   gap: 6px;
+`;
+
+const HelperText = styled.div`
+  font-size: 12px;
+  color: #6d6e72;
 `;
 
 const Label = styled.label`

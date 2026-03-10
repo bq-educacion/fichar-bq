@@ -17,10 +17,12 @@ const ADMIN_PANEL_MAX_WIDTH = "980px";
 
 type DepartmentFormState = {
   name: string;
+  costesGenerales: boolean;
 };
 
 const initialFormState = (): DepartmentFormState => ({
   name: "",
+  costesGenerales: false,
 });
 
 const toCapitalizedWords = (value: string): string =>
@@ -131,6 +133,7 @@ const AdminDepartmentsPage: NextPage = () => {
     try {
       const payload = {
         name: form.name.trim(),
+        costesGenerales: form.costesGenerales,
       };
       const isEditing = Boolean(editingId);
 
@@ -188,6 +191,7 @@ const AdminDepartmentsPage: NextPage = () => {
     setEditingId(department._id);
     setForm({
       name: department.name,
+      costesGenerales: department.costesGenerales,
     });
   };
 
@@ -262,6 +266,23 @@ const AdminDepartmentsPage: NextPage = () => {
               />
             </Field>
 
+            <CheckboxRow>
+              <Checkbox
+                id="costes-generales"
+                type="checkbox"
+                checked={form.costesGenerales}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    costesGenerales: event.target.checked,
+                  }))
+                }
+              />
+              <CheckboxLabel htmlFor="costes-generales">
+                Costes generales
+              </CheckboxLabel>
+            </CheckboxRow>
+
             <Actions>
               <PrimaryButton onClick={onSubmit} disabled={saving}>
                 {saving
@@ -292,6 +313,7 @@ const AdminDepartmentsPage: NextPage = () => {
               <TableScroll>
                 <DepartmentsTable rows={Math.max(departments.length, 1)}>
                   <HeaderCell>Nombre</HeaderCell>
+                  <HeaderCell>Costes generales</HeaderCell>
                   <HeaderCell>Personas</HeaderCell>
                   <HeaderCell>Acciones</HeaderCell>
 
@@ -301,6 +323,7 @@ const AdminDepartmentsPage: NextPage = () => {
                     departments.map((department) => (
                       <React.Fragment key={department._id}>
                         <Cell>{department.name}</Cell>
+                        <Cell>{department.costesGenerales ? "Sí" : "No"}</Cell>
                         <Cell>
                           {department.people.length === 0
                             ? "-"
@@ -413,6 +436,23 @@ const Input = styled.input`
   }
 `;
 
+const CheckboxRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const Checkbox = styled.input`
+  width: 16px;
+  height: 16px;
+`;
+
+const CheckboxLabel = styled.label`
+  font-size: 14px;
+  color: #4e4f53;
+  font-weight: 600;
+`;
+
 const Actions = styled.div`
   display: flex;
   gap: 8px;
@@ -469,7 +509,7 @@ const DepartmentsTable = styled.div<{ rows: number }>`
   width: 100%;
   min-width: 860px;
   display: grid;
-  grid-template-columns: 1fr 2.2fr 1fr;
+  grid-template-columns: 1fr 1fr 2fr 1fr;
   grid-template-rows: 45px ${(props) => `repeat(${props.rows}, minmax(44px, auto))`};
   column-gap: 1px;
   row-gap: 1px;
@@ -497,7 +537,7 @@ const Cell = styled.div`
 `;
 
 const EmptyRow = styled.div`
-  grid-column: 1 / 4;
+  grid-column: 1 / 5;
   background: #eee;
   color: #8b8c90;
   font-size: 13px;

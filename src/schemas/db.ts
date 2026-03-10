@@ -151,12 +151,14 @@ export const departmentSchema = z
   .object({
     _id: mongoIdLikeSchema,
     name: z.string().min(1),
+    costesGenerales: z.boolean().default(false),
   })
   .strict();
 
 export const departmentCreateSchema = z
   .object({
     name: z.string().min(1),
+    costesGenerales: z.boolean().default(false),
   })
   .strict();
 

@@ -1,5 +1,8 @@
 import { LOG_TYPE } from "@/types";
-import { ProjectDedicationInput } from "@/schemas/api";
+import {
+  myProjectDedicationsResponseSchema,
+  ProjectDedicationInput,
+} from "@/schemas/api";
 import styled from "@emotion/styled";
 import React, { FC, useEffect, useState } from "react";
 import IconFork from "@/assets/icons/icon-fork-and-spoon.svg";
@@ -58,6 +61,57 @@ const ThreeBoxAction: FC<{
     }
     setDedicationModalOpen(false);
     refreshStatus();
+  };
+
+  const onOutAction = async () => {
+    try {
+      const optionsRes = await fetch("/api/myProjectDedications");
+      if (optionsRes.status === 401) {
+        router.push("/login");
+        return;
+      }
+
+      if (!optionsRes.ok) {
+        const fallbackRes = await logActivity(LOG_TYPE.out, []);
+        if (fallbackRes.status === 401) {
+          router.push("/login");
+          return;
+        }
+        if (fallbackRes.status !== 200) {
+          return;
+        }
+        refreshStatus();
+        return;
+      }
+
+      const options = myProjectDedicationsResponseSchema.parse(
+        await optionsRes.json()
+      );
+      if (!options.showDedications) {
+        const res = await logActivity(LOG_TYPE.out, []);
+        if (res.status === 401) {
+          router.push("/login");
+          return;
+        }
+        if (res.status !== 200) {
+          return;
+        }
+        refreshStatus();
+        return;
+      }
+
+      setDedicationModalOpen(true);
+    } catch {
+      const res = await logActivity(LOG_TYPE.out, []);
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+      if (res.status !== 200) {
+        return;
+      }
+      refreshStatus();
+    }
   };
 
   const submitManualLogs = async (data: ManualLogsData) => {
@@ -173,7 +227,7 @@ const ThreeBoxAction: FC<{
                 if (box.openModal) {
                   setManualModalOpen(true);
                 } else if (box.action === LOG_TYPE.out) {
-                  setDedicationModalOpen(true);
+                  await onOutAction();
                 } else {
                   const res = await logActivity(box.action);
                   if (res.status === 401) {

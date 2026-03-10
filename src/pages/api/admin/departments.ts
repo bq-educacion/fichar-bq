@@ -1,5 +1,5 @@
 import getUserByEmail from "@/controllers/getUser";
-import { DepartmentModel, UserModel } from "@/db/Models";
+import { DepartmentModel, ProjectModel, UserModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
 import {
   formatZodError,
@@ -98,6 +98,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const body = parseWithSchema(adminDepartmentCreateBodySchema, req.body);
       const createPayload = parseWithSchema(departmentCreateSchema, {
         name: normalizeName(body.name),
+        costesGenerales: body.costesGenerales,
       });
 
       const created = await DepartmentModel.create(createPayload);
@@ -118,6 +119,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const body = parseWithSchema(adminDepartmentUpdateBodySchema, req.body);
       const updatePayload = parseWithSchema(departmentCreateSchema, {
         name: normalizeName(body.name),
+        costesGenerales: body.costesGenerales,
       });
 
       const updated = await DepartmentModel.findByIdAndUpdate(body._id, updatePayload, {
@@ -133,6 +135,20 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         adminDepartmentOptionSchema,
         toPlainObject(updated)
       );
+
+      if (updatedOption.costesGenerales) {
+        const userIds = await UserModel.find({ department: updatedOption._id })
+          .select("_id")
+          .exec();
+        const ids = userIds.map((user) => user._id);
+        if (ids.length > 0) {
+          await ProjectModel.updateMany(
+            { user: { $in: ids } },
+            { $pull: { user: { $in: ids } } }
+          ).exec();
+        }
+      }
+
       const department = parseWithSchema(adminDepartmentResponseSchema, {
         ...updatedOption,
         people: [],

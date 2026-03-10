@@ -27,6 +27,7 @@ const ManualLogsModal: FC<{
   const [currentTimeLimit, setCurrentTimeLimit] = useState(getCurrentBrowserHour);
   const [projects, setProjects] = useState<ProjectDedicationOption[]>([]);
   const [projectDedications, setProjectDedications] = useState<ProjectDedicationInput[]>([]);
+  const [showDedications, setShowDedications] = useState(true);
   const [dedicationsLoading, setDedicationsLoading] = useState(false);
   const [dedicationsError, setDedicationsError] = useState("");
 
@@ -38,7 +39,7 @@ const ManualLogsModal: FC<{
   );
   const dedicationRemaining = 100 - dedicationTotal;
   const dedicationValidationError =
-    projects.length > 0 && dedicationRemaining !== 0
+    showDedications && projects.length > 0 && dedicationRemaining !== 0
       ? dedicationRemaining > 0
         ? `Te falta asignar ${dedicationRemaining}% de dedicación`
         : `Te has pasado ${Math.abs(dedicationRemaining)}% de dedicación`
@@ -72,6 +73,7 @@ const ManualLogsModal: FC<{
           return;
         }
 
+        setShowDedications(payload.showDedications);
         setProjects(payload.projects);
         setProjectDedications(
           buildDefaultProjectDedications(
@@ -124,12 +126,19 @@ const ManualLogsModal: FC<{
   };
 
   const handleSubmit = () => {
-    if (validationError || dedicationValidationError || dedicationsError) return;
+    if (
+      validationError ||
+      dedicationValidationError ||
+      (showDedications && dedicationsError)
+    ) {
+      return;
+    }
+
     onSubmit({
       startHour,
       endHour,
       pauses: pauses.map(({ start, end }) => ({ start, end })),
-      projectDedications,
+      projectDedications: showDedications ? projectDedications : [],
     });
   };
 
@@ -141,7 +150,7 @@ const ManualLogsModal: FC<{
           <Subtitle>Introduce las horas de tu jornada de hoy</Subtitle>
         </Header>
 
-        <Columns>
+        <Columns $singleColumn={!showDedications}>
           <Section>
             <SectionTitle>Fichaje</SectionTitle>
             <FieldGroup>
@@ -192,23 +201,25 @@ const ManualLogsModal: FC<{
             {validationError && <ValidationError>{validationError}</ValidationError>}
           </Section>
 
-          <Section>
-            <SectionTitle>Dedicaciones</SectionTitle>
-            {dedicationsLoading ? (
-              <LoadingText>Cargando proyectos...</LoadingText>
-            ) : (
-              <ProjectDedicationsPicker
-                projects={projects}
-                value={projectDedications}
-                onChange={setProjectDedications}
-              />
-            )}
+          {showDedications && (
+            <Section>
+              <SectionTitle>Dedicaciones</SectionTitle>
+              {dedicationsLoading ? (
+                <LoadingText>Cargando proyectos...</LoadingText>
+              ) : (
+                <ProjectDedicationsPicker
+                  projects={projects}
+                  value={projectDedications}
+                  onChange={setProjectDedications}
+                />
+              )}
 
-            {dedicationValidationError && (
-              <ValidationError>{dedicationValidationError}</ValidationError>
-            )}
-            {dedicationsError && <ValidationError>{dedicationsError}</ValidationError>}
-          </Section>
+              {dedicationValidationError && (
+                <ValidationError>{dedicationValidationError}</ValidationError>
+              )}
+              {dedicationsError && <ValidationError>{dedicationsError}</ValidationError>}
+            </Section>
+          )}
         </Columns>
 
         <ButtonRow>
@@ -218,7 +229,7 @@ const ManualLogsModal: FC<{
             disabled={
               !!validationError ||
               !!dedicationValidationError ||
-              !!dedicationsError ||
+              (showDedications && !!dedicationsError) ||
               dedicationsLoading
             }
           >
@@ -278,9 +289,10 @@ const Subtitle = styled.p`
   color: #7a7b7f;
 `;
 
-const Columns = styled.div`
+const Columns = styled.div<{ $singleColumn: boolean }>`
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: ${(props) =>
+    props.$singleColumn ? "minmax(0, 1fr)" : "minmax(0, 1fr) minmax(0, 1fr)"};
   gap: 16px;
 
   @media (max-width: 860px) {

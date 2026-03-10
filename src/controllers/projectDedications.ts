@@ -1,4 +1,4 @@
-import { ProjectDedicationModel, ProjectModel, UserModel } from "@/db/Models";
+import { DepartmentModel, ProjectDedicationModel, ProjectModel, UserModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
 import { parseWithSchema, toPlainObject } from "@/lib/validation";
 import {
@@ -19,13 +19,32 @@ const getTodayRange = () => {
   return { start, end };
 };
 
-const getUserIdFromEmail = async (email: string): Promise<string> => {
+const getUserContextFromEmail = async (
+  email: string
+): Promise<{ userId: string; isGeneralCostsDepartment: boolean }> => {
   const parsedEmail = parseWithSchema(emailSchema, email);
-  const user = await UserModel.findOne({ email: parsedEmail }).select("_id").exec();
+  const user = await UserModel.findOne({ email: parsedEmail })
+    .select("_id department")
+    .exec();
   if (!user) {
     throw new Error("User not found");
   }
-  return user._id.toString();
+
+  if (!user.department) {
+    return {
+      userId: user._id.toString(),
+      isGeneralCostsDepartment: false,
+    };
+  }
+
+  const department = await DepartmentModel.findById(user.department)
+    .select("costesGenerales")
+    .exec();
+
+  return {
+    userId: user._id.toString(),
+    isGeneralCostsDepartment: Boolean(department?.costesGenerales),
+  };
 };
 
 const getActiveAssignedProjects = async (
@@ -114,7 +133,17 @@ export const getProjectDedicationOptionsForToday = async (email: string) => {
 
   await connectMongo();
 
-  const userId = await getUserIdFromEmail(parsedEmail);
+  const { userId, isGeneralCostsDepartment } =
+    await getUserContextFromEmail(parsedEmail);
+
+  if (isGeneralCostsDepartment) {
+    return parseWithSchema(myProjectDedicationsResponseSchema, {
+      showDedications: false,
+      projects: [],
+      existingDedications: [],
+    });
+  }
+
   const projects = await getActiveAssignedProjects(userId);
   const projectIds = new Set(projects.map((project) => project._id));
   const { start, end } = getTodayRange();
@@ -158,6 +187,7 @@ export const getProjectDedicationOptionsForToday = async (email: string) => {
   );
 
   return parseWithSchema(myProjectDedicationsResponseSchema, {
+    showDedications: true,
     projects,
     existingDedications,
   });
@@ -172,11 +202,20 @@ export const saveProjectDedicationsForToday = async (
 
   await connectMongo();
 
-  const userId = await getUserIdFromEmail(parsedEmail);
+  const { userId, isGeneralCostsDepartment } =
+    await getUserContextFromEmail(parsedEmail);
+  const { start, end } = getTodayRange();
+
+  if (isGeneralCostsDepartment) {
+    await ProjectDedicationModel.deleteMany({
+      userId,
+      date: { $gte: start, $lte: end },
+    }).exec();
+    return;
+  }
+
   const projects = await getActiveAssignedProjects(userId);
   validateDedicationsForProjects(normalized, projects);
-
-  const { start, end } = getTodayRange();
 
   if (normalized.length === 0) {
     await ProjectDedicationModel.deleteMany({
@@ -204,7 +243,7 @@ export const clearProjectDedicationsForToday = async (email: string) => {
 
   await connectMongo();
 
-  const userId = await getUserIdFromEmail(parsedEmail);
+  const { userId } = await getUserContextFromEmail(parsedEmail);
   const { start, end } = getTodayRange();
 
   await ProjectDedicationModel.deleteMany({
