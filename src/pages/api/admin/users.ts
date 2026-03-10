@@ -8,12 +8,25 @@ import {
   toPlainObject,
 } from "@/lib/validation";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
-import { adminUsersResponseSchema } from "@/schemas/api";
+import {
+  adminManagedUserSchema,
+  adminManagedUsersResponseSchema,
+  adminUserUpdateBodySchema,
+  adminUsersResponseSchema,
+} from "@/schemas/api";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 
+const firstQueryValue = (value: string | string[] | undefined): string | undefined =>
+  Array.isArray(value) ? value[0] : value;
+
+const isTruthyQuery = (value: string | string[] | undefined): boolean => {
+  const normalized = firstQueryValue(value)?.toLowerCase();
+  return normalized === "1" || normalized === "true";
+};
+
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
-  if (req.method !== "GET") {
+  if (!["GET", "PUT"].includes(req.method ?? "")) {
     res.status(405).send("Method Not Allowed");
     return;
   }
@@ -33,14 +46,118 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
     await connectMongo();
 
-    const users = await UserModel.find({ active: true })
-      .collation({ locale: "es" })
-      .sort({ name: 1 })
-      .select("_id email name")
-      .exec();
+    if (req.method === "GET") {
+      const detailed = isTruthyQuery(req.query.detailed);
+      const includeInactive = isTruthyQuery(req.query.includeInactive);
+      const filter = includeInactive ? {} : { active: true };
 
-    const payload = parseWithSchema(adminUsersResponseSchema, toPlainObject(users));
+      if (detailed) {
+        const users = await UserModel.find(filter)
+          .collation({ locale: "es" })
+          .sort({ name: 1, email: 1 })
+          .select("_id email name admin isManager manager active")
+          .exec();
 
+        const payload = parseWithSchema(
+          adminManagedUsersResponseSchema,
+          toPlainObject(users)
+        );
+
+        res.status(200).json(payload);
+        return;
+      }
+
+      const users = await UserModel.find(filter)
+        .collation({ locale: "es" })
+        .sort({ name: 1, email: 1 })
+        .select("_id email name")
+        .exec();
+
+      const payload = parseWithSchema(adminUsersResponseSchema, toPlainObject(users));
+
+      res.status(200).json(payload);
+      return;
+    }
+
+    const body = parseWithSchema(adminUserUpdateBodySchema, req.body);
+    const target = await UserModel.findById(body._id).exec();
+    if (!target) {
+      res.status(404).send("User not found");
+      return;
+    }
+
+    if (target.email === me.email && (!body.admin || !body.active)) {
+      res
+        .status(400)
+        .send("No puedes quitarte privilegios de admin ni desactivarte a ti mismo");
+      return;
+    }
+
+    const removingManagerRole = target.isManager && !body.isManager;
+    const deactivatingManager = target.active && !body.active;
+    if (removingManagerRole || deactivatingManager) {
+      const assignedWorkers = await UserModel.countDocuments({
+        active: true,
+        manager: target.email,
+      }).exec();
+
+      if (assignedWorkers > 0) {
+        res
+          .status(400)
+          .send("No se puede desactivar o quitar rol manager con usuarios asignados");
+        return;
+      }
+    }
+
+    const managerEmail = body.manager ?? undefined;
+    if (managerEmail) {
+      if (managerEmail === target.email) {
+        res.status(400).send("Un usuario no puede ser su propio responsable");
+        return;
+      }
+
+      const managerUser = await UserModel.findOne({
+        email: managerEmail,
+        active: true,
+      })
+        .select("isManager")
+        .exec();
+
+      if (!managerUser) {
+        res.status(400).send("El responsable seleccionado no existe o está inactivo");
+        return;
+      }
+
+      if (!managerUser.isManager) {
+        res.status(400).send("El responsable seleccionado no tiene rol manager");
+        return;
+      }
+    }
+
+    target.admin = body.admin;
+    target.isManager = body.isManager;
+    target.active = body.active;
+
+    if (managerEmail) {
+      target.manager = managerEmail;
+    } else {
+      target.set("manager", undefined);
+    }
+
+    await target.save();
+
+    const payload = parseWithSchema(
+      adminManagedUserSchema,
+      toPlainObject({
+        _id: target._id,
+        email: target.email,
+        name: target.name,
+        admin: target.admin,
+        isManager: target.isManager,
+        active: target.active,
+        manager: target.manager,
+      })
+    );
     res.status(200).json(payload);
   } catch (error) {
     if (isZodError(error)) {

@@ -7,9 +7,12 @@ const sections = [
   { key: "users", label: "Usuarios", href: "/admin/users" },
 ] as const;
 
-const AdminSectionTabs: FC<{ active: "projects" | "users" }> = ({ active }) => {
+const AdminSectionTabs: FC<{ active: "projects" | "users"; maxWidth?: string }> = ({
+  active,
+  maxWidth = "615px",
+}) => {
   return (
-    <TabsContainer>
+    <TabsContainer $maxWidth={maxWidth}>
       {sections.map((section) => (
         <Tab
           key={section.key}
@@ -23,8 +26,8 @@ const AdminSectionTabs: FC<{ active: "projects" | "users" }> = ({ active }) => {
   );
 };
 
-const TabsContainer = styled.div`
-  width: 615px;
+const TabsContainer = styled.div<{ $maxWidth: string }>`
+  width: min(100%, ${({ $maxWidth }) => $maxWidth});
   margin-top: 20px;
   display: flex;
   background-color: #eee;

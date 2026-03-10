@@ -10,6 +10,16 @@ import { getServerSession } from "next-auth";
 import { useRouter } from "next/router";
 import React, { useEffect, useMemo, useState } from "react";
 
+const ADMIN_PANEL_MAX_WIDTH = "980px";
+
+const toCapitalizedWords = (value: string): string =>
+  value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1).toLowerCase()}`)
+    .join(" ");
+
 const toInputDate = (date: Date): string => {
   const yyyy = date.getFullYear();
   const mm = `${date.getMonth() + 1}`.padStart(2, "0");
@@ -299,13 +309,14 @@ const AdminProjectsPage: NextPage = () => {
 
   return (
     <>
-      <AdminSectionTabs active="projects" />
+      <AdminSectionTabs active="projects" maxWidth={ADMIN_PANEL_MAX_WIDTH} />
       <SimpleContainer
         title="Administración · Proyectos"
         textColor="#4e4f53"
         fontSize="14px"
         height="40px"
         backgroundImage="linear-gradient(220deg, #eee, #eee)"
+        maxWidth={ADMIN_PANEL_MAX_WIDTH}
       >
         <Content>
           <FormSection>
@@ -355,7 +366,7 @@ const AdminProjectsPage: NextPage = () => {
                   <option value="">Selecciona usuario</option>
                   {availableUsers.map((user) => (
                     <option key={user._id} value={user._id}>
-                      {(user.name || user.email).toLowerCase()}
+                      {toCapitalizedWords(user.name || user.email)}
                     </option>
                   ))}
                 </Select>
@@ -368,7 +379,7 @@ const AdminProjectsPage: NextPage = () => {
                 ) : (
                   form.user.map((userId) => (
                     <UserChip key={userId}>
-                      <span>{(userNameById.get(userId) || userId).toLowerCase()}</span>
+                      <span>{toCapitalizedWords(userNameById.get(userId) || userId)}</span>
                       <RemoveChipButton onClick={() => onRemoveUserFromProject(userId)}>
                         ✕
                       </RemoveChipButton>
@@ -400,42 +411,44 @@ const AdminProjectsPage: NextPage = () => {
             {loading ? (
               <LoadingText>Cargando proyectos...</LoadingText>
             ) : (
-              <ProjectsTable rows={Math.max(projects.length, 1)}>
-                <HeaderCell>Nombre</HeaderCell>
-                <HeaderCell>Inicio</HeaderCell>
-                <HeaderCell>Fin</HeaderCell>
-                <HeaderCell>Usuarios</HeaderCell>
-                <HeaderCell>Acciones</HeaderCell>
+              <TableScroll>
+                <ProjectsTable rows={Math.max(projects.length, 1)}>
+                  <HeaderCell>Nombre</HeaderCell>
+                  <HeaderCell>Inicio</HeaderCell>
+                  <HeaderCell>Fin</HeaderCell>
+                  <HeaderCell>Usuarios</HeaderCell>
+                  <HeaderCell>Acciones</HeaderCell>
 
-                {projects.length === 0 ? (
-                  <EmptyRow>Sin proyectos todavía</EmptyRow>
-                ) : (
-                  projects.map((project) => (
-                    <React.Fragment key={project._id}>
-                      <Cell>{project.name}</Cell>
-                      <Cell>{toInputDate(project.startDate)}</Cell>
-                      <Cell>{toInputDate(project.endData)}</Cell>
-                      <Cell>
-                        {project.user.length === 0
-                          ? "-"
-                          : project.user
-                              .map((userId) => userNameById.get(userId) || userId)
-                              .join(", ")}
-                      </Cell>
-                      <Cell>
-                        <RowActions>
-                          <ActionButton onClick={() => onEdit(project._id)}>
-                            Editar
-                          </ActionButton>
-                          <ActionButton $danger onClick={() => onDelete(project._id)}>
-                            Eliminar
-                          </ActionButton>
-                        </RowActions>
-                      </Cell>
-                    </React.Fragment>
-                  ))
-                )}
-              </ProjectsTable>
+                  {projects.length === 0 ? (
+                    <EmptyRow>Sin proyectos todavía</EmptyRow>
+                  ) : (
+                    projects.map((project) => (
+                      <React.Fragment key={project._id}>
+                        <Cell>{project.name}</Cell>
+                        <Cell>{toInputDate(project.startDate)}</Cell>
+                        <Cell>{toInputDate(project.endData)}</Cell>
+                        <Cell>
+                          {project.user.length === 0
+                            ? "-"
+                            : project.user
+                                .map((userId) => userNameById.get(userId) || userId)
+                                .join(", ")}
+                        </Cell>
+                        <Cell>
+                          <RowActions>
+                            <ActionButton onClick={() => onEdit(project._id)}>
+                              Editar
+                            </ActionButton>
+                            <ActionButton $danger onClick={() => onDelete(project._id)}>
+                              Eliminar
+                            </ActionButton>
+                          </RowActions>
+                        </Cell>
+                      </React.Fragment>
+                    ))
+                  )}
+                </ProjectsTable>
+              </TableScroll>
             )}
           </ListSection>
         </Content>
@@ -505,12 +518,20 @@ const Dates = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+
+  @media (max-width: 700px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const AddUserRow = styled.div`
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 8px;
+
+  @media (max-width: 700px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const Select = styled.select`
@@ -571,6 +592,7 @@ const EmptyText = styled.div`
 const Actions = styled.div`
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 `;
 
 const PrimaryButton = styled.button`
@@ -614,8 +636,14 @@ const LoadingText = styled.div`
   font-size: 14px;
 `;
 
+const TableScroll = styled.div`
+  width: 100%;
+  overflow-x: auto;
+`;
+
 const ProjectsTable = styled.div<{ rows: number }>`
-  width: 614px;
+  width: 100%;
+  min-width: 860px;
   display: grid;
   grid-template-columns: 1.8fr 0.9fr 0.9fr 2fr 1.2fr;
   grid-template-rows: 45px ${(props) => `repeat(${props.rows}, minmax(44px, auto))`};

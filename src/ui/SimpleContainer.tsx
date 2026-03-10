@@ -9,9 +9,18 @@ const SimpleContainer: FC<{
   height: string;
   children: ReactNode;
   backgroundImage: string;
-}> = ({ backgroundImage, title, children, textColor, fontSize, height }) => {
+  maxWidth?: string;
+}> = ({
+  backgroundImage,
+  title,
+  children,
+  textColor,
+  fontSize,
+  height,
+  maxWidth = "615px",
+}) => {
   return (
-    <Container>
+    <Container $maxWidth={maxWidth}>
       <Title
         backgroundImage={backgroundImage}
         textColor={textColor}
@@ -42,9 +51,9 @@ const Title = styled.div<{
   color: ${({ textColor }) => textColor};
 `;
 
-const Container = styled.div`
+const Container = styled.div<{ $maxWidth: string }>`
   margin-top: 40px;
-  width: 615px;
+  width: min(100%, ${({ $maxWidth }) => $maxWidth});
   display: flex;
   flex-direction: column;
   justify-content: center;

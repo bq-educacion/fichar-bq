@@ -173,6 +173,30 @@ export const adminUserOptionSchema = z
 
 export const adminUsersResponseSchema = z.array(adminUserOptionSchema);
 
+export const adminManagedUserSchema = z
+  .object({
+    _id: mongoIdSchema,
+    email: z.string().email(),
+    name: z.string().default(""),
+    admin: z.boolean().default(false),
+    isManager: z.boolean().default(false),
+    active: z.boolean().default(true),
+    manager: z.string().email().optional(),
+  })
+  .strict();
+
+export const adminManagedUsersResponseSchema = z.array(adminManagedUserSchema);
+
+export const adminUserUpdateBodySchema = z
+  .object({
+    _id: mongoIdSchema,
+    admin: z.boolean(),
+    isManager: z.boolean(),
+    active: z.boolean(),
+    manager: z.string().email().nullable().optional(),
+  })
+  .strict();
+
 export type PaginationBody = z.infer<typeof paginationBodySchema>;
 export type LogActivityBody = z.infer<typeof logActivityBodySchema>;
 export type LogDoctorFileBody = z.infer<typeof logDoctorFileBodySchema>;
@@ -203,3 +227,6 @@ export type AdminProjectResponse = z.infer<typeof adminProjectResponseSchema>;
 export type AdminProjectsResponse = z.infer<typeof adminProjectsResponseSchema>;
 export type AdminUserOption = z.infer<typeof adminUserOptionSchema>;
 export type AdminUsersResponse = z.infer<typeof adminUsersResponseSchema>;
+export type AdminManagedUser = z.infer<typeof adminManagedUserSchema>;
+export type AdminManagedUsersResponse = z.infer<typeof adminManagedUsersResponseSchema>;
+export type AdminUserUpdateBody = z.infer<typeof adminUserUpdateBodySchema>;
