@@ -33,6 +33,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     res.status(200).json(logs);
     return;
   } catch (e) {
+    if (e instanceof Error && e.message) {
+      res.status(400).send(`Bad Request: ${e.message}`);
+      return;
+    }
     res.status(400).send("Bad Request");
     return;
   }

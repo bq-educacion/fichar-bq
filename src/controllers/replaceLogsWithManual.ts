@@ -1,5 +1,6 @@
 import { LogModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
+import { hhmmToMinutes, validateManualHoursRange } from "@/lib/utils";
 import { LOG_TYPE, Log } from "@/types";
 import updateUserStatus from "./updateUserStatus";
 
@@ -13,6 +14,16 @@ const replaceLogsWithManual = async (
   email: string,
   entry: ManualEntry
 ): Promise<Log[]> => {
+  const rangeValidation = validateManualHoursRange(
+    entry.startHour,
+    entry.endHour,
+    new Date(),
+    { enforceNowLimit: false }
+  );
+  if (!rangeValidation.isValid) {
+    throw new Error(rangeValidation.error);
+  }
+
   await connectMongo();
 
   const today = new Date();
@@ -25,7 +36,13 @@ const replaceLogsWithManual = async (
   });
 
   const makeDate = (timeStr: string): Date => {
-    const [hh, mm] = timeStr.split(":").map(Number);
+    const totalMinutes = hhmmToMinutes(timeStr);
+    if (totalMinutes === null) {
+      throw new Error("Formato de hora invalido");
+    }
+
+    const hh = Math.floor(totalMinutes / 60);
+    const mm = totalMinutes % 60;
     const d = new Date(todayMidnight);
     d.setHours(hh, mm, 0, 0);
     return d;

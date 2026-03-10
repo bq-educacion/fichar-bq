@@ -1,5 +1,7 @@
 import { LOG_TYPE, Log, LogsStats } from "@/types";
 
+const HHMM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
 // Compute elapsed hours from a list of logs using pair-based subtraction.
 // Pairs each "in" with the next "out"/"pause" to get precise durations.
 // If addCurrentTime is true and the last log is "in", pairs it with Date.now().
@@ -81,6 +83,64 @@ export const datetoHHMM = (date: Date) => {
   const hours = date.getHours();
   const minutes = date.getMinutes();
   return `${hours}:${minutes < 10 ? `0${minutes}` : minutes}`;
+};
+
+export const hhmmToMinutes = (time: string): number | null => {
+  const match = HHMM_REGEX.exec(time);
+  if (!match) return null;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  return hours * 60 + minutes;
+};
+
+export const dateToTimeInputValue = (date: Date) =>
+  `${date.getHours().toString().padStart(2, "0")}:${date
+    .getMinutes()
+    .toString()
+    .padStart(2, "0")}`;
+
+type ManualHoursValidation =
+  | { isValid: true; error: null }
+  | { isValid: false; error: string };
+
+export const validateManualHoursRange = (
+  startHour: string,
+  endHour: string,
+  now: Date = new Date(),
+  options: { enforceNowLimit?: boolean } = {}
+): ManualHoursValidation => {
+  const startMinutes = hhmmToMinutes(startHour);
+  const endMinutes = hhmmToMinutes(endHour);
+
+  if (startMinutes === null || endMinutes === null) {
+    return {
+      isValid: false,
+      error: "Formato de hora invalido",
+    };
+  }
+
+  if (startMinutes >= endMinutes) {
+    return {
+      isValid: false,
+      error: "La hora de entrada debe ser anterior a la hora de salida",
+    };
+  }
+
+  if (options.enforceNowLimit ?? true) {
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    if (endMinutes > nowMinutes) {
+      return {
+        isValid: false,
+        error: "La hora de salida no puede ser posterior a la hora actual",
+      };
+    }
+  }
+
+  return {
+    isValid: true,
+    error: null,
+  };
 };
 
 // count the number of DAYS in which there is a manual log

@@ -9,8 +9,11 @@ import {
   getHoursToday,
   decimalToHours,
   datetoHHMM,
+  dateToTimeInputValue,
+  hhmmToMinutes,
   realLogs,
   statsFromLogs,
+  validateManualHoursRange,
 } from "@/lib/utils";
 
 // Helper to create a Log object with minimal required fields
@@ -358,6 +361,77 @@ describe("datetoHHMM", () => {
 
   it("does not pad single-digit hours", () => {
     expect(datetoHHMM(new Date(2025, 0, 6, 8, 0))).toBe("8:00");
+  });
+});
+
+// ─── hhmmToMinutes ─────────────────────────────────────────────────────────
+
+describe("hhmmToMinutes", () => {
+  it("parses valid HH:MM values", () => {
+    expect(hhmmToMinutes("09:30")).toBe(570);
+  });
+
+  it("returns null for non-padded values", () => {
+    expect(hhmmToMinutes("9:30")).toBeNull();
+  });
+
+  it("returns null for out-of-range values", () => {
+    expect(hhmmToMinutes("24:00")).toBeNull();
+  });
+});
+
+// ─── dateToTimeInputValue ──────────────────────────────────────────────────
+
+describe("dateToTimeInputValue", () => {
+  it("returns HH:MM with zero padding", () => {
+    expect(dateToTimeInputValue(new Date(2025, 0, 6, 8, 5))).toBe("08:05");
+  });
+
+  it("formats late-evening values", () => {
+    expect(dateToTimeInputValue(new Date(2025, 0, 6, 23, 59))).toBe("23:59");
+  });
+});
+
+// ─── validateManualHoursRange ──────────────────────────────────────────────
+
+describe("validateManualHoursRange", () => {
+  const now = new Date(2025, 0, 6, 12, 30, 0, 0);
+
+  it("accepts a valid range before current time", () => {
+    expect(validateManualHoursRange("09:00", "12:00", now)).toEqual({
+      isValid: true,
+      error: null,
+    });
+  });
+
+  it("rejects when start is not earlier than end", () => {
+    expect(validateManualHoursRange("12:00", "12:00", now)).toEqual({
+      isValid: false,
+      error: "La hora de entrada debe ser anterior a la hora de salida",
+    });
+  });
+
+  it("rejects end hour later than current time", () => {
+    expect(validateManualHoursRange("09:00", "13:00", now)).toEqual({
+      isValid: false,
+      error: "La hora de salida no puede ser posterior a la hora actual",
+    });
+  });
+
+  it("can skip current time validation for server-side checks", () => {
+    expect(
+      validateManualHoursRange("09:00", "13:00", now, { enforceNowLimit: false })
+    ).toEqual({
+      isValid: true,
+      error: null,
+    });
+  });
+
+  it("rejects invalid format", () => {
+    expect(validateManualHoursRange("9:00", "12:00", now)).toEqual({
+      isValid: false,
+      error: "Formato de hora invalido",
+    });
   });
 });
 

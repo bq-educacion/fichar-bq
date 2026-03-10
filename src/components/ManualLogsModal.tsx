@@ -1,5 +1,6 @@
-import React, { FC, useState } from "react";
+import { dateToTimeInputValue, validateManualHoursRange } from "@/lib/utils";
 import styled from "@emotion/styled";
+import React, { FC, useEffect, useState } from "react";
 import Modal from "react-modal";
 
 export type ManualLogsData = {
@@ -16,6 +17,24 @@ const ManualLogsModal: FC<{
   const [startHour, setStartHour] = useState("09:00");
   const [endHour, setEndHour] = useState("17:00");
   const [pauses, setPauses] = useState<{ start: string; end: string }[]>([]);
+  const [currentTimeLimit, setCurrentTimeLimit] = useState(
+    dateToTimeInputValue(new Date())
+  );
+
+  const validation = validateManualHoursRange(startHour, endHour);
+  const validationError = validation.isValid ? null : validation.error;
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setCurrentTimeLimit(dateToTimeInputValue(new Date()));
+
+    const interval = setInterval(() => {
+      setCurrentTimeLimit(dateToTimeInputValue(new Date()));
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [isOpen]);
 
   const addPause = () => {
     setPauses([...pauses, { start: "13:00", end: "14:00" }]);
@@ -36,6 +55,7 @@ const ManualLogsModal: FC<{
   };
 
   const handleSubmit = () => {
+    if (validationError) return;
     onSubmit({ startHour, endHour, pauses });
   };
 
@@ -50,6 +70,7 @@ const ManualLogsModal: FC<{
           <TimeInput
             type="time"
             value={startHour}
+            max={endHour}
             onChange={(e) => setStartHour(e.target.value)}
           />
         </FieldGroup>
@@ -83,13 +104,19 @@ const ManualLogsModal: FC<{
           <TimeInput
             type="time"
             value={endHour}
+            min={startHour}
+            max={currentTimeLimit}
             onChange={(e) => setEndHour(e.target.value)}
           />
         </FieldGroup>
 
+        {validationError && <ValidationError>{validationError}</ValidationError>}
+
         <ButtonRow>
           <CancelButton onClick={onClose}>Cancelar</CancelButton>
-          <SubmitButton onClick={handleSubmit}>Guardar</SubmitButton>
+          <SubmitButton onClick={handleSubmit} disabled={!!validationError}>
+            Guardar
+          </SubmitButton>
         </ButtonRow>
       </ModalContent>
     </Modal>
@@ -230,6 +257,16 @@ const SubmitButton = styled.button`
   &:hover {
     opacity: 0.9;
   }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const ValidationError = styled.p`
+  margin: 0;
+  color: #e4002b;
+  font-size: 13px;
 `;
 
 export default ManualLogsModal;
