@@ -119,7 +119,7 @@ const ThreeBoxAction: FC<{
       buttonbakground: "linear-gradient(256deg, #6d6c6c, #6d6c6c)",
       buttonText: "Corregir fichaje",
       headerLine: <HeaderLine>Hoy la he liado</HeaderLine>,
-      subHeaderLine: <SubHeaderLine>Introduce las horas</SubHeaderLine>,
+      subHeaderLine: <SubHeaderLine>Introduce las horas manualmente</SubHeaderLine>,
       iconbackground: "linear-gradient(247deg, #6d6c6c, #6d6c6c)",
       icon: <IconConfussion />,
       action: LOG_TYPE.in, // unused when openModal is true
