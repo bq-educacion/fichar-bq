@@ -54,7 +54,8 @@ const IconBox = styled.div<{ show: boolean; bold: boolean }>`
 
 const Container = styled.div`
   margin-top: 10px;
-  width: 615px;
+  width: 100%;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;

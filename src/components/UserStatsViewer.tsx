@@ -52,13 +52,14 @@ const UserStatsViewer: FC<{ stats: UserStats }> = ({ stats }) => {
 const Container = styled.div`
   border-top: 2px solid #fff;
   width: 100%;
-  overflow: hidden;
+  overflow: auto;
 `;
 
 const Table = styled.div`
-  width: 614px;
+  width: 100%;
+  min-width: 614px;
   display: grid;
-  grid-template-columns: 179px 1fr 1fr auto auto;
+  grid-template-columns: 1.4fr 1fr 1fr 0.8fr 1fr;
   grid-template-rows: repeat(4, 38px);
   column-gap: 2px;
   row-gap: 2px;

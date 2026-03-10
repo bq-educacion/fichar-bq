@@ -114,6 +114,7 @@ const Home: NextPage<{
         textColor="#4e4f53"
         fontSize="14px"
         height="40px"
+        maxWidth="980px"
       >
         <UserStatsViewer stats={stats} />
         <WorkerProjectDedicationsViewer summary={projectDedicationSummary} />
