@@ -16,9 +16,9 @@ import styled from "@emotion/styled";
 import { GetServerSideProps, NextPage } from "next";
 import { getServerSession } from "next-auth";
 import { useRouter } from "next/router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
-const ADMIN_PANEL_MAX_WIDTH = "980px";
+const ADMIN_PANEL_MAX_WIDTH = "1320px";
 
 const toCapitalizedWords = (value: string): string =>
   value
@@ -30,18 +30,6 @@ const toCapitalizedWords = (value: string): string =>
 
 const getUserDisplayName = (user: Pick<AdminManagedUser, "name" | "email">): string =>
   toCapitalizedWords(user.name.trim() || user.email);
-
-const serializeEditableFields = (user: AdminManagedUser): string =>
-  JSON.stringify({
-    admin: user.admin,
-    isManager: user.isManager,
-    active: user.active,
-    manager: user.manager ?? "",
-    department: user.department ?? "",
-  });
-
-const buildBaselineById = (users: AdminManagedUsersResponse): Record<string, string> =>
-  Object.fromEntries(users.map((user) => [user._id, serializeEditableFields(user)]));
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const session = await getServerSession(context.req, context.res, authOptions);
@@ -89,11 +77,12 @@ const AdminUsersPage: NextPage = () => {
   const [users, setUsers] = useState<AdminManagedUsersResponse>([]);
   const [departments, setDepartments] = useState<AdminDepartmentOptionsResponse>([]);
   const [showAll, setShowAll] = useState(false);
-  const [baselineById, setBaselineById] = useState<Record<string, string>>({});
   const [savingById, setSavingById] = useState<Record<string, boolean>>({});
   const [rowErrorById, setRowErrorById] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const pendingSaveById = useRef<Record<string, AdminManagedUser | undefined>>({});
+  const inFlightSaveById = useRef<Record<string, boolean>>({});
 
   const managerOptions = useMemo(
     () => users.filter((user) => user.active && user.isManager),
@@ -115,6 +104,93 @@ const AdminUsersPage: NextPage = () => {
       ),
     [departments]
   );
+
+  const persistUser = (nextUser: AdminManagedUser) => {
+    pendingSaveById.current[nextUser._id] = nextUser;
+
+    if (inFlightSaveById.current[nextUser._id]) {
+      return;
+    }
+
+    const flushSaves = async (userId: string) => {
+      inFlightSaveById.current[userId] = true;
+      setSavingById((prev) => ({ ...prev, [userId]: true }));
+
+      try {
+        while (pendingSaveById.current[userId]) {
+          const userToSave = pendingSaveById.current[userId];
+          pendingSaveById.current[userId] = undefined;
+
+          if (!userToSave) {
+            break;
+          }
+
+          const res = await fetch("/api/admin/users", {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              _id: userToSave._id,
+              admin: userToSave.admin,
+              isManager: userToSave.isManager,
+              active: userToSave.active,
+              manager: userToSave.manager ?? null,
+              department: userToSave.department ?? null,
+            }),
+          });
+
+          if (res.status === 401) {
+            router.push("/login");
+            return;
+          }
+
+          if (res.status === 403) {
+            router.push("/");
+            return;
+          }
+
+          if (!res.ok) {
+            throw new Error((await res.text()) || "No se pudo guardar usuario");
+          }
+
+          const updatedUser = adminManagedUserSchema.parse(await res.json());
+          if (!showAll && !updatedUser.active) {
+            setUsers((prev) => prev.filter((item) => item._id !== userId));
+            pendingSaveById.current[userId] = undefined;
+          } else {
+            setUsers((prev) =>
+              prev.map((item) => (item._id === userId ? updatedUser : item))
+            );
+          }
+
+          setRowErrorById((prev) => {
+            if (!prev[userId]) {
+              return prev;
+            }
+            const next = { ...prev };
+            delete next[userId];
+            return next;
+          });
+        }
+      } catch (err) {
+        setRowErrorById((prev) => ({
+          ...prev,
+          [userId]:
+            err instanceof Error ? err.message : "No se pudo guardar usuario",
+        }));
+      } finally {
+        inFlightSaveById.current[userId] = false;
+        setSavingById((prev) => ({ ...prev, [userId]: false }));
+
+        if (pendingSaveById.current[userId]) {
+          void flushSaves(userId);
+        }
+      }
+    };
+
+    void flushSaves(nextUser._id);
+  };
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -161,7 +237,6 @@ const AdminUsersPage: NextPage = () => {
         );
         setUsers(usersData);
         setDepartments(departmentData);
-        setBaselineById(buildBaselineById(usersData));
       } catch (err) {
         if (err instanceof Error) {
           setError(err.message);
@@ -182,8 +257,20 @@ const AdminUsersPage: NextPage = () => {
       Pick<AdminManagedUser, "admin" | "isManager" | "manager" | "active" | "department">
     >
   ) => {
+    let nextUser: AdminManagedUser | null = null;
     setUsers((prev) =>
-      prev.map((user) => (user._id === userId ? { ...user, ...patch } : user))
+      prev.map((user) => {
+        if (user._id !== userId) {
+          return user;
+        }
+
+        const updatedUser: AdminManagedUser = {
+          ...user,
+          ...patch,
+        };
+        nextUser = updatedUser;
+        return updatedUser;
+      })
     );
     setRowErrorById((prev) => {
       if (!prev[userId]) {
@@ -193,83 +280,9 @@ const AdminUsersPage: NextPage = () => {
       delete next[userId];
       return next;
     });
-  };
 
-  const onSaveUser = async (userId: string) => {
-    const user = users.find((item) => item._id === userId);
-    if (!user) {
-      return;
-    }
-
-    setSavingById((prev) => ({ ...prev, [userId]: true }));
-    setError("");
-
-    try {
-      const res = await fetch("/api/admin/users", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          _id: user._id,
-          admin: user.admin,
-          isManager: user.isManager,
-          active: user.active,
-          manager: user.manager ?? null,
-          department: user.department ?? null,
-        }),
-      });
-
-      if (res.status === 401) {
-        router.push("/login");
-        return;
-      }
-
-      if (res.status === 403) {
-        router.push("/");
-        return;
-      }
-
-      if (!res.ok) {
-        throw new Error((await res.text()) || "No se pudo guardar usuario");
-      }
-
-      const updatedUser = adminManagedUserSchema.parse(await res.json());
-      if (!showAll && !updatedUser.active) {
-        setUsers((prev) => prev.filter((item) => item._id !== userId));
-        setBaselineById((prev) => {
-          if (!prev[userId]) {
-            return prev;
-          }
-          const next = { ...prev };
-          delete next[userId];
-          return next;
-        });
-      } else {
-        setUsers((prev) =>
-          prev.map((item) => (item._id === userId ? updatedUser : item))
-        );
-        setBaselineById((prev) => ({
-          ...prev,
-          [userId]: serializeEditableFields(updatedUser),
-        }));
-      }
-      setRowErrorById((prev) => {
-        if (!prev[userId]) {
-          return prev;
-        }
-        const next = { ...prev };
-        delete next[userId];
-        return next;
-      });
-    } catch (err) {
-      setRowErrorById((prev) => ({
-        ...prev,
-        [userId]:
-          err instanceof Error ? err.message : "No se pudo guardar usuario",
-      }));
-    } finally {
-      setSavingById((prev) => ({ ...prev, [userId]: false }));
+    if (nextUser) {
+      persistUser(nextUser);
     }
   };
 
@@ -310,7 +323,6 @@ const AdminUsersPage: NextPage = () => {
                     <HeaderCell>Responsable</HeaderCell>
                     <HeaderCell>Departamento</HeaderCell>
                     <HeaderCell>Activo</HeaderCell>
-                    <HeaderCell>Acciones</HeaderCell>
                   </tr>
                 </thead>
                 <tbody>
@@ -332,8 +344,6 @@ const AdminUsersPage: NextPage = () => {
                         )
                     );
                     const isSaving = Boolean(savingById[user._id]);
-                    const isDirty =
-                      baselineById[user._id] !== serializeEditableFields(user);
                     const rowError = rowErrorById[user._id];
 
                     return (
@@ -443,18 +453,10 @@ const AdminUsersPage: NextPage = () => {
                               />
                             </Centered>
                           </DataCell>
-                          <DataCell>
-                            <SaveButton
-                              onClick={() => onSaveUser(user._id)}
-                              disabled={isSaving || !isDirty}
-                            >
-                              {isSaving ? "Guardando..." : "Guardar"}
-                            </SaveButton>
-                          </DataCell>
                         </tr>
                         {rowError && (
                           <tr>
-                            <RowErrorCell colSpan={7}>{rowError}</RowErrorCell>
+                            <RowErrorCell colSpan={6}>{rowError}</RowErrorCell>
                           </tr>
                         )}
                       </React.Fragment>
@@ -530,12 +532,13 @@ const ErrorText = styled.div`
 
 const TableScroll = styled.div`
   width: 100%;
-  overflow-x: auto;
+  overflow-x: visible;
 `;
 
 const UsersTable = styled.table`
   width: 100%;
-  min-width: 1080px;
+  min-width: 0;
+  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 1px;
   background: #fff;
@@ -593,7 +596,7 @@ const Toggle = styled.input`
 
 const ManagerSelect = styled.select`
   width: 100%;
-  min-width: 220px;
+  min-width: 0;
   height: 36px;
   border: 1px solid #ddd;
   border-radius: 4px;
@@ -605,7 +608,7 @@ const ManagerSelect = styled.select`
 
 const DepartmentSelect = styled.select`
   width: 100%;
-  min-width: 180px;
+  min-width: 0;
   height: 36px;
   border: 1px solid #ddd;
   border-radius: 4px;
@@ -613,23 +616,6 @@ const DepartmentSelect = styled.select`
   color: #4e4f53;
   padding: 0 8px;
   font-size: 13px;
-`;
-
-const SaveButton = styled.button`
-  border: none;
-  border-radius: 4px;
-  height: 36px;
-  padding: 0 14px;
-  font-size: 13px;
-  font-weight: bold;
-  color: #fff;
-  cursor: pointer;
-  background-image: linear-gradient(256deg, #b68fbb, #ff5776);
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
 `;
 
 export default AdminUsersPage;
