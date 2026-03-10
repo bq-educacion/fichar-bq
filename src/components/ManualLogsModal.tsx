@@ -14,12 +14,12 @@ const ManualLogsModal: FC<{
   onClose: () => void;
   onSubmit: (data: ManualLogsData) => void;
 }> = ({ isOpen, onClose, onSubmit }) => {
+  const getCurrentBrowserHour = () => dateToTimeInputValue(new Date());
+
   const [startHour, setStartHour] = useState("09:00");
-  const [endHour, setEndHour] = useState("17:00");
+  const [endHour, setEndHour] = useState(getCurrentBrowserHour);
   const [pauses, setPauses] = useState<{ start: string; end: string }[]>([]);
-  const [currentTimeLimit, setCurrentTimeLimit] = useState(
-    dateToTimeInputValue(new Date())
-  );
+  const [currentTimeLimit, setCurrentTimeLimit] = useState(getCurrentBrowserHour);
 
   const validation = validateManualHoursRange(startHour, endHour);
   const validationError = validation.isValid ? null : validation.error;
@@ -27,7 +27,9 @@ const ManualLogsModal: FC<{
   useEffect(() => {
     if (!isOpen) return;
 
-    setCurrentTimeLimit(dateToTimeInputValue(new Date()));
+    const currentBrowserHour = getCurrentBrowserHour();
+    setCurrentTimeLimit(currentBrowserHour);
+    setEndHour(currentBrowserHour);
 
     const interval = setInterval(() => {
       setCurrentTimeLimit(dateToTimeInputValue(new Date()));
