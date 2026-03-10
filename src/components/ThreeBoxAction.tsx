@@ -9,11 +9,26 @@ import TimedButton from "../ui/TimedButton";
 import getMobileDetect from "@/lib/getmobileDetect";
 import ManualLogsModal, { ManualLogsData } from "./ManualLogsModal";
 
+type UndoFeedbackState = "idle" | "loading" | "success" | "error";
+
 const ThreeBoxAction: FC<{
   refreshStatus: () => void;
 }> = ({ refreshStatus }) => {
   const router = useRouter();
   const [manualModalOpen, setManualModalOpen] = useState(false);
+  const [undoState, setUndoState] = useState<UndoFeedbackState>("idle");
+  const [undoMessage, setUndoMessage] = useState("");
+
+  useEffect(() => {
+    if (!["success", "error"].includes(undoState)) return;
+
+    const timeout = setTimeout(() => {
+      setUndoState("idle");
+      setUndoMessage("");
+    }, 2500);
+
+    return () => clearTimeout(timeout);
+  }, [undoState]);
 
   const logActivity = async (type: LOG_TYPE) => {
     const device = getMobileDetect();
@@ -45,17 +60,35 @@ const ThreeBoxAction: FC<{
   };
 
   const removeLastLog = async () => {
-    const res = await fetch("/api/removeLastLog", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    });
-    if (res.status === 401) {
-      router.push("/login");
-      return;
-    }
-    if (res.status !== 200) return;
+    if (undoState === "loading") return;
 
-    refreshStatus();
+    setUndoState("loading");
+    setUndoMessage("Deshaciendo ultimo fichaje...");
+
+    try {
+      const res = await fetch("/api/removeLastLog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+      if (res.status !== 200) {
+        const rawMessage = await res.text();
+        const cleanMessage = rawMessage.replace(/^Bad Request:\s*/i, "").trim();
+        setUndoState("error");
+        setUndoMessage(cleanMessage || "No se pudo deshacer el fichaje");
+        return;
+      }
+
+      setUndoState("success");
+      setUndoMessage("Ultimo fichaje eliminado");
+      setTimeout(() => refreshStatus(), 600);
+    } catch {
+      setUndoState("error");
+      setUndoMessage("No se pudo deshacer el fichaje");
+    }
   };
 
   const boxes = [
@@ -129,7 +162,12 @@ const ThreeBoxAction: FC<{
         ))}
       </Container>
       <UndoContainer>
-        <UndoButton onClick={removeLastLog}>Deshacer ultimo fichaje de hoy</UndoButton>
+        <UndoButton onClick={removeLastLog} disabled={undoState === "loading"}>
+          {undoState === "loading" ? "Deshaciendo..." : "Deshacer ultimo fichaje de hoy"}
+        </UndoButton>
+        <UndoFeedback $state={undoState} $isError={undoState === "error"}>
+          {undoMessage}
+        </UndoFeedback>
       </UndoContainer>
     </>
   );
@@ -163,7 +201,8 @@ const Box = styled.div<{ background: string }>`
 const UndoContainer = styled.div`
   width: 590px;
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: center;
   background-color: #eaeae9;
   border-bottom-left-radius: 5px;
   border-bottom-right-radius: 5px;
@@ -180,9 +219,32 @@ const UndoButton = styled.button`
   height: 36px;
   padding: 0 12px;
   cursor: pointer;
+  transition: background 0.2s ease, opacity 0.2s ease;
   &:hover {
     background: #dfdfde;
   }
+  &:disabled {
+    opacity: 0.7;
+    cursor: wait;
+  }
+`;
+
+const UndoFeedback = styled.div<{ $state: UndoFeedbackState; $isError: boolean }>`
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: ${(props) => (props.$isError ? "#b00020" : "#1f7a2e")};
+  margin-top: ${(props) => (props.$state === "idle" ? "0" : "8px")};
+  max-height: ${(props) => (props.$state === "idle" ? "0" : "24px")};
+  opacity: ${(props) => (props.$state === "idle" ? 0 : 1)};
+  transform: translateY(${(props) => (props.$state === "idle" ? "-4px" : "0")});
+  transition:
+    margin-top 0.2s ease,
+    max-height 0.2s ease,
+    opacity 0.2s ease,
+    transform 0.2s ease;
+  overflow: hidden;
 `;
 
 const Icon = styled.div<{ background: string }>`

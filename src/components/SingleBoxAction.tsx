@@ -15,6 +15,8 @@ import Modal from "react-modal";
 import { set } from "mongoose";
 import { frasesBrainUp } from "@/usebrainup";
 
+type UndoFeedbackState = "idle" | "loading" | "success" | "error";
+
 const SingleBoxAction: FC<{
   action: LOG_TYPE;
   status: UserStatus;
@@ -23,9 +25,22 @@ const SingleBoxAction: FC<{
   const router = useRouter();
   const [clickable, setClickable] = useState<boolean>(true);
   const [openModal, setOpenModal] = useState(false);
+  const [undoState, setUndoState] = useState<UndoFeedbackState>("idle");
+  const [undoMessage, setUndoMessage] = useState("");
   useEffect(() => {
     setClickable(true);
   }, [status]);
+
+  useEffect(() => {
+    if (!["success", "error"].includes(undoState)) return;
+
+    const timeout = setTimeout(() => {
+      setUndoState("idle");
+      setUndoMessage("");
+    }, 2500);
+
+    return () => clearTimeout(timeout);
+  }, [undoState]);
 
   const [time, setTime] = useState<string>(
     `${new Date().getHours()}:${
@@ -58,19 +73,37 @@ const SingleBoxAction: FC<{
   };
 
   const removeLastLog = async () => {
-    const res = await fetch("/api/removeLastLog", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    if (res.status === 401) {
-      router.push("/login");
-      return;
-    }
-    if (res.status !== 200) return;
+    if (undoState === "loading") return;
 
-    refreshStatus();
+    setUndoState("loading");
+    setUndoMessage("Deshaciendo ultimo fichaje...");
+
+    try {
+      const res = await fetch("/api/removeLastLog", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+      if (res.status !== 200) {
+        const rawMessage = await res.text();
+        const cleanMessage = rawMessage.replace(/^Bad Request:\s*/i, "").trim();
+        setUndoState("error");
+        setUndoMessage(cleanMessage || "No se pudo deshacer el fichaje");
+        return;
+      }
+
+      setUndoState("success");
+      setUndoMessage("Ultimo fichaje eliminado");
+      setTimeout(() => refreshStatus(), 600);
+    } catch {
+      setUndoState("error");
+      setUndoMessage("No se pudo deshacer el fichaje");
+    }
   };
 
   useEffect(() => {
@@ -208,7 +241,14 @@ const SingleBoxAction: FC<{
       )}
 
       {status.status !== USER_STATUS.not_started && (
-        <UndoButton onClick={removeLastLog}>Deshacer ultimo fichaje de hoy</UndoButton>
+        <>
+          <UndoButton onClick={removeLastLog} disabled={undoState === "loading"}>
+            {undoState === "loading" ? "Deshaciendo..." : "Deshacer ultimo fichaje de hoy"}
+          </UndoButton>
+          <UndoFeedback $state={undoState} $isError={undoState === "error"}>
+            {undoMessage}
+          </UndoFeedback>
+        </>
       )}
     </Container>
   );
@@ -268,7 +308,7 @@ const SubHeaderLine = styled.div`
 `;
 
 const UndoButton = styled.button`
-  margin: -20px 0 30px 0;
+  margin: -20px 0 0 0;
   border: 1px solid rgba(255, 255, 255, 0.8);
   background: transparent;
   color: #fff;
@@ -278,9 +318,31 @@ const UndoButton = styled.button`
   height: 36px;
   padding: 0 12px;
   cursor: pointer;
+  transition: background 0.2s ease, opacity 0.2s ease;
   &:hover {
     background: rgba(255, 255, 255, 0.15);
   }
+  &:disabled {
+    opacity: 0.7;
+    cursor: wait;
+  }
+`;
+
+const UndoFeedback = styled.div<{ $state: UndoFeedbackState; $isError: boolean }>`
+  font-size: 12px;
+  font-weight: 600;
+  color: ${(props) => (props.$isError ? "#ffd4d4" : "#c6f7d0")};
+  margin-top: ${(props) => (props.$state === "idle" ? "0" : "8px")};
+  margin-bottom: 26px;
+  max-height: ${(props) => (props.$state === "idle" ? "0" : "24px")};
+  opacity: ${(props) => (props.$state === "idle" ? 0 : 1)};
+  transform: translateY(${(props) => (props.$state === "idle" ? "-4px" : "0")});
+  transition:
+    margin-top 0.2s ease,
+    max-height 0.2s ease,
+    opacity 0.2s ease,
+    transform 0.2s ease;
+  overflow: hidden;
 `;
 
 const modalStyles = {
