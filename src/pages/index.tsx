@@ -16,6 +16,7 @@ import SingleBoxAction from "@/components/SingleBoxAction";
 import ThreeBoxAction from "@/components/ThreeBoxAction";
 import UserLogsComponent from "@/components/UserLogsComponent";
 import getUserByEmail from "@/controllers/getUser";
+import styled from "@emotion/styled";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   // get session data
@@ -140,12 +141,21 @@ const Home: NextPage<{ message: string }> = ({ message }) => {
       {status && status.status === USER_STATUS.working && (
         <ThreeBoxAction refreshStatus={() => getUserStatus()} />
       )}
-      {status && <UserStats status={status.status} />}
-      {status && <UserLogsComponent status={status.status} />}
+      {status && (
+        <ContentModules>
+          <UserStats status={status.status} />
+          <UserLogsComponent status={status.status} />
+        </ContentModules>
+      )}
       <br />
       <br />
     </>
   );
 };
+
+const ContentModules = styled.div`
+  width: 614px;
+  max-width: 100%;
+`;
 
 export default Home;
