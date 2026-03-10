@@ -89,6 +89,7 @@ const AdminProjectsPage: NextPage = () => {
   const [projects, setProjects] = useState<AdminProjectsResponse>([]);
   const [users, setUsers] = useState<AdminUsersResponse>([]);
   const [form, setForm] = useState<ProjectFormState>(initialFormState);
+  const [showAllProjects, setShowAllProjects] = useState(false);
   const [selectedUserToAdd, setSelectedUserToAdd] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -107,6 +108,19 @@ const AdminProjectsPage: NextPage = () => {
     () => users.filter((user) => !form.user.includes(user._id)),
     [users, form.user]
   );
+
+  const visibleProjects = useMemo(() => {
+    if (showAllProjects) {
+      return projects;
+    }
+
+    const today = todayInput();
+    return projects.filter((project) => {
+      const startDate = toInputDate(project.startDate);
+      const endDate = toInputDate(project.endData);
+      return startDate <= today && endDate >= today;
+    });
+  }, [projects, showAllProjects]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -406,23 +420,30 @@ const AdminProjectsPage: NextPage = () => {
           </FormSection>
 
           <ListSection>
-            <SectionTitle>Proyectos</SectionTitle>
+            <ListHeaderRow>
+              <SectionTitle>Proyectos</SectionTitle>
+              <ToggleAllButton onClick={() => setShowAllProjects((prev) => !prev)}>
+                {showAllProjects ? "Mostrar solo activos" : "Mostrar todos"}
+              </ToggleAllButton>
+            </ListHeaderRow>
 
             {loading ? (
               <LoadingText>Cargando proyectos...</LoadingText>
             ) : (
               <TableScroll>
-                <ProjectsTable rows={Math.max(projects.length, 1)}>
+                <ProjectsTable rows={Math.max(visibleProjects.length, 1)}>
                   <HeaderCell>Nombre</HeaderCell>
                   <HeaderCell>Inicio</HeaderCell>
                   <HeaderCell>Fin</HeaderCell>
                   <HeaderCell>Usuarios</HeaderCell>
                   <HeaderCell>Acciones</HeaderCell>
 
-                  {projects.length === 0 ? (
-                    <EmptyRow>Sin proyectos todavía</EmptyRow>
+                  {visibleProjects.length === 0 ? (
+                    <EmptyRow>
+                      {showAllProjects ? "Sin proyectos todavía" : "Sin proyectos activos"}
+                    </EmptyRow>
                   ) : (
-                    projects.map((project) => (
+                    visibleProjects.map((project) => (
                       <React.Fragment key={project._id}>
                         <Cell>{project.name}</Cell>
                         <Cell>{toInputDate(project.startDate)}</Cell>
@@ -480,10 +501,35 @@ const ListSection = styled.div`
   padding: 0 16px 1px 16px;
 `;
 
+const ListHeaderRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+
+  @media (max-width: 700px) {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+`;
+
 const SectionTitle = styled.div`
   font-size: 14px;
   font-weight: bold;
   color: #4e4f53;
+`;
+
+const ToggleAllButton = styled.button`
+  border: 1px solid #c9c9c9;
+  border-radius: 4px;
+  height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4e4f53;
+  background: #fff;
+  cursor: pointer;
 `;
 
 const Field = styled.div`
