@@ -53,7 +53,8 @@ const Title = styled.div<{
 
 const Container = styled.div<{ $maxWidth: string }>`
   margin-top: 40px;
-  width: min(100%, ${({ $maxWidth }) => $maxWidth});
+  width: ${({ $maxWidth }) => $maxWidth};
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;

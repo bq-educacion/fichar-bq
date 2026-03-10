@@ -27,7 +27,8 @@ const AdminSectionTabs: FC<{ active: "projects" | "users"; maxWidth?: string }> 
 };
 
 const TabsContainer = styled.div<{ $maxWidth: string }>`
-  width: min(100%, ${({ $maxWidth }) => $maxWidth});
+  width: ${({ $maxWidth }) => $maxWidth};
+  max-width: 100%;
   margin-top: 20px;
   display: flex;
   background-color: #eee;

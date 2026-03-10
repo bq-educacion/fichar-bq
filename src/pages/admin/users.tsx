@@ -83,6 +83,7 @@ const AdminUsersPage: NextPage = () => {
   const router = useRouter();
 
   const [users, setUsers] = useState<AdminManagedUsersResponse>([]);
+  const [showAll, setShowAll] = useState(false);
   const [baselineById, setBaselineById] = useState<Record<string, string>>({});
   const [savingById, setSavingById] = useState<Record<string, boolean>>({});
   const [rowErrorById, setRowErrorById] = useState<Record<string, string>>({});
@@ -108,7 +109,9 @@ const AdminUsersPage: NextPage = () => {
       setError("");
 
       try {
-        const res = await fetch("/api/admin/users?detailed=true&includeInactive=true");
+        const res = await fetch(
+          `/api/admin/users?detailed=true${showAll ? "&includeInactive=true" : ""}`
+        );
 
         if (res.status === 401) {
           router.push("/login");
@@ -139,7 +142,7 @@ const AdminUsersPage: NextPage = () => {
     };
 
     fetchUsers();
-  }, [router]);
+  }, [router, showAll]);
 
   const onUserChange = (
     userId: string,
@@ -197,13 +200,25 @@ const AdminUsersPage: NextPage = () => {
       }
 
       const updatedUser = adminManagedUserSchema.parse(await res.json());
-      setUsers((prev) =>
-        prev.map((item) => (item._id === userId ? updatedUser : item))
-      );
-      setBaselineById((prev) => ({
-        ...prev,
-        [userId]: serializeEditableFields(updatedUser),
-      }));
+      if (!showAll && !updatedUser.active) {
+        setUsers((prev) => prev.filter((item) => item._id !== userId));
+        setBaselineById((prev) => {
+          if (!prev[userId]) {
+            return prev;
+          }
+          const next = { ...prev };
+          delete next[userId];
+          return next;
+        });
+      } else {
+        setUsers((prev) =>
+          prev.map((item) => (item._id === userId ? updatedUser : item))
+        );
+        setBaselineById((prev) => ({
+          ...prev,
+          [userId]: serializeEditableFields(updatedUser),
+        }));
+      }
       setRowErrorById((prev) => {
         if (!prev[userId]) {
           return prev;
@@ -235,10 +250,15 @@ const AdminUsersPage: NextPage = () => {
         maxWidth={ADMIN_PANEL_MAX_WIDTH}
       >
         <Content>
-          <IntroText>
-            Configura permisos de administración, rol manager, responsable y
-            estado activo por usuario.
-          </IntroText>
+          <TopRow>
+            <IntroText>
+              Configura permisos de administración, rol manager, responsable y
+              estado activo por usuario.
+            </IntroText>
+            <ToggleAllButton onClick={() => setShowAll((prev) => !prev)}>
+              {showAll ? "Mostrar solo activos" : "Mostrar todos"}
+            </ToggleAllButton>
+          </TopRow>
           {error && <ErrorText>{error}</ErrorText>}
           {loading ? (
             <LoadingText>Cargando usuarios...</LoadingText>
@@ -392,7 +412,31 @@ const Content = styled.div`
 const IntroText = styled.div`
   font-size: 14px;
   color: #4e4f53;
+`;
+
+const TopRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 10px;
+
+  @media (max-width: 700px) {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+`;
+
+const ToggleAllButton = styled.button`
+  border: 1px solid #c9c9c9;
+  border-radius: 4px;
+  height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4e4f53;
+  background: #fff;
+  cursor: pointer;
 `;
 
 const LoadingText = styled.div`

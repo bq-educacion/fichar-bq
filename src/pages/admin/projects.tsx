@@ -477,7 +477,7 @@ const FormSection = styled.div`
 
 const ListSection = styled.div`
   background: #eee;
-  padding: 0 0 1px 0;
+  padding: 0 16px 1px 16px;
 `;
 
 const SectionTitle = styled.div`
