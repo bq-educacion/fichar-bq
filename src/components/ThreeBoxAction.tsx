@@ -316,8 +316,11 @@ const HeaderLine = styled.div`
 const SubHeaderLine = styled.div`
   //height: 20px;
   margin-top: 5px;
+  width: 100%;
+  padding: 0 8px;
   font-size: 14px;
   line-height: 1.43;
+  text-align: center;
   color: #fff;
   text-transform: titlecase;
 `;

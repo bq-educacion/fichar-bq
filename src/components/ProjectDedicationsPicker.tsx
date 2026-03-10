@@ -1,11 +1,10 @@
+import {
+  buildDefaultProjectDedications,
+  ProjectDedicationOption,
+} from "@/lib/projectDedications";
 import { ProjectDedicationInput } from "@/schemas/api";
 import styled from "@emotion/styled";
 import React, { FC, useMemo } from "react";
-
-export type ProjectDedicationOption = {
-  _id: string;
-  name: string;
-};
 
 const PERCENT_OPTIONS = Array.from({ length: 11 }, (_, index) => index * 10);
 
@@ -16,43 +15,6 @@ const normalizeName = (name: string) =>
     .filter(Boolean)
     .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1).toLowerCase()}`)
     .join(" ");
-
-export const buildDefaultProjectDedications = (
-  projects: ProjectDedicationOption[],
-  existingDedications: ProjectDedicationInput[]
-): ProjectDedicationInput[] => {
-  if (projects.length === 0) {
-    return [];
-  }
-
-  const existingByProject = new Map(
-    existingDedications.map((item) => [item.projectId, item.dedication] as const)
-  );
-
-  const hasCompleteExisting =
-    existingDedications.length === projects.length &&
-    projects.every((project) => existingByProject.has(project._id)) &&
-    existingDedications.reduce((acc, item) => acc + item.dedication, 0) === 100;
-
-  if (hasCompleteExisting) {
-    return projects.map((project) => ({
-      projectId: project._id,
-      dedication: existingByProject.get(project._id) ?? 0,
-    }));
-  }
-
-  const base = Math.floor(100 / projects.length / 10) * 10;
-  let remaining = 100 - base * projects.length;
-
-  return projects.map((project) => {
-    const extra = remaining >= 10 ? 10 : 0;
-    remaining -= extra;
-    return {
-      projectId: project._id,
-      dedication: base + extra,
-    };
-  });
-};
 
 const ProjectDedicationsPicker: FC<{
   projects: ProjectDedicationOption[];
@@ -168,5 +130,8 @@ const EmptyInfo = styled.div`
   color: #6d6e72;
   margin-top: 4px;
 `;
+
+export type { ProjectDedicationOption } from "@/lib/projectDedications";
+export { buildDefaultProjectDedications } from "@/lib/projectDedications";
 
 export default ProjectDedicationsPicker;

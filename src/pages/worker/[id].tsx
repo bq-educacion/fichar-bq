@@ -1,18 +1,19 @@
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import type { GetServerSideProps, NextPage } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { Log, UserStats } from "@/types";
 import React, { useEffect } from "react";
 import { UserModel } from "@/db/Models";
-import Layout from "@/components/Layout";
 import getUserStats from "@/controllers/getUserStats";
 import UserStatsViewer from "@/components/UserStatsViewer";
 import SimpleContainer from "@/ui/SimpleContainer";
-import getUserLogs from "@/controllers/getUserLogs";
 import UserLogsComponentViewer from "@/components/UserLogsComponentViewer";
 import connectMongo from "@/lib/connectMongo";
 import getUserByEmail from "@/controllers/getUser";
+import getWorkerProjectDedicationSummary from "@/controllers/getWorkerProjectDedicationSummary";
+import type { WorkerProjectDedicationSummary } from "@/controllers/getWorkerProjectDedicationSummary";
+import WorkerProjectDedicationsViewer from "@/components/WorkerProjectDedicationsViewer";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   // get session data
@@ -62,10 +63,14 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   }
 
   const stats = await getUserStats(worker.email);
+  const projectDedicationSummary = await getWorkerProjectDedicationSummary(
+    worker.email
+  );
   const name = worker.name;
   return {
     props: {
       stats,
+      projectDedicationSummary,
       name,
       session,
       workerEmail: worker.email,
@@ -75,14 +80,15 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 
 const Home: NextPage<{
   stats: UserStats;
+  projectDedicationSummary: WorkerProjectDedicationSummary;
   name: string;
   workerEmail: string;
-}> = ({ stats, name, workerEmail }) => {
-  const { data } = useSession({
+}> = ({ stats, projectDedicationSummary, name, workerEmail }) => {
+  useSession({
     required: true,
   });
   const [logs, setLogs] = React.useState<Log[]>([]);
-  const fetchUserLogs = async () => {
+  const fetchUserLogs = React.useCallback(async () => {
     const response = await fetch(`/api/workerLogs`, {
       method: "POST",
       headers: {
@@ -92,11 +98,11 @@ const Home: NextPage<{
     });
     const data = await response.json();
     setLogs(data);
-  };
+  }, [workerEmail]);
 
   useEffect(() => {
     fetchUserLogs();
-  }, [workerEmail]);
+  }, [fetchUserLogs]);
 
   return (
     <>
@@ -110,6 +116,7 @@ const Home: NextPage<{
         height="40px"
       >
         <UserStatsViewer stats={stats} />
+        <WorkerProjectDedicationsViewer summary={projectDedicationSummary} />
         {logs.length > 0 && (
           <UserLogsComponentViewer key={workerEmail} logs={logs} />
         )}

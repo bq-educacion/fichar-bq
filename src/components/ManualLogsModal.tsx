@@ -136,69 +136,80 @@ const ManualLogsModal: FC<{
   return (
     <Modal isOpen={isOpen} style={modalStyles} contentLabel="Introducir fichaje manual">
       <ModalContent>
-        <Title>Introducir fichaje manual</Title>
-        <Subtitle>Introduce las horas de tu jornada de hoy</Subtitle>
+        <Header>
+          <Title>Introducir fichaje manual</Title>
+          <Subtitle>Introduce las horas de tu jornada de hoy</Subtitle>
+        </Header>
 
-        <FieldGroup>
-          <Label>Hora de entrada</Label>
-          <TimeInput
-            type="time"
-            value={startHour}
-            max={endHour}
-            onChange={(e) => setStartHour(e.target.value)}
-          />
-        </FieldGroup>
-
-        {pauses.map((pause, index) => (
-          <PauseRow key={pause.id}>
+        <Columns>
+          <Section>
+            <SectionTitle>Fichaje</SectionTitle>
             <FieldGroup>
-              <Label>Inicio pausa {index + 1}</Label>
+              <Label>Hora de entrada</Label>
               <TimeInput
                 type="time"
-                value={pause.start}
-                onChange={(e) => updatePause(index, "start", e.target.value)}
+                value={startHour}
+                max={endHour}
+                onChange={(e) => setStartHour(e.target.value)}
               />
             </FieldGroup>
+
+            {pauses.map((pause, index) => (
+              <PauseRow key={pause.id}>
+                <FieldGroup>
+                  <Label>Inicio pausa {index + 1}</Label>
+                  <TimeInput
+                    type="time"
+                    value={pause.start}
+                    onChange={(e) => updatePause(index, "start", e.target.value)}
+                  />
+                </FieldGroup>
+                <FieldGroup>
+                  <Label>Fin pausa {index + 1}</Label>
+                  <TimeInput
+                    type="time"
+                    value={pause.end}
+                    onChange={(e) => updatePause(index, "end", e.target.value)}
+                  />
+                </FieldGroup>
+                <RemoveButton onClick={() => removePause(index)}>✕</RemoveButton>
+              </PauseRow>
+            ))}
+
+            <AddPauseButton onClick={addPause}>+ Añadir pausa</AddPauseButton>
+
             <FieldGroup>
-              <Label>Fin pausa {index + 1}</Label>
+              <Label>Hora de salida</Label>
               <TimeInput
                 type="time"
-                value={pause.end}
-                onChange={(e) => updatePause(index, "end", e.target.value)}
+                value={endHour}
+                min={startHour}
+                max={currentTimeLimit}
+                onChange={(e) => setEndHour(e.target.value)}
               />
             </FieldGroup>
-            <RemoveButton onClick={() => removePause(index)}>✕</RemoveButton>
-          </PauseRow>
-        ))}
 
-        <AddPauseButton onClick={addPause}>+ Añadir pausa</AddPauseButton>
+            {validationError && <ValidationError>{validationError}</ValidationError>}
+          </Section>
 
-        <FieldGroup>
-          <Label>Hora de salida</Label>
-          <TimeInput
-            type="time"
-            value={endHour}
-            min={startHour}
-            max={currentTimeLimit}
-            onChange={(e) => setEndHour(e.target.value)}
-          />
-        </FieldGroup>
+          <Section>
+            <SectionTitle>Dedicaciones</SectionTitle>
+            {dedicationsLoading ? (
+              <LoadingText>Cargando proyectos...</LoadingText>
+            ) : (
+              <ProjectDedicationsPicker
+                projects={projects}
+                value={projectDedications}
+                onChange={setProjectDedications}
+              />
+            )}
 
-        {dedicationsLoading ? (
-          <LoadingText>Cargando proyectos...</LoadingText>
-        ) : (
-          <ProjectDedicationsPicker
-            projects={projects}
-            value={projectDedications}
-            onChange={setProjectDedications}
-          />
-        )}
-
-        {validationError && <ValidationError>{validationError}</ValidationError>}
-        {dedicationValidationError && (
-          <ValidationError>{dedicationValidationError}</ValidationError>
-        )}
-        {dedicationsError && <ValidationError>{dedicationsError}</ValidationError>}
+            {dedicationValidationError && (
+              <ValidationError>{dedicationValidationError}</ValidationError>
+            )}
+            {dedicationsError && <ValidationError>{dedicationsError}</ValidationError>}
+          </Section>
+        </Columns>
 
         <ButtonRow>
           <CancelButton onClick={onClose}>Cancelar</CancelButton>
@@ -224,8 +235,9 @@ const modalStyles = {
     top: "50%",
     left: "50%",
     transform: "translate(-50%, -50%)",
-    width: "400px",
-    maxHeight: "80vh",
+    width: "860px",
+    maxWidth: "95vw",
+    maxHeight: "85vh",
     overflow: "auto",
     border: "none",
     borderRadius: "8px",
@@ -241,8 +253,16 @@ const modalStyles = {
 const ModalContent = styled.div`
   display: flex;
   flex-direction: column;
-  padding: 30px;
+  padding: 24px;
   gap: 12px;
+`;
+
+const Header = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
 `;
 
 const Title = styled.h2`
@@ -256,6 +276,33 @@ const Subtitle = styled.p`
   margin: 0 0 8px 0;
   font-size: 14px;
   color: #7a7b7f;
+`;
+
+const Columns = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+
+  @media (max-width: 860px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const Section = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #f8f8f8;
+`;
+
+const SectionTitle = styled.div`
+  font-size: 13px;
+  font-weight: 700;
+  color: #4e4f53;
+  text-transform: uppercase;
 `;
 
 const FieldGroup = styled.div`
@@ -288,6 +335,11 @@ const PauseRow = styled.div`
   display: flex;
   gap: 8px;
   align-items: flex-end;
+
+  @media (max-width: 550px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 const RemoveButton = styled.button`
