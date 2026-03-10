@@ -1,5 +1,5 @@
 import getUserByEmail from "@/controllers/getUser";
-import { UserModel } from "@/db/Models";
+import { DepartmentModel, UserModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
 import {
   formatZodError,
@@ -55,7 +55,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         const users = await UserModel.find(filter)
           .collation({ locale: "es" })
           .sort({ name: 1, email: 1 })
-          .select("_id email name admin isManager manager active")
+          .select("_id email name admin isManager manager active department")
           .exec();
 
         const payload = parseWithSchema(
@@ -134,6 +134,16 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       }
     }
 
+    if (body.department) {
+      const departmentExists = await DepartmentModel.exists({
+        _id: body.department,
+      }).exec();
+      if (!departmentExists) {
+        res.status(400).send("El departamento seleccionado no existe");
+        return;
+      }
+    }
+
     target.admin = body.admin;
     target.isManager = body.isManager;
     target.active = body.active;
@@ -142,6 +152,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       target.manager = managerEmail;
     } else {
       target.set("manager", undefined);
+    }
+
+    if (body.department === null) {
+      target.set("department", undefined);
+    } else if (body.department !== undefined) {
+      target.department = body.department;
     }
 
     await target.save();
@@ -156,6 +172,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         isManager: target.isManager,
         active: target.active,
         manager: target.manager,
+        department: target.department,
       })
     );
     res.status(200).json(payload);

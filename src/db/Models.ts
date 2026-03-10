@@ -53,6 +53,11 @@ const UserSchema = new mongoose.Schema(
     image: { type: String },
     isManager: { type: Boolean, required: true, default: false },
     admin: { type: Boolean, required: true, default: false },
+    department: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Department",
+      required: false,
+    },
     status: { type: UserStatusSchema, required: false },
     legal: { type: Boolean, default: false },
   },
@@ -71,6 +76,16 @@ const ProjectSchema = new mongoose.Schema(
       type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }],
       default: [],
     },
+  },
+  {
+    id: false,
+    versionKey: false,
+  }
+);
+
+const DepartmentSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, trim: true },
   },
   {
     id: false,
@@ -119,6 +134,8 @@ export const UserModel =
   mongoose.models.User || mongoose.model("User", UserSchema);
 export const ProjectModel =
   mongoose.models.Project || mongoose.model("Project", ProjectSchema);
+export const DepartmentModel =
+  mongoose.models.Department || mongoose.model("Department", DepartmentSchema);
 export const ProjectDedicationModel =
   mongoose.models.ProjectDedication ||
   mongoose.model("ProjectDedication", ProjectDedicationSchema);

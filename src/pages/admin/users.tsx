@@ -3,8 +3,11 @@ import getUserByEmail from "@/controllers/getUser";
 import connectMongo from "@/lib/connectMongo";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import {
+  AdminDepartmentOptionsResponse,
   AdminManagedUser,
   AdminManagedUsersResponse,
+  adminDepartmentOptionsResponseSchema,
+  adminDepartmentsResponseSchema,
   adminManagedUserSchema,
   adminManagedUsersResponseSchema,
 } from "@/schemas/api";
@@ -34,6 +37,7 @@ const serializeEditableFields = (user: AdminManagedUser): string =>
     isManager: user.isManager,
     active: user.active,
     manager: user.manager ?? "",
+    department: user.department ?? "",
   });
 
 const buildBaselineById = (users: AdminManagedUsersResponse): Record<string, string> =>
@@ -83,6 +87,7 @@ const AdminUsersPage: NextPage = () => {
   const router = useRouter();
 
   const [users, setUsers] = useState<AdminManagedUsersResponse>([]);
+  const [departments, setDepartments] = useState<AdminDepartmentOptionsResponse>([]);
   const [showAll, setShowAll] = useState(false);
   const [baselineById, setBaselineById] = useState<Record<string, string>>({});
   const [savingById, setSavingById] = useState<Record<string, boolean>>({});
@@ -103,33 +108,60 @@ const AdminUsersPage: NextPage = () => {
     [users]
   );
 
+  const departmentNameById = useMemo(
+    () =>
+      new Map(
+        departments.map((department) => [department._id, department.name] as const)
+      ),
+    [departments]
+  );
+
   useEffect(() => {
     const fetchUsers = async () => {
       setLoading(true);
       setError("");
 
       try {
-        const res = await fetch(
-          `/api/admin/users?detailed=true${showAll ? "&includeInactive=true" : ""}`
-        );
+        const [usersRes, departmentsRes] = await Promise.all([
+          fetch(
+            `/api/admin/users?detailed=true${showAll ? "&includeInactive=true" : ""}`
+          ),
+          fetch("/api/admin/departments"),
+        ]);
 
-        if (res.status === 401) {
+        if (usersRes.status === 401 || departmentsRes.status === 401) {
           router.push("/login");
           return;
         }
 
-        if (res.status === 403) {
+        if (usersRes.status === 403 || departmentsRes.status === 403) {
           router.push("/");
           return;
         }
 
-        if (!res.ok) {
-          throw new Error((await res.text()) || "No se pudo cargar usuarios");
+        if (!usersRes.ok || !departmentsRes.ok) {
+          const usersError = !usersRes.ok ? await usersRes.text() : "";
+          const departmentsError = !departmentsRes.ok
+            ? await departmentsRes.text()
+            : "";
+          throw new Error(
+            usersError || departmentsError || "No se pudo cargar usuarios"
+          );
         }
 
-        const data = adminManagedUsersResponseSchema.parse(await res.json());
-        setUsers(data);
-        setBaselineById(buildBaselineById(data));
+        const usersData = adminManagedUsersResponseSchema.parse(await usersRes.json());
+        const fullDepartments = adminDepartmentsResponseSchema.parse(
+          await departmentsRes.json()
+        );
+        const departmentData = adminDepartmentOptionsResponseSchema.parse(
+          fullDepartments.map((department) => ({
+            _id: department._id,
+            name: department.name,
+          }))
+        );
+        setUsers(usersData);
+        setDepartments(departmentData);
+        setBaselineById(buildBaselineById(usersData));
       } catch (err) {
         if (err instanceof Error) {
           setError(err.message);
@@ -146,7 +178,9 @@ const AdminUsersPage: NextPage = () => {
 
   const onUserChange = (
     userId: string,
-    patch: Partial<Pick<AdminManagedUser, "admin" | "isManager" | "manager" | "active">>
+    patch: Partial<
+      Pick<AdminManagedUser, "admin" | "isManager" | "manager" | "active" | "department">
+    >
   ) => {
     setUsers((prev) =>
       prev.map((user) => (user._id === userId ? { ...user, ...patch } : user))
@@ -182,6 +216,7 @@ const AdminUsersPage: NextPage = () => {
           isManager: user.isManager,
           active: user.active,
           manager: user.manager ?? null,
+          department: user.department ?? null,
         }),
       });
 
@@ -253,7 +288,7 @@ const AdminUsersPage: NextPage = () => {
           <TopRow>
             <IntroText>
               Configura permisos de administración, rol manager, responsable y
-              estado activo por usuario.
+              estado activo por usuario. También puedes asignar departamento.
             </IntroText>
             <ToggleAllButton onClick={() => setShowAll((prev) => !prev)}>
               {showAll ? "Mostrar solo activos" : "Mostrar todos"}
@@ -273,6 +308,7 @@ const AdminUsersPage: NextPage = () => {
                     <HeaderCell>Admin</HeaderCell>
                     <HeaderCell>Manager</HeaderCell>
                     <HeaderCell>Responsable</HeaderCell>
+                    <HeaderCell>Departamento</HeaderCell>
                     <HeaderCell>Activo</HeaderCell>
                     <HeaderCell>Acciones</HeaderCell>
                   </tr>
@@ -287,6 +323,12 @@ const AdminUsersPage: NextPage = () => {
                       user.manager &&
                         availableManagers.some(
                           (manager) => manager.email === user.manager
+                        )
+                    );
+                    const departmentExists = Boolean(
+                      user.department &&
+                        departments.some(
+                          (department) => department._id === user.department
                         )
                     );
                     const isSaving = Boolean(savingById[user._id]);
@@ -359,6 +401,34 @@ const AdminUsersPage: NextPage = () => {
                             </ManagerSelect>
                           </DataCell>
                           <DataCell>
+                            <DepartmentSelect
+                              value={user.department ?? ""}
+                              disabled={isSaving}
+                              aria-label={`Departamento ${userName}`}
+                              onChange={(event) =>
+                                onUserChange(user._id, {
+                                  department: event.target.value || undefined,
+                                })
+                              }
+                            >
+                              <option value="">Sin departamento</option>
+                              {departments.map((department) => (
+                                <option key={department._id} value={department._id}>
+                                  {department.name}
+                                </option>
+                              ))}
+                              {user.department && !departmentExists && (
+                                <option value={user.department}>
+                                  {(departmentNameById.get(user.department) ||
+                                    user.department)
+                                    .toString()
+                                    .trim()}{" "}
+                                  (no disponible)
+                                </option>
+                              )}
+                            </DepartmentSelect>
+                          </DataCell>
+                          <DataCell>
                             <Centered>
                               <Toggle
                                 type="checkbox"
@@ -384,7 +454,7 @@ const AdminUsersPage: NextPage = () => {
                         </tr>
                         {rowError && (
                           <tr>
-                            <RowErrorCell colSpan={6}>{rowError}</RowErrorCell>
+                            <RowErrorCell colSpan={7}>{rowError}</RowErrorCell>
                           </tr>
                         )}
                       </React.Fragment>
@@ -465,7 +535,7 @@ const TableScroll = styled.div`
 
 const UsersTable = styled.table`
   width: 100%;
-  min-width: 930px;
+  min-width: 1080px;
   border-collapse: separate;
   border-spacing: 1px;
   background: #fff;
@@ -524,6 +594,18 @@ const Toggle = styled.input`
 const ManagerSelect = styled.select`
   width: 100%;
   min-width: 220px;
+  height: 36px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  color: #4e4f53;
+  padding: 0 8px;
+  font-size: 13px;
+`;
+
+const DepartmentSelect = styled.select`
+  width: 100%;
+  min-width: 180px;
   height: 36px;
   border: 1px solid #ddd;
   border-radius: 4px;

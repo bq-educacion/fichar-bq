@@ -4,13 +4,14 @@ import React, { FC } from "react";
 
 const sections = [
   { key: "projects", label: "Proyectos", href: "/admin/projects" },
+  { key: "departments", label: "Departamentos", href: "/admin/departments" },
   { key: "users", label: "Usuarios", href: "/admin/users" },
 ] as const;
 
-const AdminSectionTabs: FC<{ active: "projects" | "users"; maxWidth?: string }> = ({
-  active,
-  maxWidth = "615px",
-}) => {
+const AdminSectionTabs: FC<{
+  active: "projects" | "departments" | "users";
+  maxWidth?: string;
+}> = ({ active, maxWidth = "980px" }) => {
   return (
     <TabsContainer $maxWidth={maxWidth}>
       {sections.map((section) => (

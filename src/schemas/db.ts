@@ -75,6 +75,7 @@ export const userSchema = z
     name: z.string().default(""),
     status: userStatusSchema,
     manager: z.string().email().optional(),
+    department: mongoIdLikeSchema.nullable().optional(),
     legal: z.boolean().default(false),
   })
   .strict();
@@ -90,6 +91,7 @@ export const userCreateSchema = z
     admin: z.boolean().optional().default(false),
     status: userStatusSchema.optional(),
     legal: z.boolean().default(false),
+    department: mongoIdLikeSchema.nullable().optional(),
   })
   .strict();
 
@@ -144,6 +146,19 @@ export const projectCreateSchema = z
     message: "endData must be greater than or equal to startDate",
     path: ["endData"],
   });
+
+export const departmentSchema = z
+  .object({
+    _id: mongoIdLikeSchema,
+    name: z.string().min(1),
+  })
+  .strict();
+
+export const departmentCreateSchema = z
+  .object({
+    name: z.string().min(1),
+  })
+  .strict();
 
 export const projectDedicationItemSchema = z
   .object({
@@ -230,6 +245,8 @@ export type Log = z.infer<typeof logSchema>;
 export type LogCreate = z.infer<typeof logCreateSchema>;
 export type Project = z.infer<typeof projectSchema>;
 export type ProjectCreate = z.infer<typeof projectCreateSchema>;
+export type Department = z.infer<typeof departmentSchema>;
+export type DepartmentCreate = z.infer<typeof departmentCreateSchema>;
 export type ProjectDedicationItem = z.infer<typeof projectDedicationItemSchema>;
 export type ProjectDedication = z.infer<typeof projectDedicationSchema>;
 export type ProjectDedicationCreate = z.infer<typeof projectDedicationCreateSchema>;

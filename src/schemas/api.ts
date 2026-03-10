@@ -187,6 +187,52 @@ export const adminProjectDeleteBodySchema = z
 export const adminProjectResponseSchema = projectSchema;
 export const adminProjectsResponseSchema = z.array(projectSchema);
 
+const adminDepartmentFieldsSchema = z
+  .object({
+    name: z.string().min(1),
+  })
+  .strict();
+
+export const adminDepartmentCreateBodySchema = adminDepartmentFieldsSchema;
+
+export const adminDepartmentUpdateBodySchema = adminDepartmentFieldsSchema
+  .extend({
+    _id: mongoIdSchema,
+  })
+  .strict();
+
+export const adminDepartmentDeleteBodySchema = z
+  .object({
+    _id: mongoIdSchema,
+  })
+  .strict();
+
+export const adminDepartmentOptionSchema = z
+  .object({
+    _id: mongoIdSchema,
+    name: z.string().min(1),
+  })
+  .strict();
+
+export const adminDepartmentPersonSchema = z
+  .object({
+    _id: mongoIdSchema,
+    email: z.string().email(),
+    name: z.string().default(""),
+    active: z.boolean().default(true),
+  })
+  .strict();
+
+export const adminDepartmentSchema = adminDepartmentOptionSchema
+  .extend({
+    people: z.array(adminDepartmentPersonSchema).default([]),
+  })
+  .strict();
+
+export const adminDepartmentResponseSchema = adminDepartmentSchema;
+export const adminDepartmentsResponseSchema = z.array(adminDepartmentSchema);
+export const adminDepartmentOptionsResponseSchema = z.array(adminDepartmentOptionSchema);
+
 export const adminUserOptionSchema = z
   .object({
     _id: mongoIdSchema,
@@ -206,6 +252,7 @@ export const adminManagedUserSchema = z
     isManager: z.boolean().default(false),
     active: z.boolean().default(true),
     manager: z.string().email().optional(),
+    department: mongoIdSchema.nullable().optional(),
   })
   .strict();
 
@@ -218,6 +265,7 @@ export const adminUserUpdateBodySchema = z
     isManager: z.boolean(),
     active: z.boolean(),
     manager: z.string().email().nullable().optional(),
+    department: mongoIdSchema.nullable().optional(),
   })
   .strict();
 
@@ -251,6 +299,16 @@ export type AdminProjectUpdateBody = z.infer<typeof adminProjectUpdateBodySchema
 export type AdminProjectDeleteBody = z.infer<typeof adminProjectDeleteBodySchema>;
 export type AdminProjectResponse = z.infer<typeof adminProjectResponseSchema>;
 export type AdminProjectsResponse = z.infer<typeof adminProjectsResponseSchema>;
+export type AdminDepartmentCreateBody = z.infer<typeof adminDepartmentCreateBodySchema>;
+export type AdminDepartmentUpdateBody = z.infer<typeof adminDepartmentUpdateBodySchema>;
+export type AdminDepartmentDeleteBody = z.infer<typeof adminDepartmentDeleteBodySchema>;
+export type AdminDepartmentOption = z.infer<typeof adminDepartmentOptionSchema>;
+export type AdminDepartment = z.infer<typeof adminDepartmentSchema>;
+export type AdminDepartmentResponse = z.infer<typeof adminDepartmentResponseSchema>;
+export type AdminDepartmentsResponse = z.infer<typeof adminDepartmentsResponseSchema>;
+export type AdminDepartmentOptionsResponse = z.infer<
+  typeof adminDepartmentOptionsResponseSchema
+>;
 export type AdminUserOption = z.infer<typeof adminUserOptionSchema>;
 export type AdminUsersResponse = z.infer<typeof adminUsersResponseSchema>;
 export type AdminManagedUser = z.infer<typeof adminManagedUserSchema>;
