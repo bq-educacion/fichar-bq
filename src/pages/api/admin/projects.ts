@@ -57,7 +57,7 @@ const ensureUsersCanBeAssignedToProjects = async (userIds: string[]) => {
 
   if (hasBlockedUser) {
     throw new Error(
-      "No puedes asignar usuarios de departamentos de costes generales a proyectos"
+      "No puedes asignar usuarios de departamentos de gastos generales a proyectos"
     );
   }
 };

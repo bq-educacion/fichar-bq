@@ -93,7 +93,7 @@ const ProjectDedicationsModal: FC<{
           <LoadingText>Cargando proyectos...</LoadingText>
         ) : !showDedications ? (
           <DisabledText>
-            Tu departamento está marcado como costes generales, no necesitas
+            Tu departamento está marcado como gastos generales, no necesitas
             registrar dedicaciones.
           </DisabledText>
         ) : (

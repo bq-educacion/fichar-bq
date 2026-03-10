@@ -279,7 +279,7 @@ const AdminDepartmentsPage: NextPage = () => {
                 }
               />
               <CheckboxLabel htmlFor="costes-generales">
-                Costes generales
+                Gastos generales
               </CheckboxLabel>
             </CheckboxRow>
 
@@ -313,7 +313,7 @@ const AdminDepartmentsPage: NextPage = () => {
               <TableScroll>
                 <DepartmentsTable rows={Math.max(departments.length, 1)}>
                   <HeaderCell>Nombre</HeaderCell>
-                  <HeaderCell>Costes generales</HeaderCell>
+                  <HeaderCell>Gastos generales</HeaderCell>
                   <HeaderCell>Personas</HeaderCell>
                   <HeaderCell>Acciones</HeaderCell>
 

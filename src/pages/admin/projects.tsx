@@ -187,7 +187,7 @@ const AdminProjectsPage: NextPage = () => {
     const selectedUser = users.find((user) => user._id === selectedUserToAdd);
     if (selectedUser?.departmentCostesGenerales) {
       setError(
-        "No puedes asignar a proyectos usuarios de departamentos de costes generales"
+        "No puedes asignar a proyectos usuarios de departamentos de gastos generales"
       );
       setSelectedUserToAdd("");
       return;
@@ -386,7 +386,7 @@ const AdminProjectsPage: NextPage = () => {
               <Label>Usuarios del proyecto</Label>
               <HelperText>
                 Solo se pueden asignar usuarios que no pertenezcan a departamentos de
-                costes generales.
+                gastos generales.
               </HelperText>
               <AddUserRow>
                 <Select
