@@ -15,7 +15,7 @@ const ManualLogsModal: FC<{
 
   const [startHour, setStartHour] = useState("09:00");
   const [endHour, setEndHour] = useState(getCurrentBrowserHour);
-  const [pauses, setPauses] = useState<{ start: string; end: string }[]>([]);
+  const [pauses, setPauses] = useState<{ id: string; start: string; end: string }[]>([]);
   const [currentTimeLimit, setCurrentTimeLimit] = useState(getCurrentBrowserHour);
 
   const validation = validateManualHoursRange(startHour, endHour);
@@ -36,7 +36,7 @@ const ManualLogsModal: FC<{
   }, [isOpen]);
 
   const addPause = () => {
-    setPauses([...pauses, { start: "13:00", end: "14:00" }]);
+    setPauses([...pauses, { id: crypto.randomUUID(), start: "13:00", end: "14:00" }]);
   };
 
   const removePause = (index: number) => {
@@ -55,7 +55,7 @@ const ManualLogsModal: FC<{
 
   const handleSubmit = () => {
     if (validationError) return;
-    onSubmit({ startHour, endHour, pauses });
+    onSubmit({ startHour, endHour, pauses: pauses.map(({ start, end }) => ({ start, end })) });
   };
 
   return (
@@ -75,7 +75,7 @@ const ManualLogsModal: FC<{
         </FieldGroup>
 
         {pauses.map((pause, index) => (
-          <PauseRow key={index}>
+          <PauseRow key={pause.id}>
             <FieldGroup>
               <Label>Inicio pausa {index + 1}</Label>
               <TimeInput

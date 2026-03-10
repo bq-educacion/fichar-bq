@@ -1,6 +1,6 @@
 import { LOG_TYPE, UserStatus, USER_STATUS } from "@/types";
 import styled from "@emotion/styled";
-import React, { FC, use, useEffect, useState } from "react";
+import React, { FC, useEffect, useState } from "react";
 import IconClock from "@/assets/icons/icon-clock.svg";
 import IconFork from "@/assets/icons/icon-fork-and-spoon.svg";
 import IconCoputerOff from "@/assets/icons/icon-computer-off.svg";
@@ -10,6 +10,7 @@ import { useRouter } from "next/router";
 import TimedButton from "../ui/TimedButton";
 import { datetoHHMM, decimalToHours } from "@/lib/utils";
 import getMobileDetect from "@/lib/getmobileDetect";
+import ManualLogsModal, { ManualLogsData } from "./ManualLogsModal";
 
 import Modal from "react-modal";
 import { set } from "mongoose";
@@ -25,6 +26,7 @@ const SingleBoxAction: FC<{
   const router = useRouter();
   const [clickable, setClickable] = useState<boolean>(true);
   const [openModal, setOpenModal] = useState(false);
+  const [manualModalOpen, setManualModalOpen] = useState(false);
   const [undoState, setUndoState] = useState<UndoFeedbackState>("idle");
   const [undoMessage, setUndoMessage] = useState("");
   useEffect(() => {
@@ -106,6 +108,23 @@ const SingleBoxAction: FC<{
     }
   };
 
+  const submitManualLogs = async (data: ManualLogsData) => {
+    const res = await fetch("/api/manualLogs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (res.status === 401) {
+      router.push("/login");
+      return;
+    }
+    if (res.status !== 200) {
+      return;
+    }
+    setManualModalOpen(false);
+    refreshStatus();
+  };
+
   useEffect(() => {
     const interval = setInterval(() => {
       setTime(new Date().getHours() + ":" + new Date().getMinutes());
@@ -175,6 +194,11 @@ const SingleBoxAction: FC<{
 
   return (
     <Container background={background} status={status.status}>
+      <ManualLogsModal
+        isOpen={manualModalOpen}
+        onClose={() => setManualModalOpen(false)}
+        onSubmit={submitManualLogs}
+      />
       {/* <Modal
         isOpen={openModal}
         style={modalStyles}
@@ -210,7 +234,11 @@ const SingleBoxAction: FC<{
           height="50px"
           time={5}
           background={buttonbakground}
-          margin="20px 0 40px 0"
+          margin={
+            status.status === USER_STATUS.not_started
+              ? "20px 0 10px 0"
+              : "20px 0 40px 0"
+          }
           onClick={async () => {
             if (clickable) {
               setClickable(false);
@@ -238,6 +266,12 @@ const SingleBoxAction: FC<{
         >
           {"I'm back!"}
         </TimedButton>
+      )}
+
+      {status.status === USER_STATUS.not_started && (
+        <ManualButton onClick={() => setManualModalOpen(true)}>
+          Fichaje manual
+        </ManualButton>
       )}
 
       {status.status !== USER_STATUS.not_started && (
@@ -325,6 +359,24 @@ const UndoButton = styled.button`
   &:disabled {
     opacity: 0.7;
     cursor: wait;
+  }
+`;
+
+const ManualButton = styled.button`
+  width: 199px;
+  height: 40px;
+  margin: 0 0 24px 0;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.22);
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.35);
   }
 `;
 

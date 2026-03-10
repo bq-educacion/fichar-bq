@@ -30,12 +30,11 @@ const replaceLogsWithManual = async (
 
   await connectMongo();
 
-  const today = new Date();
-  const todayMidnight = new Date(today).setHours(0, 0, 0, 0);
+  const todayMidnight = new Date(new Date().setHours(0, 0, 0, 0));
 
   await LogModel.deleteMany({
     user: parsedEmail,
-    date: { $gte: new Date(todayMidnight) },
+    date: { $gte: todayMidnight },
   });
 
   const makeDate = (timeStr: string): Date => {
