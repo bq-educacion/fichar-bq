@@ -62,7 +62,7 @@ const TitleText = styled.div`
 const RightContent = styled.div`
   display: flex;
   align-items: center;
-  margin-right: 12px;
+  padding-right: 12px;
 `;
 
 const Container = styled.div`
