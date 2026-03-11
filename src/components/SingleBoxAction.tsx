@@ -4,7 +4,6 @@ import React, { FC, useEffect, useState } from "react";
 import IconClock from "@/assets/icons/icon-clock.svg";
 import IconFork from "@/assets/icons/icon-fork-and-spoon.svg";
 import IconCoputerOff from "@/assets/icons/icon-computer-off.svg";
-import IconBrainup from "@/assets/icons/icon-brainup.svg";
 
 import { useRouter } from "next/router";
 import TimedButton from "../ui/TimedButton";
@@ -12,11 +11,12 @@ import { datetoHHMM, decimalToHours } from "@/lib/utils";
 import getMobileDetect from "@/lib/getmobileDetect";
 import ManualLogsModal, { ManualLogsData } from "./ManualLogsModal";
 
-import Modal from "react-modal";
-import { set } from "mongoose";
-import { frasesBrainUp } from "@/usebrainup";
-
 type UndoFeedbackState = "idle" | "loading" | "success" | "error";
+type LogActivityErrorPayload = {
+  code?: string;
+  targetDate?: string;
+  message?: string;
+};
 
 const SingleBoxAction: FC<{
   action: LOG_TYPE;
@@ -25,8 +25,13 @@ const SingleBoxAction: FC<{
 }> = ({ action, status, refreshStatus }) => {
   const router = useRouter();
   const [clickable, setClickable] = useState<boolean>(true);
-  const [openModal, setOpenModal] = useState(false);
   const [manualModalOpen, setManualModalOpen] = useState(false);
+  const [manualTargetDate, setManualTargetDate] = useState<string | undefined>(
+    undefined
+  );
+  const [manualWarningMessage, setManualWarningMessage] = useState<
+    string | undefined
+  >(undefined);
   const [undoState, setUndoState] = useState<UndoFeedbackState>("idle");
   const [undoMessage, setUndoMessage] = useState("");
   useEffect(() => {
@@ -61,17 +66,62 @@ const SingleBoxAction: FC<{
   );
 
   const logActivity = async (type: LOG_TYPE) => {
-    // check if mobile device
     const device = getMobileDetect();
-    const res = await fetch("/api/logActivity", {
+    return await fetch("/api/logActivity", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ type, isMobile: device.isMobile }),
     });
-    //const data = await res.json();
-    if (res.status !== 200) router.push("/login");
+  };
+
+  const closeManualModal = () => {
+    setManualModalOpen(false);
+    setManualTargetDate(undefined);
+    setManualWarningMessage(undefined);
+  };
+
+  const openDefaultManualModal = () => {
+    setManualTargetDate(undefined);
+    setManualWarningMessage(undefined);
+    setManualModalOpen(true);
+  };
+
+  const handleLogActivity = async (type: LOG_TYPE) => {
+    const res = await logActivity(type);
+    if (res.status === 401) {
+      router.push("/login");
+      return false;
+    }
+    if (res.status === 409) {
+      try {
+        const payload = (await res.json()) as LogActivityErrorPayload;
+        if (
+          payload.code === "PREVIOUS_DAY_NOT_CLOSED" &&
+          typeof payload.targetDate === "string"
+        ) {
+          setManualTargetDate(payload.targetDate);
+          setManualWarningMessage(
+            payload.message ||
+              "La jornada del dia anterior quedo abierta. Corrigela manualmente antes de continuar."
+          );
+          setManualModalOpen(true);
+          return false;
+        }
+      } catch {
+        // ignore parse errors and fallback to generic feedback below
+      }
+    }
+    if (res.status !== 200) {
+      const rawMessage = await res.text();
+      const cleanMessage = rawMessage.replace(/^Bad Request:\s*/i, "").trim();
+      setUndoState("error");
+      setUndoMessage(cleanMessage || "No se pudo registrar el fichaje");
+      return false;
+    }
+
+    return true;
   };
 
   const removeLastLog = async () => {
@@ -121,7 +171,7 @@ const SingleBoxAction: FC<{
     if (res.status !== 200) {
       return;
     }
-    setManualModalOpen(false);
+    closeManualModal();
     refreshStatus();
   };
 
@@ -139,12 +189,6 @@ const SingleBoxAction: FC<{
     }, 60 * 1000);
     return () => clearInterval(interval);
   }, []);
-
-  useEffect(() => {
-    if (status.status === USER_STATUS.not_started) {
-      setOpenModal(true);
-    }
-  }, [status.status]);
 
   let background = "";
   let buttonbakground = "";
@@ -196,34 +240,11 @@ const SingleBoxAction: FC<{
     <Container background={background} status={status.status}>
       <ManualLogsModal
         isOpen={manualModalOpen}
-        onClose={() => setManualModalOpen(false)}
+        onClose={closeManualModal}
         onSubmit={submitManualLogs}
+        targetDate={manualTargetDate}
+        warningMessage={manualWarningMessage}
       />
-      {/* <Modal
-        isOpen={openModal}
-        style={modalStyles}
-        contentLabel="Kindly reminder matutino"
-      >
-        <ModalContent>
-          <Icon
-            background="linear-gradient(225deg, #b68fbb, #ff5776)"
-            style={{ margin: "0 0 20px 0" }}
-          >
-            <IconBrainup />
-          </Icon>
-          <p>
-            {frasesBrainUp[Math.floor(Math.random() * frasesBrainUp.length)]}
-          </p>
-          <ModalButton
-            onClick={() => {
-              setOpenModal(false);
-              window.open("https://brainup-main.cluster.bq.com/", "_blank");
-            }}
-          >
-            ¡Vamos!
-          </ModalButton>
-        </ModalContent>
-      </Modal> */}
 
       <Icon background={iconbackground}>{icon}</Icon>
       {headerLine}
@@ -242,8 +263,11 @@ const SingleBoxAction: FC<{
           onClick={async () => {
             if (clickable) {
               setClickable(false);
-              await logActivity(action);
-              refreshStatus();
+              const hasLogged = await handleLogActivity(action);
+              if (hasLogged) {
+                refreshStatus();
+              }
+              setClickable(true);
             }
           }}
         >
@@ -259,8 +283,11 @@ const SingleBoxAction: FC<{
           onClick={async () => {
             if (clickable) {
               setClickable(false);
-              await logActivity(LOG_TYPE.goback);
-              refreshStatus();
+              const hasLogged = await handleLogActivity(LOG_TYPE.goback);
+              if (hasLogged) {
+                refreshStatus();
+              }
+              setClickable(true);
             }
           }}
         >
@@ -269,9 +296,7 @@ const SingleBoxAction: FC<{
       )}
 
       {status.status === USER_STATUS.not_started && (
-        <ManualButton onClick={() => setManualModalOpen(true)}>
-          Fichaje manual
-        </ManualButton>
+        <ManualButton onClick={openDefaultManualModal}>Fichaje manual</ManualButton>
       )}
 
       {status.status !== USER_STATUS.not_started && (
@@ -395,49 +420,6 @@ const UndoFeedback = styled.div<{ $state: UndoFeedbackState; $isError: boolean }
     opacity 0.2s ease,
     transform 0.2s ease;
   overflow: hidden;
-`;
-
-const modalStyles = {
-  content: {
-    top: "50%",
-    left: "50%",
-    height: "250px",
-    width: "320px",
-    transform: "translate(-50%, -50%)",
-    backgroundImage: "linear-gradient(230deg, #6d2077 100%, #e4002b)",
-    color: "#fff",
-    border: "none",
-    overflow: "hidden",
-  },
-};
-
-const ModalContent = styled.div`
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-  padding: 20px;
-
-  p {
-    text-align: center;
-    margin: 0 0 30px 0;
-    line-height: 1.5;
-  }
-`;
-
-const ModalButton = styled.div`
-  width: auto;
-  cursor: pointer;
-  background-image: linear-gradient(256deg, #b68fbb 100%, #ff5776);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  border-radius: 4px;
-  color: white;
-  font-size: 16px;
-  font-weight: bold;
-  height: 50px;
-  width: 100px;
 `;
 
 export default SingleBoxAction;

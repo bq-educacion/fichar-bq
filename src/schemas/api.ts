@@ -99,6 +99,12 @@ export const myProjectDedicationsResponseSchema = z
   })
   .strict();
 
+export const myProjectDedicationsQuerySchema = z
+  .object({
+    targetDate: yyyyMmDdSchema.optional(),
+  })
+  .strict();
+
 export const setLegalResponseSchema = z.literal("OK");
 
 export const uploadUrlQuerySchema = z
@@ -287,6 +293,9 @@ export type ManualLogsBody = z.infer<typeof manualLogsBodySchema>;
 export type MyUserLogsBody = z.infer<typeof myUserLogsBodySchema>;
 export type ProjectDedicationInput = z.infer<typeof projectDedicationInputSchema>;
 export type WorkerLogsBody = z.infer<typeof workerLogsBodySchema>;
+export type MyProjectDedicationsQuery = z.infer<
+  typeof myProjectDedicationsQuerySchema
+>;
 export type WorkerStatsBody = z.infer<typeof workerStatsBodySchema>;
 export type UploadUrlQuery = z.infer<typeof uploadUrlQuerySchema>;
 export type AuthGoogleProfile = z.infer<typeof authGoogleProfileSchema>;

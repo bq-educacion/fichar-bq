@@ -1,7 +1,10 @@
-import { getProjectDedicationOptionsForToday } from "@/controllers/projectDedications";
+import { getProjectDedicationOptionsForDate } from "@/controllers/projectDedications";
 import { formatZodError, isZodError, parseWithSchema } from "@/lib/validation";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
-import { myProjectDedicationsResponseSchema } from "@/schemas/api";
+import {
+  myProjectDedicationsQuerySchema,
+  myProjectDedicationsResponseSchema,
+} from "@/schemas/api";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 
@@ -18,7 +21,16 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return;
     }
 
-    const data = await getProjectDedicationOptionsForToday(session.user.email);
+    const query = parseWithSchema(myProjectDedicationsQuerySchema, {
+      targetDate: Array.isArray(req.query.targetDate)
+        ? req.query.targetDate[0]
+        : req.query.targetDate,
+    });
+
+    const data = await getProjectDedicationOptionsForDate(
+      session.user.email,
+      query.targetDate
+    );
     const payload = parseWithSchema(myProjectDedicationsResponseSchema, data);
 
     res.status(200).json(payload);

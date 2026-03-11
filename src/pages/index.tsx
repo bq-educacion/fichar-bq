@@ -8,7 +8,7 @@ import { LOG_TYPE, UserStatus, USER_STATUS, User } from "@/types";
 import React from "react";
 import UserStats from "@/components/UserStats";
 import UserToday from "@/components/UserToday";
-import { LogModel, UserModel } from "@/db/Models";
+import { UserModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
 import Layout from "@/components/Layout";
 import WelcomeUser from "@/components/WelcomeUser";
@@ -44,47 +44,14 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     };
   }
 
-  let message = "";
-
-  // if last log is not out and it is from a previous day, auto-close with an 'out' log
-
-  const lastLog = await LogModel.findOne({
-    user: session.user.email,
-  }).sort({ date: -1 });
-
-  if (
-    lastLog &&
-    lastLog.type !== LOG_TYPE.out &&
-    new Date(lastLog.date).setHours(0, 0, 0, 0) !==
-      new Date().setHours(0, 0, 0, 0)
-  ) {
-    // auto-close the previous day at 23:59 of that day
-    const lastLogDate = new Date(lastLog.date);
-    const autoOutDate = new Date(lastLogDate);
-    autoOutDate.setHours(23, 59, 0, 0);
-
-    await LogModel.create({
-      type: LOG_TYPE.out,
-      user: session.user.email,
-      date: autoOutDate,
-    });
-    const user = await getUserByEmail(session.user.email || "foo");
-    user.status.status = USER_STATUS.not_started;
-    user.status.date = new Date();
-    await user?.save();
-
-    message = "El último día se te olvidó desfichar (cerrado automáticamente)";
-  }
-
   return {
     props: {
-      message,
       session,
     },
   };
 };
 
-const Home: NextPage<{ message: string }> = ({ message }) => {
+const Home: NextPage = () => {
   const getUserStatus = async () => {
     const res = await fetch("/api/userStatus");
     if (res.status !== 200) router.push("/login");

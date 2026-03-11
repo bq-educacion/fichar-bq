@@ -6,17 +6,44 @@ import {
   myProjectDedicationsResponseSchema,
   projectDedicationInputSchema,
   ProjectDedicationInput,
+  yyyyMmDdSchema,
 } from "@/schemas/api";
 import { projectDedicationCreateSchema } from "@/schemas/db";
 import { z } from "zod";
 
 const dedicationArraySchema = z.array(projectDedicationInputSchema).default([]);
 const emailSchema = z.string().email();
+const dayRangeSchema = z
+  .object({
+    start: z.date(),
+    end: z.date(),
+  })
+  .strict()
+  .refine((value) => value.start.getTime() <= value.end.getTime(), {
+    message: "Invalid day range",
+  });
 
-const getTodayRange = () => {
-  const start = new Date(new Date().setHours(0, 0, 0, 0));
-  const end = new Date(new Date().setHours(23, 59, 59, 999));
+const getDayRange = (date: Date) => {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(date);
+  end.setHours(23, 59, 59, 999);
   return { start, end };
+};
+
+const getTodayRange = () => getDayRange(new Date());
+
+const getRangeFromInputDate = (targetDate?: string) => {
+  if (!targetDate) {
+    return getTodayRange();
+  }
+
+  const parsedTargetDate = parseWithSchema(yyyyMmDdSchema, targetDate);
+  const [rawYear, rawMonth, rawDay] = parsedTargetDate.split("-");
+  const year = Number(rawYear);
+  const month = Number(rawMonth) - 1;
+  const day = Number(rawDay);
+  return getDayRange(new Date(year, month, day));
 };
 
 const getUserContextFromEmail = async (
@@ -48,14 +75,15 @@ const getUserContextFromEmail = async (
 };
 
 const getActiveAssignedProjects = async (
-  userId: string
+  userId: string,
+  range: { start: Date; end: Date }
 ): Promise<Array<{ _id: string; name: string }>> => {
-  const { start, end } = getTodayRange();
+  const parsedRange = parseWithSchema(dayRangeSchema, range);
 
   const projects = await ProjectModel.find({
     user: userId,
-    startDate: { $lte: end },
-    endData: { $gte: start },
+    startDate: { $lte: parsedRange.end },
+    endData: { $gte: parsedRange.start },
   })
     .collation({ locale: "es" })
     .sort({ name: 1 })
@@ -134,8 +162,12 @@ export const resolveDedicationsForProjects = (
   return dedications;
 };
 
-export const getProjectDedicationOptionsForToday = async (email: string) => {
+export const getProjectDedicationOptionsForDate = async (
+  email: string,
+  targetDate?: string
+) => {
   const parsedEmail = parseWithSchema(emailSchema, email);
+  const targetRange = getRangeFromInputDate(targetDate);
 
   await connectMongo();
 
@@ -150,7 +182,7 @@ export const getProjectDedicationOptionsForToday = async (email: string) => {
     });
   }
 
-  const projects = await getActiveAssignedProjects(userId);
+  const projects = await getActiveAssignedProjects(userId, targetRange);
   if (projects.length === 1) {
     return parseWithSchema(myProjectDedicationsResponseSchema, {
       showDedications: false,
@@ -160,7 +192,7 @@ export const getProjectDedicationOptionsForToday = async (email: string) => {
   }
 
   const projectIds = new Set(projects.map((project) => project._id));
-  const { start, end } = getTodayRange();
+  const { start, end } = targetRange;
 
   const existingDoc = await ProjectDedicationModel.findOne({
     userId,
@@ -207,40 +239,52 @@ export const getProjectDedicationOptionsForToday = async (email: string) => {
   });
 };
 
+export const getProjectDedicationOptionsForToday = async (email: string) =>
+  await getProjectDedicationOptionsForDate(email);
+
 export const saveProjectDedicationsForToday = async (
   email: string,
   dedications: ProjectDedicationInput[]
 ) => {
+  const todayRange = getTodayRange();
+  await saveProjectDedicationsForRange(email, dedications, todayRange);
+};
+
+export const saveProjectDedicationsForRange = async (
+  email: string,
+  dedications: ProjectDedicationInput[],
+  range: { start: Date; end: Date }
+) => {
   const parsedEmail = parseWithSchema(emailSchema, email);
   const normalized = normalizeDedications(dedications);
+  const parsedRange = parseWithSchema(dayRangeSchema, range);
 
   await connectMongo();
 
   const { userId, isGeneralCostsDepartment } =
     await getUserContextFromEmail(parsedEmail);
-  const { start, end } = getTodayRange();
 
   if (isGeneralCostsDepartment) {
     await ProjectDedicationModel.deleteMany({
       userId,
-      date: { $gte: start, $lte: end },
+      date: { $gte: parsedRange.start, $lte: parsedRange.end },
     }).exec();
     return;
   }
 
-  const projects = await getActiveAssignedProjects(userId);
+  const projects = await getActiveAssignedProjects(userId, parsedRange);
   const dedicationsToPersist = resolveDedicationsForProjects(normalized, projects);
 
   if (dedicationsToPersist.length === 0) {
     await ProjectDedicationModel.deleteMany({
       userId,
-      date: { $gte: start, $lte: end },
+      date: { $gte: parsedRange.start, $lte: parsedRange.end },
     }).exec();
     return;
   }
 
   const payload = parseWithSchema(projectDedicationCreateSchema, {
-    date: start,
+    date: parsedRange.start,
     userId,
     dedications: dedicationsToPersist,
   });

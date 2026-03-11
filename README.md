@@ -81,9 +81,13 @@ Body: `{ startHour: "HH:MM", endHour: "HH:MM", pauses: [{ start: "HH:MM", end: "
 
 Clears today's logs and creates manual entries. Requires authentication.
 
-### Auto-close on forgotten clock-out
+### Forgotten clock-out flow
 
-If a user forgets to clock out and their last log is from a previous day (not `out`), the system automatically creates an `out` log at 23:59 of that day and resets the user status to `not_started`.
+If a user forgot to end the previous day (last log from yesterday is not `out`) and tries to start today, the start action is blocked with a prompt to manually correct the previous day.
+
+That correction flow requires:
+- Manual schedule input for the previous day
+- Project dedications before they can continue
 
 ## Learn More
 

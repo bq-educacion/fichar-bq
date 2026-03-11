@@ -1,4 +1,4 @@
-import addLog from "@/controllers/addLog";
+import addLog, { PreviousDayNotClosedError } from "@/controllers/addLog";
 import { formatZodError, isZodError, parseWithSchema, toPlainObject } from "@/lib/validation";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import {
@@ -36,6 +36,16 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
     res.status(200).json(payload);
   } catch (error) {
+    if (error instanceof PreviousDayNotClosedError) {
+      res.status(409).json({
+        code: "PREVIOUS_DAY_NOT_CLOSED",
+        targetDate: error.targetDate,
+        message:
+          "Ayer dejaste la jornada abierta. Corrige el fichaje manualmente e indica las dedicaciones para poder empezar hoy.",
+      });
+      return;
+    }
+
     if (isZodError(error)) {
       res.status(400).send(`Bad Request: ${formatZodError(error)}`);
       return;

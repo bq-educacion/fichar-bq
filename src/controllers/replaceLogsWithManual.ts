@@ -10,7 +10,7 @@ import { manualLogsBodySchema } from "@/schemas/api";
 import { logCreateSchema, logSchema } from "@/schemas/db";
 import { Log } from "@/types";
 import { z } from "zod";
-import { saveProjectDedicationsForToday } from "./projectDedications";
+import { saveProjectDedicationsForRange } from "./projectDedications";
 import updateUserStatus from "./updateUserStatus";
 
 export type ManualEntry = z.infer<typeof manualLogsBodySchema>;
@@ -55,10 +55,6 @@ const replaceLogsWithManual = async (
   const isTargetToday =
     userYear === todayYear && userMonth === todayMonth && userDay === todayDay;
 
-  if (!parsedEntry.preserveProjectDedications && !isTargetToday) {
-    throw new Error("Para días anteriores solo se pueden modificar los horarios");
-  }
-
   const targetDayNumber = Date.UTC(userYear, userMonth, userDay);
   const todayDayNumber = Date.UTC(todayYear, todayMonth, todayDay);
   if (targetDayNumber > todayDayNumber) {
@@ -86,7 +82,10 @@ const replaceLogsWithManual = async (
   );
 
   if (!parsedEntry.preserveProjectDedications) {
-    await saveProjectDedicationsForToday(parsedEmail, parsedEntry.projectDedications);
+    await saveProjectDedicationsForRange(parsedEmail, parsedEntry.projectDedications, {
+      start: userTodayStartUtc,
+      end: userTodayEndUtc,
+    });
   }
 
   await LogModel.deleteMany({

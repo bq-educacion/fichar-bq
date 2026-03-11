@@ -40,6 +40,7 @@ const ManualLogsModal: FC<{
   onClose: () => void;
   onSubmit: (data: ManualLogsData) => void;
   targetDate?: string;
+  warningMessage?: string;
   showDedications?: boolean;
   preserveProjectDedications?: boolean;
 }> = ({
@@ -47,6 +48,7 @@ const ManualLogsModal: FC<{
   onClose,
   onSubmit,
   targetDate,
+  warningMessage,
   showDedications = true,
   preserveProjectDedications = false,
 }) => {
@@ -123,7 +125,8 @@ const ManualLogsModal: FC<{
       setDedicationsLoading(true);
       setDedicationsError("");
       try {
-        const res = await fetch("/api/myProjectDedications");
+        const query = new URLSearchParams({ targetDate: effectiveTargetDate });
+        const res = await fetch(`/api/myProjectDedications?${query.toString()}`);
         if (!res.ok) {
           throw new Error(
             (await res.text()) || "No se pudieron cargar los proyectos"
@@ -169,7 +172,7 @@ const ManualLogsModal: FC<{
         clearInterval(interval);
       }
     };
-  }, [isOpen, isTargetToday, showDedications]);
+  }, [effectiveTargetDate, isOpen, isTargetToday, showDedications]);
 
   const addPause = () => {
     setPauses([...pauses, { id: crypto.randomUUID(), start: "13:00", end: "14:00" }]);
@@ -219,6 +222,7 @@ const ManualLogsModal: FC<{
               effectiveTargetDate
             )}`}
           </Subtitle>
+          {warningMessage && <WarningMessage>{warningMessage}</WarningMessage>}
         </Header>
 
         <Columns $singleColumn={!showDedicationsState}>
@@ -358,6 +362,15 @@ const Subtitle = styled.p`
   margin: 0 0 8px 0;
   font-size: 14px;
   color: #7a7b7f;
+`;
+
+const WarningMessage = styled.p`
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #8c1322;
+  background: #fdecee;
 `;
 
 const Columns = styled.div<{ $singleColumn: boolean }>`

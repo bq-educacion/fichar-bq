@@ -20,6 +20,22 @@ const addLogInputSchema = z
   })
   .strict();
 
+const dateToInputDateValue = (date: Date) =>
+  `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}-${date
+    .getDate()
+    .toString()
+    .padStart(2, "0")}`;
+
+export class PreviousDayNotClosedError extends Error {
+  public readonly targetDate: string;
+
+  constructor(targetDate: string) {
+    super("PREVIOUS_DAY_NOT_CLOSED");
+    this.name = "PreviousDayNotClosedError";
+    this.targetDate = targetDate;
+  }
+}
+
 const createValidatedLog = async (data: z.input<typeof logCreateSchema>) => {
   const payload = parseWithSchema(logCreateSchema, data);
   return await LogModel.create(payload);
@@ -60,54 +76,17 @@ const addLog = async (
     return parseWithSchema(logSchema, toPlainObject(log));
   }
 
-  if (
-    lastLog.date < new Date(new Date().setHours(0, 0, 0, 0)) &&
-    input.type !== LOG_TYPE.out
-  ) {
-    if (lastLog.type === LOG_TYPE.in) {
-      const midnight = new Date(new Date().setHours(0, 0, 0, 0));
-      const outDate = new Date(midnight.getTime() - 1);
-      const inDate = new Date(midnight.getTime() + 1);
+  const startOfToday = new Date(new Date().setHours(0, 0, 0, 0));
+  const isLastLogFromPreviousDay = lastLog.date < startOfToday;
 
-      await createValidatedLog({
-        type: LOG_TYPE.out,
-        isMobile: input.isMobile,
-        date: outDate,
-        user: input.email,
-      });
-
-      const reopenedLog = await createValidatedLog({
-        type: LOG_TYPE.in,
-        isMobile: input.isMobile,
-        date: inDate,
-        user: input.email,
-      });
-
-      await updateUserStatus(input.email);
-      return parseWithSchema(logSchema, toPlainObject(reopenedLog));
+  if (isLastLogFromPreviousDay) {
+    if (lastLog.type !== LOG_TYPE.out && input.type === LOG_TYPE.in) {
+      throw new PreviousDayNotClosedError(dateToInputDateValue(lastLog.date));
     }
 
-    if (lastLog.type === LOG_TYPE.pause) {
-      lastLog.type = LOG_TYPE.out;
-      await lastLog.save();
-
-      const resumedLog = await createValidatedLog({
-        type: LOG_TYPE.in,
-        isMobile: input.isMobile,
-        date: new Date(),
-        user: input.email,
-      });
-
-      await updateUserStatus(input.email);
-      return parseWithSchema(logSchema, toPlainObject(resumedLog));
+    if (input.type !== LOG_TYPE.in) {
+      throw new Error("Bad Request");
     }
-  }
-
-  if (
-    lastLog.date < new Date(new Date().setHours(0, 0, 0, 0)) &&
-    input.type !== LOG_TYPE.in
-  ) {
-    throw new Error("Bad Request");
   }
 
   if (input.type === LOG_TYPE.goback) {
