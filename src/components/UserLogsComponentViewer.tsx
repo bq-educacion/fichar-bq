@@ -20,7 +20,8 @@ const toInputDateValue = (date: Date) =>
 const UserLogsComponentViewer: FC<{
   logs: Log[];
   refreshLogs?: () => Promise<void> | void;
-}> = ({ logs, refreshLogs }) => {
+  allowManualOverwrite?: boolean;
+}> = ({ logs, refreshLogs, allowManualOverwrite = false }) => {
   const onUpload = async (
     inputFileRef: HTMLInputElement,
     log: Log,
@@ -171,17 +172,19 @@ const UserLogsComponentViewer: FC<{
 
   return (
     <>
-      <ManualLogsModal
-        isOpen={manualModalOpen}
-        onClose={() => {
-          setManualModalOpen(false);
-          setManualTargetDate(null);
-        }}
-        onSubmit={submitManualOverwriteForDay}
-        targetDate={manualTargetDate ?? undefined}
-        showDedications={false}
-        preserveProjectDedications={true}
-      />
+      {allowManualOverwrite && (
+        <ManualLogsModal
+          isOpen={manualModalOpen}
+          onClose={() => {
+            setManualModalOpen(false);
+            setManualTargetDate(null);
+          }}
+          onSubmit={submitManualOverwriteForDay}
+          targetDate={manualTargetDate ?? undefined}
+          showDedications={false}
+          preserveProjectDedications={true}
+        />
+      )}
       <DisplayContent
         opened={true}
         bold={true}
@@ -209,11 +212,13 @@ const UserLogsComponentViewer: FC<{
                 bold={false}
               >
                 <>
-                  <DayActions>
-                    <OverwriteButton onClick={() => openManualOverwriteForDay(dayLogs)}>
-                      Sobrescribir fichajes del día
-                    </OverwriteButton>
-                  </DayActions>
+                  {allowManualOverwrite && (
+                    <DayActions>
+                      <OverwriteButton onClick={() => openManualOverwriteForDay(dayLogs)}>
+                        Sobrescribir fichajes del día
+                      </OverwriteButton>
+                    </DayActions>
+                  )}
                   {dayLogs.map((log) => (
                     <Log key={log._id.toString()}>
                       <Icon color={LogIcon[log.type].color}>
