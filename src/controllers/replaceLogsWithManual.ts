@@ -22,17 +22,6 @@ const replaceLogsWithManual = async (
   const parsedEmail = parseWithSchema(z.string().email(), email);
   const parsedEntry = parseWithSchema(manualLogsBodySchema, entry);
 
-  const rangeValidation = validateManualHoursRange(
-    parsedEntry.startHour,
-    parsedEntry.endHour,
-    new Date(),
-    { enforceNowLimit: false }
-  );
-
-  if (!rangeValidation.isValid) {
-    throw new Error(rangeValidation.error);
-  }
-
   const chronologyValidation = validateManualLogsChronology(
     parsedEntry.startHour,
     parsedEntry.endHour,
@@ -44,15 +33,48 @@ const replaceLogsWithManual = async (
 
   await connectMongo();
 
-  await saveProjectDedicationsForToday(parsedEmail, parsedEntry.projectDedications);
-
   const clientTimezoneOffsetMinutes =
     parsedEntry.clientTimezoneOffsetMinutes ?? new Date().getTimezoneOffset();
 
   const userNow = new Date(Date.now() - clientTimezoneOffsetMinutes * 60 * 1000);
-  const userYear = userNow.getUTCFullYear();
-  const userMonth = userNow.getUTCMonth();
-  const userDay = userNow.getUTCDate();
+  const todayYear = userNow.getUTCFullYear();
+  const todayMonth = userNow.getUTCMonth();
+  const todayDay = userNow.getUTCDate();
+
+  let userYear = todayYear;
+  let userMonth = todayMonth;
+  let userDay = todayDay;
+
+  if (parsedEntry.targetDate) {
+    const [rawYear, rawMonth, rawDay] = parsedEntry.targetDate.split("-");
+    userYear = Number(rawYear);
+    userMonth = Number(rawMonth) - 1;
+    userDay = Number(rawDay);
+  }
+
+  const isTargetToday =
+    userYear === todayYear && userMonth === todayMonth && userDay === todayDay;
+
+  if (!parsedEntry.preserveProjectDedications && !isTargetToday) {
+    throw new Error("Para días anteriores solo se pueden modificar los horarios");
+  }
+
+  const targetDayNumber = Date.UTC(userYear, userMonth, userDay);
+  const todayDayNumber = Date.UTC(todayYear, todayMonth, todayDay);
+  if (targetDayNumber > todayDayNumber) {
+    throw new Error("No se pueden introducir fichajes manuales en días futuros");
+  }
+
+  const rangeValidation = validateManualHoursRange(
+    parsedEntry.startHour,
+    parsedEntry.endHour,
+    userNow,
+    { enforceNowLimit: isTargetToday }
+  );
+
+  if (!rangeValidation.isValid) {
+    throw new Error(rangeValidation.error);
+  }
 
   const userTodayStartUtc = new Date(
     Date.UTC(userYear, userMonth, userDay, 0, 0, 0, 0) +
@@ -62,6 +84,10 @@ const replaceLogsWithManual = async (
     Date.UTC(userYear, userMonth, userDay, 23, 59, 59, 999) +
       clientTimezoneOffsetMinutes * 60 * 1000
   );
+
+  if (!parsedEntry.preserveProjectDedications) {
+    await saveProjectDedicationsForToday(parsedEmail, parsedEntry.projectDedications);
+  }
 
   await LogModel.deleteMany({
     user: parsedEmail,

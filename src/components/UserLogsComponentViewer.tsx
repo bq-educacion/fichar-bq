@@ -2,16 +2,25 @@ import { datetoHHMM, decimalToHours, getHoursToday } from "@/lib/utils";
 import { LOG_NOTES, LOG_TYPE, Log } from "@/types";
 import DisplayContent from "@/ui/DisplayContent";
 import styled from "@emotion/styled";
-import React, { FC, useRef, useState } from "react";
+import React, { FC, useEffect, useRef, useState } from "react";
 import IconPause from "@/assets/icons/icon-munukebab.svg";
 import IconOut from "@/assets/icons/icon-left-arrow.svg";
 import IconIn from "@/assets/icons/icon-right-arrow.svg";
 import IconMobile from "@/assets/icons/smartphone-icon.svg";
 import IconDoctor from "@/assets/icons/icon-doctor.svg";
 import IconManual from "@/assets/icons/icon-manual.svg";
+import ManualLogsModal, { ManualLogsData } from "./ManualLogsModal";
 
+const toInputDateValue = (date: Date) =>
+  `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}-${date
+    .getDate()
+    .toString()
+    .padStart(2, "0")}`;
 
-const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
+const UserLogsComponentViewer: FC<{
+  logs: Log[];
+  refreshLogs?: () => Promise<void> | void;
+}> = ({ logs, refreshLogs }) => {
   const onUpload = async (
     inputFileRef: HTMLInputElement,
     log: Log,
@@ -85,6 +94,46 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
   const [processedLogs, setProcessedLogs] = useState<{ [key: string]: Log[] }>({
     ...processLogs(logs),
   });
+  const [manualTargetDate, setManualTargetDate] = useState<string | null>(null);
+  const [manualModalOpen, setManualModalOpen] = useState(false);
+
+  useEffect(() => {
+    setProcessedLogs({ ...processLogs(logs) });
+  }, [logs]);
+
+  const openManualOverwriteForDay = (dayLogs: Log[]) => {
+    if (dayLogs.length === 0) {
+      return;
+    }
+
+    const targetDate = toInputDateValue(new Date(dayLogs[0].date));
+    setManualTargetDate(targetDate);
+    setManualModalOpen(true);
+  };
+
+  const submitManualOverwriteForDay = async (data: ManualLogsData) => {
+    const res = await fetch("/api/manualLogs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...data,
+        preserveProjectDedications: true,
+        projectDedications: [],
+      }),
+    });
+
+    if (res.status === 401) {
+      window.location.href = "/login";
+      return;
+    }
+    if (res.status !== 200) {
+      return;
+    }
+
+    setManualModalOpen(false);
+    setManualTargetDate(null);
+    await refreshLogs?.();
+  };
 
   const inputFileRefs = useRef<{
     [key: string]: HTMLInputElement;
@@ -121,51 +170,74 @@ const UserLogsComponentViewer: FC<{ logs: Log[] }> = ({ logs }) => {
   };
 
   return (
-    <DisplayContent
-      opened={true}
-      bold={true}
-      title="Registro de fichajes (últimos 7 días)"
-    >
-      <Container>
-        {Object.keys(processedLogs).map((key, index) => {
-          // first letter of key in upper case
-          const title = key.charAt(0).toUpperCase() + key.slice(1);
-          // title and number of hours worked (except if there is an error)
-          const title_full = `${title} (${decimalToHours(
-            getHoursToday(
-              processedLogs[key].map((log) => ({
-                ...log,
-                date: new Date(log.date),
-              }))
-            )
-          )})`;
-          return (
-            <DisplayContent
-              opened={index === 0}
-              key={key}
-              title={title_full}
-              bold={false}
-            >
-              <>
-                {processedLogs[key].map((log) => (
-                  <Log key={log._id.toString()}>
-                    <Icon color={LogIcon[log.type].color}>
-                      {LogIcon[log.type].icon}
-                    </Icon>
-                    <div>{LogType[log.type]}</div>
-                    <Time>
-                      {datetoHHMM(new Date(log.date))}
-                      {log.manual && <ManualBadge title="Fichaje manual"><IconManual /></ManualBadge>}
-                      {log.isMobile && <IconMobile />}
-                    </Time>
-                  </Log>
-                ))}
-              </>
-            </DisplayContent>
-          );
-        })}
-      </Container>
-    </DisplayContent>
+    <>
+      <ManualLogsModal
+        isOpen={manualModalOpen}
+        onClose={() => {
+          setManualModalOpen(false);
+          setManualTargetDate(null);
+        }}
+        onSubmit={submitManualOverwriteForDay}
+        targetDate={manualTargetDate ?? undefined}
+        showDedications={false}
+        preserveProjectDedications={true}
+      />
+      <DisplayContent
+        opened={true}
+        bold={true}
+        title="Registro de fichajes (últimos 7 días)"
+      >
+        <Container>
+          {Object.keys(processedLogs).map((key, index) => {
+            const dayLogs = processedLogs[key];
+            // first letter of key in upper case
+            const title = key.charAt(0).toUpperCase() + key.slice(1);
+            // title and number of hours worked (except if there is an error)
+            const title_full = `${title} (${decimalToHours(
+              getHoursToday(
+                dayLogs.map((log) => ({
+                  ...log,
+                  date: new Date(log.date),
+                }))
+              )
+            )})`;
+            return (
+              <DisplayContent
+                opened={index === 0}
+                key={key}
+                title={title_full}
+                bold={false}
+              >
+                <>
+                  <DayActions>
+                    <OverwriteButton onClick={() => openManualOverwriteForDay(dayLogs)}>
+                      Sobrescribir fichajes del día
+                    </OverwriteButton>
+                  </DayActions>
+                  {dayLogs.map((log) => (
+                    <Log key={log._id.toString()}>
+                      <Icon color={LogIcon[log.type].color}>
+                        {LogIcon[log.type].icon}
+                      </Icon>
+                      <div>{LogType[log.type]}</div>
+                      <Time>
+                        {datetoHHMM(new Date(log.date))}
+                        {log.manual && (
+                          <ManualBadge title="Fichaje manual">
+                            <IconManual />
+                          </ManualBadge>
+                        )}
+                        {log.isMobile && <IconMobile />}
+                      </Time>
+                    </Log>
+                  ))}
+                </>
+              </DisplayContent>
+            );
+          })}
+        </Container>
+      </DisplayContent>
+    </>
   );
 };
 
@@ -237,6 +309,31 @@ const Container = styled.div`
   width: 100%;
   overflow: visible;
   padding-left: 23px;
+`;
+
+const DayActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 8px 12px;
+  border-top: 1px solid #fff;
+`;
+
+const OverwriteButton = styled.button`
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid #434242;
+  border-radius: 4px;
+  background: transparent;
+  color: #434242;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: #dfdfde;
+  }
 `;
 
 const Log = styled.div`

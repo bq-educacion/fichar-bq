@@ -16,6 +16,9 @@ import {
 const HHMM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 export const hhmmSchema = z.string().regex(HHMM_REGEX, "Invalid HH:MM format");
+export const yyyyMmDdSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid YYYY-MM-DD format");
 
 export const paginationBodySchema = z
   .object({
@@ -64,6 +67,8 @@ export const manualLogsBodySchema = z
     pauses: z.array(manualPauseSchema).default([]),
     projectDedications: z.array(projectDedicationInputSchema).default([]),
     clientTimezoneOffsetMinutes: z.number().int().min(-840).max(840).optional(),
+    targetDate: yyyyMmDdSchema.optional(),
+    preserveProjectDedications: z.boolean().default(false),
   })
   .strict();
 

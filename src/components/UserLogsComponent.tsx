@@ -2,7 +2,7 @@ import { datetoHHMM, decimalToHours, getHoursToday } from "@/lib/utils";
 import { LOG_TYPE, Log, USER_STATUS, UserStats as UserLogs } from "@/types";
 import DisplayContent from "@/ui/DisplayContent";
 import styled from "@emotion/styled";
-import React, { FC, useEffect, useState } from "react";
+import React, { FC, useCallback, useEffect, useState } from "react";
 import IconError from "@/assets/icons/icon-close.svg";
 import IconPause from "@/assets/icons/icon-munukebab.svg";
 import IconOut from "@/assets/icons/icon-left-arrow.svg";
@@ -14,7 +14,7 @@ import UserLogsComponentViewer from "./UserLogsComponentViewer";
 const UserLogsComponent: FC<{ status: USER_STATUS }> = ({ status }) => {
   const [logs, setLogs] = useState<Log[]>([]);
 
-  const fetchUserLogs = async () => {
+  const fetchUserLogs = useCallback(async () => {
     const response = await fetch(`/api/myUserLogs`, {
       method: "POST",
       headers: {
@@ -24,14 +24,18 @@ const UserLogsComponent: FC<{ status: USER_STATUS }> = ({ status }) => {
     });
     const data = await response.json();
     setLogs(data);
-  };
+  }, []);
 
   useEffect(() => {
     fetchUserLogs();
-  }, [status]);
+  }, [status, fetchUserLogs]);
 
   return (
-    <UserLogsComponentViewer key={`${status}-${logs.length}`} logs={logs} />
+    <UserLogsComponentViewer
+      logs={logs}
+      refreshLogs={fetchUserLogs}
+      allowManualOverwrite={true}
+    />
   );
 };
 

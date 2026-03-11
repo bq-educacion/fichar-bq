@@ -18,12 +18,43 @@ import ProjectDedicationsPicker, {
 
 export type ManualLogsData = ManualLogsBody;
 
+const dateToInputDateValue = (date: Date) =>
+  `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}-${date
+    .getDate()
+    .toString()
+    .padStart(2, "0")}`;
+
+const formatInputDateLabel = (inputDate: string) => {
+  const [year, month, day] = inputDate.split("-").map(Number);
+  const parsedDate = new Date(year, month - 1, day);
+  return parsedDate.toLocaleDateString("es-ES", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+};
+
 const ManualLogsModal: FC<{
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: ManualLogsData) => void;
-}> = ({ isOpen, onClose, onSubmit }) => {
+  targetDate?: string;
+  showDedications?: boolean;
+  preserveProjectDedications?: boolean;
+}> = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  targetDate,
+  showDedications = true,
+  preserveProjectDedications = false,
+}) => {
   const getCurrentBrowserHour = () => dateToTimeInputValue(new Date());
+  const browserTodayDate = dateToInputDateValue(new Date());
+  const effectiveTargetDate = targetDate ?? browserTodayDate;
+  const isTargetToday = effectiveTargetDate === browserTodayDate;
+  const isTargetInFuture = effectiveTargetDate > browserTodayDate;
 
   const [startHour, setStartHour] = useState("09:00");
   const [endHour, setEndHour] = useState(getCurrentBrowserHour);
@@ -31,24 +62,28 @@ const ManualLogsModal: FC<{
   const [currentTimeLimit, setCurrentTimeLimit] = useState(getCurrentBrowserHour);
   const [projects, setProjects] = useState<ProjectDedicationOption[]>([]);
   const [projectDedications, setProjectDedications] = useState<ProjectDedicationInput[]>([]);
-  const [showDedications, setShowDedications] = useState(true);
+  const [showDedicationsState, setShowDedicationsState] = useState(showDedications);
   const [dedicationsLoading, setDedicationsLoading] = useState(false);
   const [dedicationsError, setDedicationsError] = useState("");
 
-  const rangeValidation = validateManualHoursRange(startHour, endHour);
+  const rangeValidation = validateManualHoursRange(startHour, endHour, new Date(), {
+    enforceNowLimit: isTargetToday,
+  });
   const chronologyValidation = rangeValidation.isValid
     ? validateManualLogsChronology(startHour, endHour, pauses)
     : rangeValidation;
-  const validationError = chronologyValidation.isValid
-    ? null
-    : chronologyValidation.error;
+  const validationError = isTargetInFuture
+    ? "No puedes introducir fichajes en días futuros"
+    : chronologyValidation.isValid
+      ? null
+      : chronologyValidation.error;
   const dedicationTotal = projectDedications.reduce(
     (acc, item) => acc + item.dedication,
     0
   );
   const dedicationRemaining = 100 - dedicationTotal;
   const dedicationValidationError =
-    showDedications && projects.length > 0 && dedicationRemaining !== 0
+    showDedicationsState && projects.length > 0 && dedicationRemaining !== 0
       ? dedicationRemaining > 0
         ? `Te falta asignar ${dedicationRemaining}% de dedicación`
         : `Te has pasado ${Math.abs(dedicationRemaining)}% de dedicación`
@@ -57,13 +92,31 @@ const ManualLogsModal: FC<{
   useEffect(() => {
     if (!isOpen) return;
 
-    const currentBrowserHour = getCurrentBrowserHour();
-    setCurrentTimeLimit(currentBrowserHour);
-    setEndHour(currentBrowserHour);
+    const defaultEndHour = isTargetToday ? getCurrentBrowserHour() : "17:00";
+    setStartHour("09:00");
+    setEndHour(defaultEndHour);
+    setPauses([]);
+    setCurrentTimeLimit(isTargetToday ? getCurrentBrowserHour() : "23:59");
+    setShowDedicationsState(showDedications);
 
-    const interval = setInterval(() => {
-      setCurrentTimeLimit(dateToTimeInputValue(new Date()));
-    }, 30000);
+    let interval: ReturnType<typeof setInterval> | undefined;
+    if (isTargetToday) {
+      interval = setInterval(() => {
+        setCurrentTimeLimit(dateToTimeInputValue(new Date()));
+      }, 30000);
+    }
+
+    if (!showDedications) {
+      setProjects([]);
+      setProjectDedications([]);
+      setDedicationsError("");
+      setDedicationsLoading(false);
+      return () => {
+        if (interval) {
+          clearInterval(interval);
+        }
+      };
+    }
 
     let isCancelled = false;
     const fetchProjectDedications = async () => {
@@ -82,7 +135,7 @@ const ManualLogsModal: FC<{
           return;
         }
 
-        setShowDedications(payload.showDedications);
+        setShowDedicationsState(payload.showDedications);
         setProjects(payload.projects);
         setProjectDedications(
           buildDefaultProjectDedications(
@@ -112,9 +165,11 @@ const ManualLogsModal: FC<{
 
     return () => {
       isCancelled = true;
-      clearInterval(interval);
+      if (interval) {
+        clearInterval(interval);
+      }
     };
-  }, [isOpen]);
+  }, [isOpen, isTargetToday, showDedications]);
 
   const addPause = () => {
     setPauses([...pauses, { id: crypto.randomUUID(), start: "13:00", end: "14:00" }]);
@@ -138,7 +193,7 @@ const ManualLogsModal: FC<{
     if (
       validationError ||
       dedicationValidationError ||
-      (showDedications && dedicationsError)
+      (showDedicationsState && dedicationsError)
     ) {
       return;
     }
@@ -147,8 +202,10 @@ const ManualLogsModal: FC<{
       startHour,
       endHour,
       pauses: pauses.map(({ start, end }) => ({ start, end })),
-      projectDedications: showDedications ? projectDedications : [],
+      projectDedications: showDedicationsState ? projectDedications : [],
       clientTimezoneOffsetMinutes: new Date().getTimezoneOffset(),
+      targetDate: effectiveTargetDate,
+      preserveProjectDedications,
     });
   };
 
@@ -157,10 +214,14 @@ const ManualLogsModal: FC<{
       <ModalContent>
         <Header>
           <Title>Introducir fichaje manual</Title>
-          <Subtitle>Introduce las horas de tu jornada de hoy</Subtitle>
+          <Subtitle>
+            {`Introduce las horas de tu jornada de ${formatInputDateLabel(
+              effectiveTargetDate
+            )}`}
+          </Subtitle>
         </Header>
 
-        <Columns $singleColumn={!showDedications}>
+        <Columns $singleColumn={!showDedicationsState}>
           <Section>
             <SectionTitle>Fichaje</SectionTitle>
             <FieldGroup>
@@ -211,7 +272,7 @@ const ManualLogsModal: FC<{
             {validationError && <ValidationError>{validationError}</ValidationError>}
           </Section>
 
-          {showDedications && (
+          {showDedicationsState && (
             <Section>
               <SectionTitle>Dedicaciones</SectionTitle>
               {dedicationsLoading ? (
@@ -239,7 +300,7 @@ const ManualLogsModal: FC<{
             disabled={
               !!validationError ||
               !!dedicationValidationError ||
-              (showDedications && !!dedicationsError) ||
+              (showDedicationsState && !!dedicationsError) ||
               dedicationsLoading
             }
           >
