@@ -8,6 +8,20 @@ import { z } from "zod";
 
 const computeUserStatusInputSchema = z.string().email();
 
+export const deriveUserStatusFromLastLogType = (
+  lastType: (typeof LOG_TYPE)[keyof typeof LOG_TYPE]
+) => {
+  if (lastType === LOG_TYPE.pause) {
+    return USER_STATUS.paused;
+  }
+
+  if (lastType === LOG_TYPE.out) {
+    return USER_STATUS.finished;
+  }
+
+  return USER_STATUS.working;
+};
+
 const computeUserStatus = async (email: string): Promise<UserStatus> => {
   const parsedEmail = parseWithSchema(computeUserStatusInputSchema, email);
 
@@ -19,7 +33,7 @@ const computeUserStatus = async (email: string): Promise<UserStatus> => {
       $gte: new Date(new Date().setHours(0, 0, 0, 0)),
     },
   })
-    .sort({ date: -1 })
+    .sort({ date: -1, _id: -1 })
     .exec();
 
   if (logsOfToday.length === 0) {
@@ -35,29 +49,10 @@ const computeUserStatus = async (email: string): Promise<UserStatus> => {
   const startDate = logsOfToday.at(-1)?.date;
   const isMobile = logsOfToday[0].isMobile;
   const hoursToday = getHoursToday([...logsOfToday].reverse());
-
-  if (lastType === LOG_TYPE.in) {
-    return parseWithSchema(userStatusSchema, {
-      status: USER_STATUS.working,
-      date: lastDate,
-      startDate,
-      hoursToday,
-      isMobile,
-    });
-  }
-
-  if (lastType === LOG_TYPE.pause) {
-    return parseWithSchema(userStatusSchema, {
-      status: USER_STATUS.paused,
-      date: lastDate,
-      startDate,
-      hoursToday,
-      isMobile,
-    });
-  }
+  const status = deriveUserStatusFromLastLogType(lastType);
 
   return parseWithSchema(userStatusSchema, {
-    status: USER_STATUS.finished,
+    status,
     date: lastDate,
     startDate,
     hoursToday,

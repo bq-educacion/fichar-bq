@@ -88,15 +88,19 @@ const normalizeDedications = (
   return normalized;
 };
 
-const validateDedicationsForProjects = (
+export const resolveDedicationsForProjects = (
   dedications: ProjectDedicationInput[],
   assignedProjects: Array<{ _id: string; name: string }>
-) => {
+): ProjectDedicationInput[] => {
   if (assignedProjects.length === 0) {
     if (dedications.length > 0) {
       throw new Error("No tienes proyectos activos asignados hoy");
     }
-    return;
+    return [];
+  }
+
+  if (assignedProjects.length === 1) {
+    return [{ projectId: assignedProjects[0]._id, dedication: 100 }];
   }
 
   if (dedications.length !== assignedProjects.length) {
@@ -126,6 +130,8 @@ const validateDedicationsForProjects = (
   if (total !== 100) {
     throw new Error("La dedicación total debe sumar 100%");
   }
+
+  return dedications;
 };
 
 export const getProjectDedicationOptionsForToday = async (email: string) => {
@@ -145,6 +151,14 @@ export const getProjectDedicationOptionsForToday = async (email: string) => {
   }
 
   const projects = await getActiveAssignedProjects(userId);
+  if (projects.length === 1) {
+    return parseWithSchema(myProjectDedicationsResponseSchema, {
+      showDedications: false,
+      projects,
+      existingDedications: [{ projectId: projects[0]._id, dedication: 100 }],
+    });
+  }
+
   const projectIds = new Set(projects.map((project) => project._id));
   const { start, end } = getTodayRange();
 
@@ -215,9 +229,9 @@ export const saveProjectDedicationsForToday = async (
   }
 
   const projects = await getActiveAssignedProjects(userId);
-  validateDedicationsForProjects(normalized, projects);
+  const dedicationsToPersist = resolveDedicationsForProjects(normalized, projects);
 
-  if (normalized.length === 0) {
+  if (dedicationsToPersist.length === 0) {
     await ProjectDedicationModel.deleteMany({
       userId,
       date: { $gte: start, $lte: end },
@@ -228,7 +242,7 @@ export const saveProjectDedicationsForToday = async (
   const payload = parseWithSchema(projectDedicationCreateSchema, {
     date: start,
     userId,
-    dedications: normalized,
+    dedications: dedicationsToPersist,
   });
 
   await ProjectDedicationModel.findOneAndUpdate(

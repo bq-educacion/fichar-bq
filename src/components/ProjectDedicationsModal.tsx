@@ -86,15 +86,14 @@ const ProjectDedicationsModal: FC<{
         <Subtitle>
           {showDedications
             ? "Antes de salir, indica el porcentaje dedicado a cada proyecto."
-            : "Tu departamento no requiere registro de dedicaciones."}
+            : "No necesitas registrar dedicaciones en este fichaje."}
         </Subtitle>
 
         {loading ? (
           <LoadingText>Cargando proyectos...</LoadingText>
         ) : !showDedications ? (
           <DisabledText>
-            Tu departamento está marcado como gastos generales, no necesitas
-            registrar dedicaciones.
+            Se asignará automáticamente la dedicación correspondiente para hoy.
           </DisabledText>
         ) : (
           <ProjectDedicationsPicker

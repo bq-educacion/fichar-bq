@@ -16,9 +16,9 @@ const WorkerProjectDedicationsViewer: FC<{
         ) : (
           <Table rows={summary.rows.length}>
             <Header>Proyecto</Header>
-            <Header>Esta semana ({summary.thisWeekDaysElapsed} días)</Header>
-            <Header>Semana pasada ({summary.previousWeekDays} días)</Header>
-            <Header>Este mes ({summary.thisMonthDaysElapsed} días)</Header>
+            <Header>Esta semana ({summary.thisWeekDaysElapsed} días con dedicación)</Header>
+            <Header>Semana pasada ({summary.previousWeekDays} días con dedicación)</Header>
+            <Header>Este mes ({summary.thisMonthDaysElapsed} días con dedicación)</Header>
 
             {summary.rows.map((row) => (
               <React.Fragment key={row.projectId}>

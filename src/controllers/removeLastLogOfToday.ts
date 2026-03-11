@@ -19,7 +19,7 @@ const removeLastLogOfToday = async (email: string): Promise<Log> => {
     user: parsedEmail,
     date: { $gte: todayStart },
   })
-    .sort({ date: -1 })
+    .sort({ date: -1, _id: -1 })
     .exec();
 
   if (!lastLogOfToday) {
@@ -32,7 +32,7 @@ const removeLastLogOfToday = async (email: string): Promise<Log> => {
     user: parsedEmail,
     date: { $gte: todayStart },
   })
-    .sort({ date: -1 })
+    .sort({ date: -1, _id: -1 })
     .exec();
 
   if (!newLastLogOfToday || newLastLogOfToday.type !== LOG_TYPE.out) {

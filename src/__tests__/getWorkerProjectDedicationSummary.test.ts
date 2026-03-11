@@ -110,22 +110,22 @@ describe("getWorkerProjectDedicationSummary", () => {
 
     expect(result).toEqual({
       thisWeekDaysElapsed: 2,
-      previousWeekDays: 7,
-      thisMonthDaysElapsed: 10,
+      previousWeekDays: 2,
+      thisMonthDaysElapsed: 5,
       rows: [
         {
           projectId: projectBId,
           projectName: "Alpha",
           thisWeek: 45,
-          previousWeek: 14.3,
-          thisMonth: 29,
+          previousWeek: 50,
+          thisMonth: 58,
         },
         {
           projectId: projectAId,
           projectName: "Zeta",
           thisWeek: 55,
-          previousWeek: 14.3,
-          thisMonth: 21,
+          previousWeek: 50,
+          thisMonth: 42,
         },
       ],
     });
@@ -137,9 +137,9 @@ describe("getWorkerProjectDedicationSummary", () => {
 
     const result = await getWorkerProjectDedicationSummary(workerEmail);
 
-    expect(result.thisWeekDaysElapsed).toBe(2);
-    expect(result.previousWeekDays).toBe(7);
-    expect(result.thisMonthDaysElapsed).toBe(10);
+    expect(result.thisWeekDaysElapsed).toBe(0);
+    expect(result.previousWeekDays).toBe(0);
+    expect(result.thisMonthDaysElapsed).toBe(0);
     expect(result.rows).toEqual([]);
     expect(mockedProjectModel.find).not.toHaveBeenCalled();
   });
@@ -164,9 +164,9 @@ describe("getWorkerProjectDedicationSummary", () => {
       {
         projectId: deletedProjectId,
         projectName: "Proyecto eliminado",
-        thisWeek: 50,
+        thisWeek: 100,
         previousWeek: 0,
-        thisMonth: 10,
+        thisMonth: 100,
       },
     ]);
   });

@@ -9,8 +9,6 @@ import {
 } from "@/schemas/db";
 import { z } from "zod";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 const workerEmailSchema = z.string().email();
 
 const projectDedicationDocSchema = z
@@ -48,9 +46,9 @@ const workerProjectDedicationSummaryRowSchema = z
 
 export const workerProjectDedicationSummarySchema = z
   .object({
-    thisWeekDaysElapsed: z.number().int().min(1),
-    previousWeekDays: z.number().int().min(1),
-    thisMonthDaysElapsed: z.number().int().min(1),
+    thisWeekDaysElapsed: z.number().int().min(0),
+    previousWeekDays: z.number().int().min(0),
+    thisMonthDaysElapsed: z.number().int().min(0),
     rows: z.array(workerProjectDedicationSummaryRowSchema),
   })
   .strict();
@@ -73,16 +71,13 @@ const startOfWeekMonday = (date: Date) => {
   return monday;
 };
 
-const daysBetweenInclusive = (start: Date, end: Date) => {
-  const utcStart = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
-  const utcEnd = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
-  return Math.floor((utcEnd - utcStart) / DAY_MS) + 1;
-};
-
 const isWithinRange = (date: Date, start: Date, end: Date) =>
   date.getTime() >= start.getTime() && date.getTime() <= end.getTime();
 
 const roundToOneDecimal = (value: number) => Math.round(value * 10) / 10;
+const dayKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+const averageByLoggedDays = (total: number, loggedDays: number) =>
+  loggedDays === 0 ? 0 : total / loggedDays;
 
 const getWorkerProjectDedicationSummary = async (
   workerEmail: string
@@ -106,9 +101,9 @@ const getWorkerProjectDedicationSummary = async (
   const previousWeekEnd = new Date(thisWeekStart.getTime() - 1);
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const thisWeekDaysElapsed = daysBetweenInclusive(thisWeekStart, todayStart);
-  const previousWeekDays = 7;
-  const thisMonthDaysElapsed = daysBetweenInclusive(thisMonthStart, todayStart);
+  const thisWeekDays = new Set<string>();
+  const previousWeekDays = new Set<string>();
+  const thisMonthDays = new Set<string>();
 
   const earliestDate = new Date(
     Math.min(previousWeekStart.getTime(), thisMonthStart.getTime())
@@ -139,6 +134,19 @@ const getWorkerProjectDedicationSummary = async (
 
     if (!inThisWeek && !inPreviousWeek && !inThisMonth) {
       continue;
+    }
+
+    if (doc.dedications.length > 0) {
+      const key = dayKey(docDate);
+      if (inThisWeek) {
+        thisWeekDays.add(key);
+      }
+      if (inPreviousWeek) {
+        previousWeekDays.add(key);
+      }
+      if (inThisMonth) {
+        thisMonthDays.add(key);
+      }
     }
 
     for (const dedication of doc.dedications) {
@@ -186,17 +194,23 @@ const getWorkerProjectDedicationSummary = async (
       return {
         projectId,
         projectName: nameByProjectId.get(projectId) ?? "Proyecto eliminado",
-        thisWeek: roundToOneDecimal(totals.thisWeek / thisWeekDaysElapsed),
-        previousWeek: roundToOneDecimal(totals.previousWeek / previousWeekDays),
-        thisMonth: roundToOneDecimal(totals.thisMonth / thisMonthDaysElapsed),
+        thisWeek: roundToOneDecimal(
+          averageByLoggedDays(totals.thisWeek, thisWeekDays.size)
+        ),
+        previousWeek: roundToOneDecimal(
+          averageByLoggedDays(totals.previousWeek, previousWeekDays.size)
+        ),
+        thisMonth: roundToOneDecimal(
+          averageByLoggedDays(totals.thisMonth, thisMonthDays.size)
+        ),
       };
     })
     .sort((a, b) => a.projectName.localeCompare(b.projectName, "es"));
 
   return parseWithSchema(workerProjectDedicationSummarySchema, {
-    thisWeekDaysElapsed,
-    previousWeekDays,
-    thisMonthDaysElapsed,
+    thisWeekDaysElapsed: thisWeekDays.size,
+    previousWeekDays: previousWeekDays.size,
+    thisMonthDaysElapsed: thisMonthDays.size,
     rows,
   });
 };
