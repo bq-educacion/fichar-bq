@@ -1,6 +1,10 @@
 import { LOG_TYPE, Log, LogsStats } from "@/types";
 
 const HHMM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const sortLogsByDate = (logs: Log[]): Log[] =>
+  [...logs].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
 
 // Compute elapsed hours from a list of logs using pair-based subtraction.
 // Pairs each "in" with the next "out"/"pause" to get precise durations.
@@ -12,11 +16,12 @@ export const computeElapsedHours = (
 ): number => {
   if (logs.length === 0) return 0;
 
+  const sortedLogs = sortLogsByDate(logs);
   const currentTime = now ?? new Date();
   let totalMs = 0;
   let lastInDate: Date | null = null;
 
-  for (const log of logs) {
+  for (const log of sortedLogs) {
     if (log.type === LOG_TYPE.in) {
       lastInDate = new Date(log.date);
     } else if (
@@ -60,14 +65,17 @@ export const numberOfDays = (logs: Log[]) =>
   }, []).length;
 
 export const getHoursToday = (logs: Log[], now?: Date) => {
+  const sortedLogs = sortLogsByDate(logs);
+
   // not started yet today
-  if (!logs.some((log) => log.type === LOG_TYPE.in)) {
+  if (!sortedLogs.some((log) => log.type === LOG_TYPE.in)) {
     return 0;
   }
 
   // use pair-based computation; add current time if last log is "in"
-  const addCurrentTime = logs.length > 0 && logs.at(-1)?.type === LOG_TYPE.in;
-  return computeElapsedHours(logs, addCurrentTime, now);
+  const addCurrentTime =
+    sortedLogs.length > 0 && sortedLogs.at(-1)?.type === LOG_TYPE.in;
+  return computeElapsedHours(sortedLogs, addCurrentTime, now);
 };
 
 // decimal hours to hh:mm
@@ -155,16 +163,18 @@ export const numberOfManualDays = (logs: Log[]) => {
 };
 
 export const realLogs = (logs: Log[]) => {
+  const sortedLogs = sortLogsByDate(logs);
+
   // get last index with type out (truncate trailing incomplete sessions)
   let lastOutIndex = -1;
-  for (let i = logs.length - 1; i >= 0; i--) {
-    if (logs[i].type === LOG_TYPE.out) {
+  for (let i = sortedLogs.length - 1; i >= 0; i--) {
+    if (sortedLogs[i].type === LOG_TYPE.out) {
       lastOutIndex = i;
       break;
     }
   }
 
-  return logs.slice(0, lastOutIndex + 1);
+  return sortedLogs.slice(0, lastOutIndex + 1);
 };
 
 export const statsFromLogs = (logs: Log[]): LogsStats => {

@@ -111,6 +111,14 @@ describe("computeElapsedHours", () => {
     expect(computeElapsedHours(logs)).toBe(16);
   });
 
+  it("computes hours correctly even when logs are not sorted by date", () => {
+    const logs: Log[] = [
+      makeLog(LOG_TYPE.out, dateAt(17, 0)),
+      makeLog(LOG_TYPE.in, dateAt(9, 0)),
+    ];
+    expect(computeElapsedHours(logs)).toBe(8);
+  });
+
   it("ignores orphan out/pause logs that have no preceding in", () => {
     const logs: Log[] = [
       makeLog(LOG_TYPE.out, dateAt(8, 0)),
@@ -294,6 +302,16 @@ describe("getHoursToday", () => {
       // still working
     ];
     const now = dateAt(16, 30); // 2.5h
+    expect(getHoursToday(logs, now)).toBe(6.5);
+  });
+
+  it("handles unsorted logs when the current session is still open", () => {
+    const logs: Log[] = [
+      makeLog(LOG_TYPE.in, dateAt(9, 0)),
+      makeLog(LOG_TYPE.in, dateAt(14, 0)),
+      makeLog(LOG_TYPE.pause, dateAt(13, 0)),
+    ];
+    const now = dateAt(16, 30);
     expect(getHoursToday(logs, now)).toBe(6.5);
   });
 
@@ -482,6 +500,18 @@ describe("realLogs", () => {
     expect(result).toHaveLength(4);
     expect(result[3].type).toBe(LOG_TYPE.out);
   });
+
+  it("normalizes to chronological order before truncation", () => {
+    const logs: Log[] = [
+      makeLog(LOG_TYPE.out, dateAt(17, 0, 0)),
+      makeLog(LOG_TYPE.in, dateAt(9, 0, 0)),
+      makeLog(LOG_TYPE.in, dateAt(9, 0, 1)),
+    ];
+    const result = realLogs(logs);
+    expect(result).toHaveLength(2);
+    expect(result[0].type).toBe(LOG_TYPE.in);
+    expect(result[1].type).toBe(LOG_TYPE.out);
+  });
 });
 
 // ─── statsFromLogs ──────────────────────────────────────────────────────────
@@ -501,6 +531,18 @@ describe("statsFromLogs", () => {
     const logs: Log[] = [
       makeLog(LOG_TYPE.in, dateAt(9, 0)),
       makeLog(LOG_TYPE.out, dateAt(17, 0)),
+    ];
+    const result = statsFromLogs(logs);
+    expect(result.total).toBe(8);
+    expect(result.average).toBe(8);
+    expect(result.logsDays).toBe(1);
+    expect(result.manualLogsDays).toBe(0);
+  });
+
+  it("computes correct stats when logs are unsorted", () => {
+    const logs: Log[] = [
+      makeLog(LOG_TYPE.out, dateAt(17, 0)),
+      makeLog(LOG_TYPE.in, dateAt(9, 0)),
     ];
     const result = statsFromLogs(logs);
     expect(result.total).toBe(8);

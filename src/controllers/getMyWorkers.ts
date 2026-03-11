@@ -8,6 +8,7 @@ import { z } from "zod";
 
 const managerEmailSchema = z.string().email();
 const workerWithStatsSchema = userSchema.extend({ stats: logsStatsSchema }).strict();
+const MANAGER_STATS_DAYS_WINDOW = 30;
 
 const getMyWorkers = async (
   manager: string
@@ -17,20 +18,31 @@ const getMyWorkers = async (
   await connectMongo();
   const workers = await getWorkers(parsedManager);
 
-  const last30Days = new Date(new Date().setDate(new Date().getDate() - 30));
+  const now = new Date();
+  const last30Days = new Date(now);
+  last30Days.setHours(0, 0, 0, 0);
+  last30Days.setDate(last30Days.getDate() - (MANAGER_STATS_DAYS_WINDOW - 1));
+
   const last30DaysWorkers = await Promise.all(
     workers.map(async (worker) => {
       return await LogModel.find({
         user: worker.email,
-        date: { $gte: last30Days },
-      }).exec();
+        date: { $gte: last30Days, $lte: now },
+      })
+        .sort({ date: 1 })
+        .exec();
     })
   );
 
   const fullWorkers = workers.map((worker, index) => {
+    const workerStats = statsFromLogs(last30DaysWorkers[index]);
+
     return {
       ...worker,
-      stats: statsFromLogs(last30DaysWorkers[index]),
+      stats: {
+        ...workerStats,
+        average: workerStats.total / MANAGER_STATS_DAYS_WINDOW,
+      },
     };
   });
 
