@@ -14,6 +14,7 @@ import {
   realLogs,
   statsFromLogs,
   validateManualHoursRange,
+  validateManualLogsChronology,
 } from "@/lib/utils";
 
 // Helper to create a Log object with minimal required fields
@@ -449,6 +450,55 @@ describe("validateManualHoursRange", () => {
     expect(validateManualHoursRange("9:00", "12:00", now)).toEqual({
       isValid: false,
       error: "Formato de hora invalido",
+    });
+  });
+});
+
+describe("validateManualLogsChronology", () => {
+  it("accepts strictly increasing manual logs", () => {
+    expect(
+      validateManualLogsChronology("09:00", "18:00", [
+        { start: "13:00", end: "14:00" },
+        { start: "16:00", end: "16:15" },
+      ])
+    ).toEqual({
+      isValid: true,
+      error: null,
+    });
+  });
+
+  it("rejects pauses whose start is not earlier than end", () => {
+    expect(
+      validateManualLogsChronology("09:00", "18:00", [
+        { start: "13:00", end: "13:00" },
+      ])
+    ).toEqual({
+      isValid: false,
+      error: "La pausa 1 debe tener la hora de inicio anterior a la hora de fin",
+    });
+  });
+
+  it("rejects duplicated timestamps", () => {
+    expect(
+      validateManualLogsChronology("09:00", "18:00", [
+        { start: "12:00", end: "14:00" },
+        { start: "14:00", end: "15:00" },
+      ])
+    ).toEqual({
+      isValid: false,
+      error: "No puede haber dos fichajes a la misma hora",
+    });
+  });
+
+  it("rejects non-increasing chronology", () => {
+    expect(
+      validateManualLogsChronology("09:00", "18:00", [
+        { start: "15:00", end: "16:00" },
+        { start: "14:00", end: "14:30" },
+      ])
+    ).toEqual({
+      isValid: false,
+      error: "Los fichajes deben estar en orden cronologico creciente",
     });
   });
 });

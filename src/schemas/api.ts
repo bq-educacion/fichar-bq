@@ -63,6 +63,7 @@ export const manualLogsBodySchema = z
     endHour: hhmmSchema,
     pauses: z.array(manualPauseSchema).default([]),
     projectDedications: z.array(projectDedicationInputSchema).default([]),
+    clientTimezoneOffsetMinutes: z.number().int().min(-840).max(840).optional(),
   })
   .strict();
 

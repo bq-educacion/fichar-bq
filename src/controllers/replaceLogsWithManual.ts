@@ -1,6 +1,10 @@
 import { LogModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
-import { hhmmToMinutes, validateManualHoursRange } from "@/lib/utils";
+import {
+  hhmmToMinutes,
+  validateManualHoursRange,
+  validateManualLogsChronology,
+} from "@/lib/utils";
 import { parseWithSchema, toPlainObject } from "@/lib/validation";
 import { manualLogsBodySchema } from "@/schemas/api";
 import { logCreateSchema, logSchema } from "@/schemas/db";
@@ -29,15 +33,39 @@ const replaceLogsWithManual = async (
     throw new Error(rangeValidation.error);
   }
 
+  const chronologyValidation = validateManualLogsChronology(
+    parsedEntry.startHour,
+    parsedEntry.endHour,
+    parsedEntry.pauses
+  );
+  if (!chronologyValidation.isValid) {
+    throw new Error(chronologyValidation.error);
+  }
+
   await connectMongo();
 
   await saveProjectDedicationsForToday(parsedEmail, parsedEntry.projectDedications);
 
-  const todayMidnight = new Date(new Date().setHours(0, 0, 0, 0));
+  const clientTimezoneOffsetMinutes =
+    parsedEntry.clientTimezoneOffsetMinutes ?? new Date().getTimezoneOffset();
+
+  const userNow = new Date(Date.now() - clientTimezoneOffsetMinutes * 60 * 1000);
+  const userYear = userNow.getUTCFullYear();
+  const userMonth = userNow.getUTCMonth();
+  const userDay = userNow.getUTCDate();
+
+  const userTodayStartUtc = new Date(
+    Date.UTC(userYear, userMonth, userDay, 0, 0, 0, 0) +
+      clientTimezoneOffsetMinutes * 60 * 1000
+  );
+  const userTodayEndUtc = new Date(
+    Date.UTC(userYear, userMonth, userDay, 23, 59, 59, 999) +
+      clientTimezoneOffsetMinutes * 60 * 1000
+  );
 
   await LogModel.deleteMany({
     user: parsedEmail,
-    date: { $gte: todayMidnight },
+    date: { $gte: userTodayStartUtc, $lte: userTodayEndUtc },
   });
 
   const makeDate = (timeStr: string): Date => {
@@ -48,9 +76,10 @@ const replaceLogsWithManual = async (
 
     const hh = Math.floor(totalMinutes / 60);
     const mm = totalMinutes % 60;
-    const date = new Date(todayMidnight);
-    date.setHours(hh, mm, 0, 0);
-    return date;
+    return new Date(
+      Date.UTC(userYear, userMonth, userDay, hh, mm, 0, 0) +
+        clientTimezoneOffsetMinutes * 60 * 1000
+    );
   };
 
   const logsToCreate: z.infer<typeof logCreateSchema>[] = [];

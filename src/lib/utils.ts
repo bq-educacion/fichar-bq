@@ -112,6 +112,11 @@ type ManualHoursValidation =
   | { isValid: true; error: null }
   | { isValid: false; error: string };
 
+type ManualPauseRange = {
+  start: string;
+  end: string;
+};
+
 export const validateManualHoursRange = (
   startHour: string,
   endHour: string,
@@ -141,6 +146,70 @@ export const validateManualHoursRange = (
       return {
         isValid: false,
         error: "La hora de salida no puede ser posterior a la hora actual",
+      };
+    }
+  }
+
+  return {
+    isValid: true,
+    error: null,
+  };
+};
+
+export const validateManualLogsChronology = (
+  startHour: string,
+  endHour: string,
+  pauses: ManualPauseRange[]
+): ManualHoursValidation => {
+  const points: number[] = [];
+  const startMinutes = hhmmToMinutes(startHour);
+  const endMinutes = hhmmToMinutes(endHour);
+
+  if (startMinutes === null || endMinutes === null) {
+    return {
+      isValid: false,
+      error: "Formato de hora invalido",
+    };
+  }
+
+  points.push(startMinutes);
+
+  for (let i = 0; i < pauses.length; i++) {
+    const pause = pauses[i];
+    const pauseStartMinutes = hhmmToMinutes(pause.start);
+    const pauseEndMinutes = hhmmToMinutes(pause.end);
+
+    if (pauseStartMinutes === null || pauseEndMinutes === null) {
+      return {
+        isValid: false,
+        error: "Formato de hora invalido",
+      };
+    }
+
+    if (pauseStartMinutes >= pauseEndMinutes) {
+      return {
+        isValid: false,
+        error: `La pausa ${i + 1} debe tener la hora de inicio anterior a la hora de fin`,
+      };
+    }
+
+    points.push(pauseStartMinutes, pauseEndMinutes);
+  }
+
+  points.push(endMinutes);
+
+  for (let i = 1; i < points.length; i++) {
+    if (points[i] === points[i - 1]) {
+      return {
+        isValid: false,
+        error: "No puede haber dos fichajes a la misma hora",
+      };
+    }
+
+    if (points[i] < points[i - 1]) {
+      return {
+        isValid: false,
+        error: "Los fichajes deben estar en orden cronologico creciente",
       };
     }
   }

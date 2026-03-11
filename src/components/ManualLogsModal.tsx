@@ -1,4 +1,8 @@
-import { dateToTimeInputValue, validateManualHoursRange } from "@/lib/utils";
+import {
+  dateToTimeInputValue,
+  validateManualHoursRange,
+  validateManualLogsChronology,
+} from "@/lib/utils";
 import {
   myProjectDedicationsResponseSchema,
   ProjectDedicationInput,
@@ -31,8 +35,13 @@ const ManualLogsModal: FC<{
   const [dedicationsLoading, setDedicationsLoading] = useState(false);
   const [dedicationsError, setDedicationsError] = useState("");
 
-  const validation = validateManualHoursRange(startHour, endHour);
-  const validationError = validation.isValid ? null : validation.error;
+  const rangeValidation = validateManualHoursRange(startHour, endHour);
+  const chronologyValidation = rangeValidation.isValid
+    ? validateManualLogsChronology(startHour, endHour, pauses)
+    : rangeValidation;
+  const validationError = chronologyValidation.isValid
+    ? null
+    : chronologyValidation.error;
   const dedicationTotal = projectDedications.reduce(
     (acc, item) => acc + item.dedication,
     0
@@ -139,6 +148,7 @@ const ManualLogsModal: FC<{
       endHour,
       pauses: pauses.map(({ start, end }) => ({ start, end })),
       projectDedications: showDedications ? projectDedications : [],
+      clientTimezoneOffsetMinutes: new Date().getTimezoneOffset(),
     });
   };
 
