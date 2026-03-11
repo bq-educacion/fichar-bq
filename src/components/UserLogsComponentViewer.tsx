@@ -210,15 +210,15 @@ const UserLogsComponentViewer: FC<{
                 key={key}
                 title={title_full}
                 bold={false}
+                rightContent={
+                  allowManualOverwrite ? (
+                    <OverwriteButton onClick={() => openManualOverwriteForDay(dayLogs)}>
+                      Sobrescribir
+                    </OverwriteButton>
+                  ) : undefined
+                }
               >
                 <>
-                  {allowManualOverwrite && (
-                    <DayActions>
-                      <OverwriteButton onClick={() => openManualOverwriteForDay(dayLogs)}>
-                        Sobrescribir fichajes del día
-                      </OverwriteButton>
-                    </DayActions>
-                  )}
                   {dayLogs.map((log) => (
                     <Log key={log._id.toString()}>
                       <Icon color={LogIcon[log.type].color}>
@@ -316,16 +316,8 @@ const Container = styled.div`
   padding-left: 23px;
 `;
 
-const DayActions = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding: 8px 12px;
-  border-top: 1px solid #fff;
-`;
-
 const OverwriteButton = styled.button`
-  height: 30px;
+  height: 26px;
   padding: 0 10px;
   border: 1px solid #434242;
   border-radius: 4px;
