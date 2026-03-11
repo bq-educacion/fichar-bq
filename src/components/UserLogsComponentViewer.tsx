@@ -218,25 +218,23 @@ const UserLogsComponentViewer: FC<{
                   ) : undefined
                 }
               >
-                <>
-                  {dayLogs.map((log) => (
-                    <Log key={log._id.toString()}>
-                      <Icon color={LogIcon[log.type].color}>
-                        {LogIcon[log.type].icon}
-                      </Icon>
-                      <div>{LogType[log.type]}</div>
-                      <Time>
-                        {datetoHHMM(new Date(log.date))}
-                        {log.manual && (
-                          <ManualBadge title="Fichaje manual">
-                            <IconManual />
-                          </ManualBadge>
-                        )}
-                        {log.isMobile && <IconMobile />}
-                      </Time>
-                    </Log>
-                  ))}
-                </>
+                {dayLogs.map((log) => (
+                  <Log key={log._id.toString()}>
+                    <Icon color={LogIcon[log.type].color}>
+                      {LogIcon[log.type].icon}
+                    </Icon>
+                    <div>{LogType[log.type]}</div>
+                    <Time>
+                      {datetoHHMM(new Date(log.date))}
+                      {log.manual && (
+                        <ManualBadge title="Fichaje manual">
+                          <IconManual />
+                        </ManualBadge>
+                      )}
+                      {log.isMobile && <IconMobile />}
+                    </Time>
+                  </Log>
+                ))}
               </DisplayContent>
             );
           })}
@@ -319,6 +317,7 @@ const Container = styled.div`
 const OverwriteButton = styled.button`
   height: 26px;
   padding: 0 10px;
+  margin-right: 10px;
   border: 1px solid #434242;
   border-radius: 4px;
   background: transparent;

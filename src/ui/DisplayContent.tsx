@@ -63,6 +63,7 @@ const RightContent = styled.div`
   display: flex;
   align-items: center;
   padding-right: 12px;
+  padding-left: 10px;
 `;
 
 const Container = styled.div`
