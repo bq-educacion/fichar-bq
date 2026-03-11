@@ -7,7 +7,8 @@ const DisplayContent: FC<{
   title: string;
   bold: boolean;
   children: ReactNode;
-}> = ({ opened, title, children, bold }) => {
+  rightContent?: ReactNode;
+}> = ({ opened, title, children, bold, rightContent }) => {
   const [show, setShow] = React.useState<boolean>(opened);
   return (
     <Container>
@@ -15,7 +16,8 @@ const DisplayContent: FC<{
         <IconBox show={show} bold={bold}>
           <IconDirection onClick={() => setShow(!show)} />
         </IconBox>
-        <div>{title}</div>
+        <TitleText>{title}</TitleText>
+        {rightContent && <RightContent>{rightContent}</RightContent>}
       </Title>
       {show && children}
     </Container>
@@ -50,6 +52,17 @@ const IconBox = styled.div<{ show: boolean; bold: boolean }>`
     height: 20px;
     transform: ${({ show }) => (show ? "rotate(0deg)" : "rotate(-90deg)")};
   }
+`;
+
+const TitleText = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const RightContent = styled.div`
+  display: flex;
+  align-items: center;
+  margin-right: 12px;
 `;
 
 const Container = styled.div`
