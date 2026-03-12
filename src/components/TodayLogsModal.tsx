@@ -1,4 +1,8 @@
-import { dateToTimeInputValue, validateSequentialUniqueTimes } from "@/lib/utils";
+import {
+  dateToTimeInputValue,
+  hhmmToMinutes,
+  validateSequentialUniqueTimes,
+} from "@/lib/utils";
 import { todayLogsResponseSchema } from "@/schemas/api";
 import { LOG_TYPE, Log } from "@/types";
 import styled from "@emotion/styled";
@@ -44,19 +48,31 @@ const TodayLogsModal: FC<{
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [currentTimeLimit, setCurrentTimeLimit] = useState(
+    dateToTimeInputValue(new Date())
+  );
 
   useEffect(() => {
     if (!isOpen) {
       return;
     }
 
+    setCurrentTimeLimit(dateToTimeInputValue(new Date()));
+    const interval = setInterval(() => {
+      setCurrentTimeLimit(dateToTimeInputValue(new Date()));
+    }, 30000);
+
+    const browserTimezoneOffsetMinutes = new Date().getTimezoneOffset();
     const fetchTodayLogs = async () => {
       setLoading(true);
       setError("");
       setSuccessMessage("");
 
       try {
-        const res = await fetch("/api/todayLogs");
+        const params = new URLSearchParams({
+          clientTimezoneOffsetMinutes: String(browserTimezoneOffsetMinutes),
+        });
+        const res = await fetch(`/api/todayLogs?${params.toString()}`);
         if (res.status === 401) {
           router.push("/login");
           return;
@@ -79,6 +95,10 @@ const TodayLogsModal: FC<{
     };
 
     fetchTodayLogs();
+
+    return () => {
+      clearInterval(interval);
+    };
   }, [isOpen, router]);
 
   const chronologyValidation = useMemo(
@@ -91,12 +111,33 @@ const TodayLogsModal: FC<{
       ? null
       : chronologyValidation.error;
 
+  const futureTimeError = useMemo(() => {
+    if (logs.length === 0) {
+      return null;
+    }
+
+    const nowMinutes = hhmmToMinutes(currentTimeLimit);
+    if (nowMinutes === null) {
+      return "Formato de hora invalido";
+    }
+
+    const hasFutureTimes = logs.some((log) => {
+      const logMinutes = hhmmToMinutes(log.time);
+      return logMinutes !== null && logMinutes > nowMinutes;
+    });
+
+    return hasFutureTimes
+      ? "No puedes introducir una hora posterior a la hora actual"
+      : null;
+  }, [currentTimeLimit, logs]);
+
   const canSubmit =
     !loading &&
     !submitting &&
     !deleting &&
     logs.length > 0 &&
-    !chronologyError;
+    !chronologyError &&
+    !futureTimeError;
   const canDelete = !loading && !submitting && !deleting && logs.length > 1;
 
   const updateLogTime = (index: number, time: string) => {
@@ -122,6 +163,7 @@ const TodayLogsModal: FC<{
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           logs: logs.map(({ _id, time }) => ({ _id, time })),
+          clientTimezoneOffsetMinutes: new Date().getTimezoneOffset(),
         }),
       });
 
@@ -164,7 +206,10 @@ const TodayLogsModal: FC<{
     setSuccessMessage("");
 
     try {
-      const res = await fetch("/api/todayLogs", {
+      const params = new URLSearchParams({
+        clientTimezoneOffsetMinutes: String(new Date().getTimezoneOffset()),
+      });
+      const res = await fetch(`/api/todayLogs?${params.toString()}`, {
         method: "DELETE",
       });
 
@@ -215,6 +260,7 @@ const TodayLogsModal: FC<{
                 <TimeInput
                   type="time"
                   value={log.time}
+                  max={currentTimeLimit}
                   onChange={(event) => updateLogTime(index, event.target.value)}
                 />
               </LogRow>
@@ -223,6 +269,7 @@ const TodayLogsModal: FC<{
         )}
 
         {chronologyError && <ValidationError>{chronologyError}</ValidationError>}
+        {futureTimeError && <ValidationError>{futureTimeError}</ValidationError>}
         {error && <ValidationError>{error}</ValidationError>}
         {successMessage && <SuccessText>{successMessage}</SuccessText>}
 

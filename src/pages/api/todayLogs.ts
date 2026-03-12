@@ -10,7 +10,11 @@ import {
   toPlainObject,
 } from "@/lib/validation";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
-import { todayLogsResponseSchema, todayLogsUpdateBodySchema } from "@/schemas/api";
+import {
+  todayLogsQuerySchema,
+  todayLogsResponseSchema,
+  todayLogsUpdateBodySchema,
+} from "@/schemas/api";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 
@@ -22,8 +26,19 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return;
     }
 
+    const query = parseWithSchema(todayLogsQuerySchema, {
+      clientTimezoneOffsetMinutes: Array.isArray(
+        req.query.clientTimezoneOffsetMinutes
+      )
+        ? req.query.clientTimezoneOffsetMinutes[0]
+        : req.query.clientTimezoneOffsetMinutes,
+    });
+
     if (req.method === "GET") {
-      const logs = await getTodayLogs(session.user.email);
+      const logs = await getTodayLogs(
+        session.user.email,
+        query.clientTimezoneOffsetMinutes
+      );
       const payload = parseWithSchema(todayLogsResponseSchema, toPlainObject(logs));
       res.status(200).json(payload);
       return;
@@ -38,7 +53,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     if (req.method === "DELETE") {
-      const logs = await deleteTodayLogsExceptFirst(session.user.email);
+      const logs = await deleteTodayLogsExceptFirst(
+        session.user.email,
+        query.clientTimezoneOffsetMinutes
+      );
       const payload = parseWithSchema(todayLogsResponseSchema, toPlainObject(logs));
       res.status(200).json(payload);
       return;

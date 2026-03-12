@@ -19,6 +19,7 @@ export const hhmmSchema = z.string().regex(HHMM_REGEX, "Invalid HH:MM format");
 export const yyyyMmDdSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid YYYY-MM-DD format");
+export const timezoneOffsetMinutesSchema = z.number().int().min(-840).max(840);
 
 export const paginationBodySchema = z
   .object({
@@ -66,7 +67,7 @@ export const manualLogsBodySchema = z
     endHour: hhmmSchema,
     pauses: z.array(manualPauseSchema).default([]),
     projectDedications: z.array(projectDedicationInputSchema).default([]),
-    clientTimezoneOffsetMinutes: z.number().int().min(-840).max(840).optional(),
+    clientTimezoneOffsetMinutes: timezoneOffsetMinutesSchema.optional(),
     targetDate: yyyyMmDdSchema.optional(),
     preserveProjectDedications: z.boolean().default(false),
   })
@@ -84,10 +85,22 @@ export const todayLogTimeInputSchema = z
 export const todayLogsUpdateBodySchema = z
   .object({
     logs: z.array(todayLogTimeInputSchema).min(1),
+    clientTimezoneOffsetMinutes: timezoneOffsetMinutesSchema.optional(),
   })
   .strict();
 
 export const todayLogsResponseSchema = z.array(logSchema);
+
+export const todayLogsQuerySchema = z
+  .object({
+    clientTimezoneOffsetMinutes: z.coerce
+      .number()
+      .int()
+      .min(-840)
+      .max(840)
+      .optional(),
+  })
+  .strict();
 
 export const meResponseSchema = userSchema;
 
@@ -306,6 +319,7 @@ export type LogActivityBody = z.infer<typeof logActivityBodySchema>;
 export type LogDoctorFileBody = z.infer<typeof logDoctorFileBodySchema>;
 export type ManualLogsBody = z.infer<typeof manualLogsBodySchema>;
 export type TodayLogsUpdateBody = z.infer<typeof todayLogsUpdateBodySchema>;
+export type TodayLogsQuery = z.infer<typeof todayLogsQuerySchema>;
 export type MyUserLogsBody = z.infer<typeof myUserLogsBodySchema>;
 export type ProjectDedicationInput = z.infer<typeof projectDedicationInputSchema>;
 export type WorkerLogsBody = z.infer<typeof workerLogsBodySchema>;
