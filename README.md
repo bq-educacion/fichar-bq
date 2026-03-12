@@ -83,7 +83,7 @@ Clears today's logs and creates manual entries. Requires authentication.
 
 ### Forgotten clock-out flow
 
-If a user forgot to end the previous day (last log from yesterday is not `out`) and tries to start today, the start action is blocked with a prompt to manually correct the previous day.
+If a user enters the app and the last log from yesterday is still open (not `out`), a manual correction prompt is shown immediately for that day.
 
 That correction flow requires:
 - Manual schedule input for the previous day

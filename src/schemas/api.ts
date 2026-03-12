@@ -74,6 +74,21 @@ export const manualLogsBodySchema = z
 
 export const manualLogsResponseSchema = z.array(logSchema);
 
+export const todayLogTimeInputSchema = z
+  .object({
+    _id: mongoIdSchema,
+    time: hhmmSchema,
+  })
+  .strict();
+
+export const todayLogsUpdateBodySchema = z
+  .object({
+    logs: z.array(todayLogTimeInputSchema).min(1),
+  })
+  .strict();
+
+export const todayLogsResponseSchema = z.array(logSchema);
+
 export const meResponseSchema = userSchema;
 
 export const myUserLogsBodySchema = paginationBodySchema;
@@ -290,6 +305,7 @@ export type PaginationBody = z.infer<typeof paginationBodySchema>;
 export type LogActivityBody = z.infer<typeof logActivityBodySchema>;
 export type LogDoctorFileBody = z.infer<typeof logDoctorFileBodySchema>;
 export type ManualLogsBody = z.infer<typeof manualLogsBodySchema>;
+export type TodayLogsUpdateBody = z.infer<typeof todayLogsUpdateBodySchema>;
 export type MyUserLogsBody = z.infer<typeof myUserLogsBodySchema>;
 export type ProjectDedicationInput = z.infer<typeof projectDedicationInputSchema>;
 export type WorkerLogsBody = z.infer<typeof workerLogsBodySchema>;
@@ -302,6 +318,7 @@ export type AuthGoogleProfile = z.infer<typeof authGoogleProfileSchema>;
 export type LogActivityResponse = z.infer<typeof logActivityResponseSchema>;
 export type LogDoctorFileResponse = z.infer<typeof logDoctorFileResponseSchema>;
 export type ManualLogsResponse = z.infer<typeof manualLogsResponseSchema>;
+export type TodayLogsResponse = z.infer<typeof todayLogsResponseSchema>;
 export type MeResponse = z.infer<typeof meResponseSchema>;
 export type MyUserLogsResponse = z.infer<typeof myUserLogsResponseSchema>;
 export type MyProjectDedicationsResponse = z.infer<typeof myProjectDedicationsResponseSchema>;

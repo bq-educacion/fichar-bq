@@ -8,7 +8,7 @@ import { LOG_TYPE, UserStatus, USER_STATUS, User } from "@/types";
 import React from "react";
 import UserStats from "@/components/UserStats";
 import UserToday from "@/components/UserToday";
-import { UserModel } from "@/db/Models";
+import { LogModel, UserModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
 import Layout from "@/components/Layout";
 import WelcomeUser from "@/components/WelcomeUser";
@@ -17,6 +17,12 @@ import ThreeBoxAction from "@/components/ThreeBoxAction";
 import UserLogsComponent from "@/components/UserLogsComponent";
 import getUserByEmail from "@/controllers/getUser";
 import styled from "@emotion/styled";
+
+const dateToInputDateValue = (date: Date) =>
+  `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}-${date
+    .getDate()
+    .toString()
+    .padStart(2, "0")}`;
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   // get session data
@@ -44,14 +50,28 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     };
   }
 
+  let pendingManualTargetDate: string | null = null;
+  const lastLog = await LogModel.findOne({ user: session.user.email })
+    .sort({ date: -1 })
+    .select("type date")
+    .exec();
+  const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
+
+  if (lastLog && lastLog.date < todayStart && lastLog.type !== LOG_TYPE.out) {
+    pendingManualTargetDate = dateToInputDateValue(new Date(lastLog.date));
+  }
+
   return {
     props: {
       session,
+      pendingManualTargetDate,
     },
   };
 };
 
-const Home: NextPage = () => {
+const Home: NextPage<{ pendingManualTargetDate?: string | null }> = ({
+  pendingManualTargetDate,
+}) => {
   const getUserStatus = async () => {
     const res = await fetch("/api/userStatus");
     if (res.status !== 200) router.push("/login");
@@ -66,6 +86,8 @@ const Home: NextPage = () => {
 
   const router = useRouter();
   const [status, setStatus] = useState<UserStatus | undefined>(undefined);
+  const [logsRefreshKey, setLogsRefreshKey] = useState(0);
+
   useEffect(() => {
     getUserStatus();
   }, []);
@@ -82,6 +104,11 @@ const Home: NextPage = () => {
     required: true,
   });
 
+  const onCurrentDayLogsUpdated = async () => {
+    await getUserStatus();
+    setLogsRefreshKey((previous) => previous + 1);
+  };
+
   return (
     <>
       <WelcomeUser data={data!} />
@@ -89,7 +116,7 @@ const Home: NextPage = () => {
         ([USER_STATUS.working, USER_STATUS.paused] as USER_STATUS[]).includes(
           status.status
         ) && (
-          <UserToday />
+          <UserToday onLogsUpdated={onCurrentDayLogsUpdated} />
         )}
       {status &&
         (
@@ -103,6 +130,7 @@ const Home: NextPage = () => {
             status={status}
             action={LOG_TYPE.in}
             refreshStatus={() => getUserStatus()}
+            pendingManualTargetDate={pendingManualTargetDate ?? undefined}
           />
         )}
       {status && status.status === USER_STATUS.working && (
@@ -111,7 +139,7 @@ const Home: NextPage = () => {
       {status && (
         <ContentModules>
           <UserStats status={status.status} />
-          <UserLogsComponent status={status.status} />
+          <UserLogsComponent status={status.status} refreshKey={logsRefreshKey} />
         </ContentModules>
       )}
       <br />

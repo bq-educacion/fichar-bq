@@ -11,7 +11,10 @@ import IconEdit from "@/assets/icons/icon-edit.svg";
 import IconTick from "@/assets/icons/icon-tick.svg";
 import UserLogsComponentViewer from "./UserLogsComponentViewer";
 
-const UserLogsComponent: FC<{ status: USER_STATUS }> = ({ status }) => {
+const UserLogsComponent: FC<{ status: USER_STATUS; refreshKey?: number }> = ({
+  status,
+  refreshKey = 0,
+}) => {
   const [logs, setLogs] = useState<Log[]>([]);
 
   const fetchUserLogs = useCallback(async () => {
@@ -28,7 +31,7 @@ const UserLogsComponent: FC<{ status: USER_STATUS }> = ({ status }) => {
 
   useEffect(() => {
     fetchUserLogs();
-  }, [status, fetchUserLogs]);
+  }, [status, fetchUserLogs, refreshKey]);
 
   return (
     <UserLogsComponentViewer

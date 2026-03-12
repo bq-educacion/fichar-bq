@@ -22,7 +22,8 @@ const SingleBoxAction: FC<{
   action: LOG_TYPE;
   status: UserStatus;
   refreshStatus: () => void;
-}> = ({ action, status, refreshStatus }) => {
+  pendingManualTargetDate?: string;
+}> = ({ action, status, refreshStatus, pendingManualTargetDate }) => {
   const router = useRouter();
   const [clickable, setClickable] = useState<boolean>(true);
   const [manualModalOpen, setManualModalOpen] = useState(false);
@@ -32,6 +33,7 @@ const SingleBoxAction: FC<{
   const [manualWarningMessage, setManualWarningMessage] = useState<
     string | undefined
   >(undefined);
+  const [hasAutoPrompted, setHasAutoPrompted] = useState(false);
   const [undoState, setUndoState] = useState<UndoFeedbackState>("idle");
   const [undoMessage, setUndoMessage] = useState("");
   useEffect(() => {
@@ -48,6 +50,10 @@ const SingleBoxAction: FC<{
 
     return () => clearTimeout(timeout);
   }, [undoState]);
+
+  useEffect(() => {
+    setHasAutoPrompted(false);
+  }, [pendingManualTargetDate]);
 
   const [time, setTime] = useState<string>(
     `${new Date().getHours()}:${
@@ -189,6 +195,22 @@ const SingleBoxAction: FC<{
     }, 60 * 1000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (status.status !== USER_STATUS.not_started) {
+      return;
+    }
+    if (!pendingManualTargetDate || hasAutoPrompted) {
+      return;
+    }
+
+    setManualTargetDate(pendingManualTargetDate);
+    setManualWarningMessage(
+      "Ayer dejaste la jornada abierta y es un error. Corrige ese dia manualmente para continuar."
+    );
+    setManualModalOpen(true);
+    setHasAutoPrompted(true);
+  }, [hasAutoPrompted, pendingManualTargetDate, status.status]);
 
   let background = "";
   let buttonbakground = "";

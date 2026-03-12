@@ -220,6 +220,52 @@ export const validateManualLogsChronology = (
   };
 };
 
+export const validateSequentialUniqueTimes = (
+  times: string[]
+): ManualHoursValidation => {
+  if (times.length === 0) {
+    return {
+      isValid: false,
+      error: "No hay fichajes para validar",
+    };
+  }
+
+  const points: number[] = [];
+
+  for (const time of times) {
+    const minutes = hhmmToMinutes(time);
+    if (minutes === null) {
+      return {
+        isValid: false,
+        error: "Formato de hora invalido",
+      };
+    }
+
+    points.push(minutes);
+  }
+
+  for (let i = 1; i < points.length; i++) {
+    if (points[i] === points[i - 1]) {
+      return {
+        isValid: false,
+        error: "No puede haber dos fichajes a la misma hora",
+      };
+    }
+
+    if (points[i] < points[i - 1]) {
+      return {
+        isValid: false,
+        error: "Los fichajes deben estar en orden cronologico creciente",
+      };
+    }
+  }
+
+  return {
+    isValid: true,
+    error: null,
+  };
+};
+
 // count the number of DAYS in which there is a manual log
 export const numberOfManualDays = (logs: Log[]) => {
   const manualDays = new Set<number>();

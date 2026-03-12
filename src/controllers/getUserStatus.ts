@@ -1,8 +1,8 @@
 import { UserModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
-import { parseWithSchema, toPlainObject } from "@/lib/validation";
+import { parseWithSchema } from "@/lib/validation";
 import { userStatusSchema } from "@/schemas/db";
-import { USER_STATUS, UserStatus } from "@/types";
+import { UserStatus } from "@/types";
 import { z } from "zod";
 import computeUserStatus from "./computeUserStatus";
 
@@ -15,19 +15,11 @@ const getUserStatus = async (email: string): Promise<UserStatus> => {
     throw new Error("User not found");
   }
 
-  if (!user.status) {
-    const status = await computeUserStatus(parsedEmail);
-    user.status = status;
-    await user.save();
-  }
+  const status = await computeUserStatus(parsedEmail);
+  user.status = status;
+  await user.save();
 
-  if (user.status.status === USER_STATUS.finished) {
-    const status = await computeUserStatus(parsedEmail);
-    user.status = status;
-    await user.save();
-  }
-
-  return parseWithSchema(userStatusSchema, toPlainObject(user.status));
+  return parseWithSchema(userStatusSchema, status);
 };
 
 export default getUserStatus;

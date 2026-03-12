@@ -15,6 +15,7 @@ import {
   statsFromLogs,
   validateManualHoursRange,
   validateManualLogsChronology,
+  validateSequentialUniqueTimes,
 } from "@/lib/utils";
 
 // Helper to create a Log object with minimal required fields
@@ -497,6 +498,29 @@ describe("validateManualLogsChronology", () => {
         { start: "14:00", end: "14:30" },
       ])
     ).toEqual({
+      isValid: false,
+      error: "Los fichajes deben estar en orden cronologico creciente",
+    });
+  });
+});
+
+describe("validateSequentialUniqueTimes", () => {
+  it("accepts ordered unique values", () => {
+    expect(validateSequentialUniqueTimes(["09:00", "12:00", "14:00"])).toEqual({
+      isValid: true,
+      error: null,
+    });
+  });
+
+  it("rejects duplicated values", () => {
+    expect(validateSequentialUniqueTimes(["09:00", "12:00", "12:00"])).toEqual({
+      isValid: false,
+      error: "No puede haber dos fichajes a la misma hora",
+    });
+  });
+
+  it("rejects descending values", () => {
+    expect(validateSequentialUniqueTimes(["09:00", "12:00", "11:59"])).toEqual({
       isValid: false,
       error: "Los fichajes deben estar en orden cronologico creciente",
     });
