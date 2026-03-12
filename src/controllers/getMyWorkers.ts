@@ -39,10 +39,7 @@ const getMyWorkers = async (
 
     return {
       ...worker,
-      stats: {
-        ...workerStats,
-        average: workerStats.total / MANAGER_STATS_DAYS_WINDOW,
-      },
+      stats: workerStats,
     };
   });
 
