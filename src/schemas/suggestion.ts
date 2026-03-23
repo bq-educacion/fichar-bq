@@ -6,10 +6,10 @@ export const MAX_SUGGESTION_LENGTH = 2000;
 export const suggestionTextSchema = z
   .string()
   .trim()
-  .min(1, "Escribe un comentario")
+  .min(1, "Escribe una sugerencia o queja laboral")
   .max(
     MAX_SUGGESTION_LENGTH,
-    `El comentario no puede superar los ${MAX_SUGGESTION_LENGTH} caracteres`
+    `El mensaje no puede superar los ${MAX_SUGGESTION_LENGTH} caracteres`
   );
 
 export const suggestionSchema = z

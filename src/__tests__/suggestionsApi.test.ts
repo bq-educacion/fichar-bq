@@ -162,7 +162,9 @@ describe("suggestions api", () => {
     await suggestionsHandler(toApiRequest(request), toApiResponse(response));
 
     expect(response.statusCode).toBe(400);
-    expect(response.body).toBe("Bad Request: text: Escribe un comentario");
+    expect(response.body).toBe(
+      "Bad Request: text: Escribe una sugerencia o queja laboral"
+    );
     expect(mockedSuggestionModel.create).not.toHaveBeenCalled();
   });
 

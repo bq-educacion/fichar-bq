@@ -207,18 +207,19 @@ const Home: NextPage<{ pendingManualTargetDate?: string | null }> = ({
       <br />
       <SuggestionShortcut>
         <SuggestionCopy>
-          <SuggestionTitle>Buzón de sugerencias</SuggestionTitle>
+          <SuggestionTitle>Buzón laboral anónimo</SuggestionTitle>
           <SuggestionDescription>
-            Envía sugerencias o comentarios sin asociarlos a tu usuario.
+            Envía sugerencias o quejas sobre la empresa. Se trasladan de forma
+            anónima al director.
           </SuggestionDescription>
         </SuggestionCopy>
         <SuggestionButton type="button" onClick={() => setSuggestionOpen(true)}>
-          Enviar sugerencia anónima
+          Enviar mensaje anónimo
         </SuggestionButton>
       </SuggestionShortcut>
       {suggestionSent && (
         <SuggestionNotice>
-          Gracias, tu comentario se ha enviado correctamente.
+          Tu mensaje se ha enviado correctamente de forma anónima.
         </SuggestionNotice>
       )}
       <SuggestionModal
