@@ -6,10 +6,11 @@ const sections = [
   { key: "projects", label: "Proyectos", href: "/admin/projects" },
   { key: "departments", label: "Departamentos", href: "/admin/departments" },
   { key: "users", label: "Usuarios", href: "/admin/users" },
+  { key: "suggestions", label: "Sugerencias", href: "/admin/suggestions" },
 ] as const;
 
 const AdminSectionTabs: FC<{
-  active: "projects" | "departments" | "users";
+  active: "projects" | "departments" | "users" | "suggestions";
   maxWidth?: string;
 }> = ({ active, maxWidth = "980px" }) => {
   return (

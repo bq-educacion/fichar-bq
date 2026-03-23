@@ -1,16 +1,15 @@
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import type { GetServerSideProps, NextPage } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
-import { LOG_TYPE, UserStatus, USER_STATUS, User } from "@/types";
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { LOG_TYPE, UserStatus, USER_STATUS } from "@/types";
+import SuggestionModal from "@/components/SuggestionModal";
 import UserStats from "@/components/UserStats";
 import UserToday from "@/components/UserToday";
-import { LogModel, UserModel } from "@/db/Models";
+import { LogModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
-import Layout from "@/components/Layout";
 import WelcomeUser from "@/components/WelcomeUser";
 import SingleBoxAction from "@/components/SingleBoxAction";
 import ThreeBoxAction from "@/components/ThreeBoxAction";
@@ -72,9 +71,18 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 const Home: NextPage<{ pendingManualTargetDate?: string | null }> = ({
   pendingManualTargetDate,
 }) => {
-  const getUserStatus = async () => {
+  const router = useRouter();
+  const [status, setStatus] = useState<UserStatus | undefined>(undefined);
+  const [logsRefreshKey, setLogsRefreshKey] = useState(0);
+  const [suggestionOpen, setSuggestionOpen] = useState(false);
+  const [suggestionSent, setSuggestionSent] = useState(false);
+
+  const getUserStatus = useCallback(async () => {
     const res = await fetch("/api/userStatus");
-    if (res.status !== 200) router.push("/login");
+    if (res.status !== 200) {
+      router.push("/login");
+      return;
+    }
     const data = await res.json();
     setStatus({
       status: data.status,
@@ -82,15 +90,11 @@ const Home: NextPage<{ pendingManualTargetDate?: string | null }> = ({
       startDate: new Date(data.startDate),
       hoursToday: data.hoursToday,
     });
-  };
-
-  const router = useRouter();
-  const [status, setStatus] = useState<UserStatus | undefined>(undefined);
-  const [logsRefreshKey, setLogsRefreshKey] = useState(0);
+  }, [router]);
 
   useEffect(() => {
     getUserStatus();
-  }, []);
+  }, [getUserStatus]);
 
   // refetch every 60 seconds
   useEffect(() => {
@@ -98,7 +102,7 @@ const Home: NextPage<{ pendingManualTargetDate?: string | null }> = ({
       getUserStatus();
     }, 60 * 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [getUserStatus]);
 
   const { data } = useSession({
     required: true,
@@ -109,15 +113,51 @@ const Home: NextPage<{ pendingManualTargetDate?: string | null }> = ({
     setLogsRefreshKey((previous) => previous + 1);
   };
 
+  useEffect(() => {
+    if (!suggestionSent) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setSuggestionSent(false);
+    }, 3500);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [suggestionSent]);
+
   return (
     <>
       <WelcomeUser data={data!} />
+      <SuggestionShortcut>
+        <SuggestionCopy>
+          <SuggestionTitle>Ayúdanos a mejorar</SuggestionTitle>
+          <SuggestionDescription>
+            Envía sugerencias o comentarios sin asociarlos a tu usuario.
+          </SuggestionDescription>
+        </SuggestionCopy>
+        <SuggestionButton
+          type="button"
+          onClick={() => setSuggestionOpen(true)}
+        >
+          Enviar sugerencia anónima
+        </SuggestionButton>
+      </SuggestionShortcut>
+      {suggestionSent && (
+        <SuggestionNotice>
+          Gracias, tu comentario se ha enviado correctamente.
+        </SuggestionNotice>
+      )}
+      <SuggestionModal
+        isOpen={suggestionOpen}
+        onClose={() => setSuggestionOpen(false)}
+        onSubmitted={() => setSuggestionSent(true)}
+      />
       {status &&
         ([USER_STATUS.working, USER_STATUS.paused] as USER_STATUS[]).includes(
-          status.status
-        ) && (
-          <UserToday onLogsUpdated={onCurrentDayLogsUpdated} />
-        )}
+          status.status,
+        ) && <UserToday onLogsUpdated={onCurrentDayLogsUpdated} />}
       {status &&
         (
           [
@@ -139,7 +179,10 @@ const Home: NextPage<{ pendingManualTargetDate?: string | null }> = ({
       {status && (
         <ContentModules>
           <UserStats status={status.status} />
-          <UserLogsComponent status={status.status} refreshKey={logsRefreshKey} />
+          <UserLogsComponent
+            status={status.status}
+            refreshKey={logsRefreshKey}
+          />
         </ContentModules>
       )}
       <br />
@@ -151,6 +194,65 @@ const Home: NextPage<{ pendingManualTargetDate?: string | null }> = ({
 const ContentModules = styled.div`
   width: 614px;
   max-width: 100%;
+`;
+
+const SuggestionShortcut = styled.div`
+  width: 614px;
+  max-width: 100%;
+  margin-bottom: 10px;
+  padding: 16px 18px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  border: 1px solid #eaddec;
+  background: linear-gradient(180deg, #fff, #f8f3f9);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+
+  @media (max-width: 640px) {
+    align-items: stretch;
+    flex-direction: column;
+  }
+`;
+
+const SuggestionCopy = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const SuggestionTitle = styled.div`
+  font-size: 15px;
+  font-weight: 700;
+  color: #4e4f53;
+`;
+
+const SuggestionDescription = styled.div`
+  font-size: 13px;
+  line-height: 1.5;
+  color: #6d6e72;
+`;
+
+const SuggestionButton = styled.button`
+  height: 40px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 4px;
+  background-image: linear-gradient(247deg, #8a4d92, #ff1842);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+`;
+
+const SuggestionNotice = styled.div`
+  width: 614px;
+  max-width: 100%;
+  margin-bottom: 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2e7d32;
 `;
 
 export default Home;
