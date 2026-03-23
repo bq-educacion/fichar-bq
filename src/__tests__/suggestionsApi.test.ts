@@ -132,7 +132,10 @@ describe("suggestions api", () => {
   it("creates a suggestion for authenticated users and trims the text", async () => {
     const request: MockRequest = {
       method: "POST",
-      body: { text: "  Esto podria ir mejor  " },
+      body: {
+        text: "  Esto podria ir mejor  ",
+        privacyAccepted: true,
+      },
     };
     const response = createMockResponse();
 
@@ -155,7 +158,7 @@ describe("suggestions api", () => {
   it("rejects blank suggestions", async () => {
     const request: MockRequest = {
       method: "POST",
-      body: { text: "   " },
+      body: { text: "   ", privacyAccepted: true },
     };
     const response = createMockResponse();
 
@@ -164,6 +167,25 @@ describe("suggestions api", () => {
     expect(response.statusCode).toBe(400);
     expect(response.body).toBe(
       "Bad Request: text: Escribe una sugerencia o queja laboral"
+    );
+    expect(mockedSuggestionModel.create).not.toHaveBeenCalled();
+  });
+
+  it("requires accepting the privacy policy before creating a suggestion", async () => {
+    const request: MockRequest = {
+      method: "POST",
+      body: {
+        text: "Hay un tema que revisar",
+        privacyAccepted: false,
+      },
+    };
+    const response = createMockResponse();
+
+    await suggestionsHandler(toApiRequest(request), toApiResponse(response));
+
+    expect(response.statusCode).toBe(400);
+    expect(response.body).toBe(
+      "Bad Request: privacyAccepted: Debes aceptar la política de privacidad correspondiente"
     );
     expect(mockedSuggestionModel.create).not.toHaveBeenCalled();
   });

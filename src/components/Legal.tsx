@@ -1,12 +1,9 @@
-import { LOG_TYPE, UserStatus, USER_STATUS } from "@/types";
+import {
+  SUGGESTION_PRIVACY_PARAGRAPHS,
+  SUGGESTION_PRIVACY_TITLE,
+} from "@/lib/suggestionPrivacy";
 import styled from "@emotion/styled";
-import React, { FC, useEffect, useState } from "react";
-import IconClock from "@/assets/icons/icon-clock.svg";
-import IconFork from "@/assets/icons/icon-fork-and-spoon.svg";
-import IconCoputerOff from "@/assets/icons/icon-computer-off.svg";
-import IconConfussion from "@/assets/icons/icon-confussion.svg";
-
-import TimedButton from "../ui/TimedButton";
+import React from "react";
 
 const Legal = () => {
   return (
@@ -71,6 +68,11 @@ const Legal = () => {
             el departamento de recursos humanos.
           </li>
         </ul>
+
+        <h2>{SUGGESTION_PRIVACY_TITLE}</h2>
+        {SUGGESTION_PRIVACY_PARAGRAPHS.map((paragraph) => (
+          <p key={paragraph}>{paragraph}</p>
+        ))}
 
         <p>
           Al utilizar la aplicación de registro de horas de trabajo, estás
