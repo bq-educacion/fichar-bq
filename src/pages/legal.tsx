@@ -3,8 +3,6 @@ import type { GetServerSideProps, NextPage } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
-import { User } from "@/types";
 import React from "react";
 import getUserByEmail from "@/controllers/getUser";
 import Legal from "@/components/Legal";
@@ -59,9 +57,7 @@ const Home: NextPage<{}> = () => {
 
   const router = useRouter();
 
-  const { data } = useSession({
-    required: true,
-  });
+  useSession({ required: true });
 
   return (
     <>

@@ -1,137 +1,67 @@
+import LegalDocument from "@/components/LegalDocument";
 import {
-  SUGGESTION_PRIVACY_PARAGRAPHS,
-  SUGGESTION_PRIVACY_TITLE,
-} from "@/lib/suggestionPrivacy";
+  LEGAL_TERMS_DOCUMENT,
+  PRIVACY_POLICY_DOCUMENT,
+} from "@/lib/legalDocuments";
 import styled from "@emotion/styled";
 import React from "react";
 
 const Legal = () => {
   return (
     <Container>
-      <h1>Política de uso de la aplicación de registro de horas de trabajo</h1>
-      <div>
-        <p>
-          Bienvenido a nuestra aplicación de registro de horas de trabajo. Esta
-          aplicación es utilizada por los empleados de nuestra empresa para
-          registrar su horario de trabajo, incluyendo la hora de inicio y de
-          finalización de la jornada laboral, así como todas las pausas
-          realizadas a excepción de la pausa de la mañana de 15 minutos. La
-          información que se recopila a través de la aplicación es importante
-          para nosotros, ya que nos ayuda a asegurarnos de que estamos
-          cumpliendo con las regulaciones laborales y a llevar un registro
-          preciso de las horas trabajadas por cada empleado.
-        </p>
+      <IntroCard>
+        <IntroTitle>Lectura previa obligatoria</IntroTitle>
+        <IntroText>
+          Antes de continuar, revisa los términos legales de uso y la política
+          de privacidad aplicables a la plataforma.
+        </IntroText>
+      </IntroCard>
 
-        <h2>Información confidencial</h2>
-        <p>
-          Queremos asegurarnos de que comprendas la política de uso de la
-          aplicación y cómo se utilizarán los datos que se recopilan. Por favor,
-          lee detenidamente lo siguiente:
-        </p>
-
-        <ul>
-          <li>
-            Los datos de registro de horas de trabajo son confidenciales y están
-            protegidos por nuestra política de privacidad. Solo se compartirán
-            con las personas autorizadas dentro de nuestra empresa que necesiten
-            acceso a ellos para fines laborales, como el supervisor de un
-            empleado, el departamento de recursos humanos, el departamento de
-            nómina y la gerencia.
-          </li>
-          <li>
-            Los datos de registro de horas de trabajo pueden ser utilizados para
-            evaluar el desempeño laboral de los empleados, ya que nos permiten
-            verificar que se están cumpliendo las horas de trabajo requeridas y
-            que se están completando las tareas asignadas en un período de
-            tiempo razonable. Esta evaluación puede ser utilizada para tomar
-            decisiones relacionadas con el empleo, como aumentos salariales o
-            promociones.
-          </li>
-          <li>
-            Es posible que compartamos los datos de registro de horas de trabajo
-            con terceros que nos proporcionen asesoría legal en cuestiones
-            laborales. Esto puede incluir abogados, consultores o expertos en
-            regulaciones laborales. Sin embargo, cualquier información que
-            compartamos con terceros estará sujeta a un acuerdo de
-            confidencialidad para proteger la privacidad de nuestros empleados.
-          </li>
-          <li>
-            Es importante que los empleados utilicen la aplicación de registro
-            de horas de trabajo de manera precisa y honesta. Cualquier intento
-            de falsificar o manipular los datos de registro de horas de trabajo
-            puede tener consecuencias graves, incluyendo la terminación del
-            empleo.
-          </li>
-          <li>
-            Si tienes alguna pregunta o inquietud sobre la política de uso de la
-            aplicación de registro de horas de trabajo, por favor comunícate con
-            el departamento de recursos humanos.
-          </li>
-        </ul>
-
-        <h2>{SUGGESTION_PRIVACY_TITLE}</h2>
-        {SUGGESTION_PRIVACY_PARAGRAPHS.map((paragraph) => (
-          <p key={paragraph}>{paragraph}</p>
-        ))}
-
-        <p>
-          Al utilizar la aplicación de registro de horas de trabajo, estás
-          aceptando la política de uso descrita anteriormente. Gracias por tu
-          cooperación en la creación de un ambiente laboral justo y eficiente.
-        </p>
-      </div>
+      <Documents>
+        <LegalDocument document={LEGAL_TERMS_DOCUMENT} titleAs="h2" />
+        <LegalDocument document={PRIVACY_POLICY_DOCUMENT} titleAs="h2" />
+      </Documents>
     </Container>
   );
 };
 
 const Container = styled.div`
-  width: 615px;
-  background-color: #fff;
   display: flex;
   flex-direction: column;
   align-items: center;
-  color: #4e4f53;
-  padding: 20px;
+  gap: 18px;
+  width: 860px;
+  max-width: 100%;
   margin-top: 10px;
-  gap: 2px;
-  border-radius: 10px;
-  font-size: 14px;
-  overflow: hidden;
-  h1 {
-    border-top-right-radius: 10px;
-    border-top-left-radius: 10px;
-    font-size: 20px;
-    font-weight: 600;
-    margin-bottom: 0px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-  }
-
-  h2 {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 10px;
-    text-align: center;
-    overflow: hidden;
-  }
-  span {
-    display: flex;
-    justify-content: center;
-  }
-
-  div {
-    border-bottom-right-radius: 10px;
-    border-bottom-left-radius: 10px;
-  }
-
-  // all children
-  > * {
-    background-color: #eaeae9;
-    width: 100%;
-    padding: 20px;
-  }
 `;
+
+const IntroCard = styled.div`
+  width: 100%;
+  box-sizing: border-box;
+  padding: 18px 22px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fff, #f5f0f6);
+  border: 1px solid #ece2ee;
+  color: #4e4f53;
+`;
+
+const IntroTitle = styled.h1`
+  margin: 0 0 8px;
+  font-size: 22px;
+`;
+
+const IntroText = styled.p`
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #5b5c63;
+`;
+
+const Documents = styled.div`
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+`;
+
 export default Legal;

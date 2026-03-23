@@ -135,11 +135,13 @@ const SuggestionModal: FC<SuggestionModalProps> = ({
           <Title>Sugerencia o queja laboral</Title>
           <Subtitle>
             Este buzón es para comunicar propuestas, incidencias o quejas sobre
-            la empresa. El mensaje se transmite de forma anónima al director.
+            la empresa. El contenido se registra sin asociarse a tu perfil
+            visible dentro del buzón.
           </Subtitle>
           <PrivacyNote>
-            No se asociará el envío a tu usuario ni a tu sesión visible en la
-            aplicación.
+            Consulta la política de privacidad correspondiente para conocer los
+            accesos autorizados, la posible difusión interna y las garantías de
+            confidencialidad aplicables.
           </PrivacyNote>
         </Header>
 
@@ -192,7 +194,7 @@ const SuggestionModal: FC<SuggestionModalProps> = ({
         </ConsentRow>
 
         {success && (
-          <SuccessText>Mensaje enviado correctamente de forma anónima.</SuccessText>
+          <SuccessText>Mensaje enviado correctamente.</SuccessText>
         )}
         {error && <ErrorText>{error}</ErrorText>}
 

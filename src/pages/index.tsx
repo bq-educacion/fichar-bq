@@ -211,8 +211,8 @@ const Home: NextPage<{ pendingManualTargetDate?: string | null }> = ({
         <SuggestionCopy>
           <SuggestionTitle>Buzón laboral anónimo</SuggestionTitle>
           <SuggestionDescription>
-            Canal para enviar sugerencias o quejas sobre la empresa. Se remiten
-            de forma anónima.{" "}
+            Canal para enviar sugerencias o quejas sobre la empresa sin asociar
+            el contenido al perfil visible de la persona usuaria en el buzón.{" "}
             <SuggestionPolicyLink
               type="button"
               onClick={() => setSuggestionPrivacyOpen(true)}
@@ -228,7 +228,7 @@ const Home: NextPage<{ pendingManualTargetDate?: string | null }> = ({
       </SuggestionShortcut>
       {suggestionSent && (
         <SuggestionNotice>
-          Tu mensaje se ha enviado correctamente de forma anónima.
+          Tu mensaje se ha enviado correctamente.
         </SuggestionNotice>
       )}
       <SuggestionModal

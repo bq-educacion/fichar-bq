@@ -7,6 +7,7 @@ import React from "react";
 import { useRouter } from "next/router";
 import GoogleButton from "@/components/GoogleButton";
 import BQLogo from "@/assets/bq-logo-gray.svg";
+import SiteFooter from "@/components/SiteFooter";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   // get session data
@@ -30,34 +31,48 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 
 const Login = () => {
   const router = useRouter();
-  const { data, status } = useSession();
+  const { status } = useSession();
   if (status === "authenticated") {
     router.push("/");
   } else {
     return (
-      <Layout>
-        <BQLogo />
-        <LogInBox>
-          <P2>Inicia sesión</P2>
-          <Rectangle />
-          <LogIn>
-            <P4>Accede con tu cuenta BQ</P4>
-            <GoogleButton onClick={() => signIn("google")} />
-          </LogIn>
-        </LogInBox>
-      </Layout>
+      <Page>
+        <Content>
+          <BQLogo />
+          <LogInBox>
+            <P2>Inicia sesión</P2>
+            <Rectangle />
+            <LogIn>
+              <P4>Accede con tu cuenta BQ</P4>
+              <GoogleButton onClick={() => signIn("google")} />
+            </LogIn>
+          </LogInBox>
+        </Content>
+        <SiteFooter />
+      </Page>
     );
   }
 };
 
 export default Login;
 
-const Layout = styled.div`
+const Page = styled.div`
   display: flex;
-  height: 100vh;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 0 16px;
+  box-sizing: border-box;
+`;
+
+const Content = styled.div`
+  flex: 1;
+  width: 100%;
+  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+
   & > svg {
     height: 40px;
     margin: -40px 0 80px 0;
