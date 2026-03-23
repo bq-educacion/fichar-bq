@@ -2,7 +2,9 @@ import adminSuggestionsHandler from "@/pages/api/admin/suggestions";
 import suggestionsHandler from "@/pages/api/suggestions";
 import { SuggestionModel } from "@/db/Suggestion";
 import connectMongo from "@/lib/connectMongo";
-import getUserByEmail from "@/controllers/getUser";
+import getUserByEmail, { type UserDocument } from "@/controllers/getUser";
+import type { NextApiRequest, NextApiResponse } from "next";
+import type { Session } from "next-auth";
 import { getServerSession } from "next-auth/next";
 
 jest.mock("@/pages/api/auth/[...nextauth]", () => ({
@@ -21,10 +23,10 @@ jest.mock("@/db/Suggestion", () => ({
   },
 }));
 
-type MockRequest = {
-  method?: string;
+type MockRequest = Partial<NextApiRequest> & {
+  method?: NextApiRequest["method"];
   body?: unknown;
-  query?: Record<string, string | string[] | undefined>;
+  query?: NextApiRequest["query"];
 };
 
 type MockResponse = {
@@ -44,6 +46,8 @@ type SortQuery<T> = {
 type ExecQuery<T> = {
   exec: jest.Mock<Promise<T>, []>;
 };
+
+type MockUserFields = Pick<UserDocument, "admin" | "legal" | "email">;
 
 const createMockResponse = (): MockResponse => {
   const response = {
@@ -79,6 +83,31 @@ const makeExecQuery = <T>(result: T): ExecQuery<T> => ({
   exec: jest.fn().mockResolvedValue(result),
 });
 
+const toApiRequest = (request: MockRequest): NextApiRequest =>
+  request as NextApiRequest;
+
+const toApiResponse = (response: MockResponse): NextApiResponse =>
+  response as unknown as NextApiResponse;
+
+const createMockSession = (overrides: Partial<Session> = {}): Session => ({
+  expires: "2099-01-01T00:00:00.000Z",
+  ...overrides,
+  user: {
+    email: "admin@example.com",
+    ...overrides.user,
+  },
+});
+
+const createMockUser = (
+  overrides: Partial<MockUserFields> = {}
+): UserDocument =>
+  ({
+    admin: true,
+    legal: true,
+    email: "admin@example.com",
+    ...overrides,
+  } as unknown as UserDocument);
+
 const mockedGetServerSession = getServerSession as jest.MockedFunction<
   typeof getServerSession
 >;
@@ -96,14 +125,8 @@ describe("suggestions api", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockedConnectMongo.mockResolvedValue(undefined);
-    mockedGetServerSession.mockResolvedValue({
-      user: { email: "admin@example.com" },
-    } as never);
-    mockedGetUserByEmail.mockResolvedValue({
-      admin: true,
-      legal: true,
-      email: "admin@example.com",
-    } as never);
+    mockedGetServerSession.mockResolvedValue(createMockSession());
+    mockedGetUserByEmail.mockResolvedValue(createMockUser());
   });
 
   it("creates a suggestion for authenticated users and trims the text", async () => {
@@ -120,7 +143,7 @@ describe("suggestions api", () => {
       archived: false,
     });
 
-    await suggestionsHandler(request as never, response as never);
+    await suggestionsHandler(toApiRequest(request), toApiResponse(response));
 
     expect(response.statusCode).toBe(201);
     expect(mockedSuggestionModel.create).toHaveBeenCalledWith({
@@ -136,7 +159,7 @@ describe("suggestions api", () => {
     };
     const response = createMockResponse();
 
-    await suggestionsHandler(request as never, response as never);
+    await suggestionsHandler(toApiRequest(request), toApiResponse(response));
 
     expect(response.statusCode).toBe(400);
     expect(response.body).toBe("Bad Request: text: Escribe un comentario");
@@ -150,13 +173,14 @@ describe("suggestions api", () => {
     };
     const response = createMockResponse();
 
-    mockedGetUserByEmail.mockResolvedValue({
-      admin: false,
-      legal: true,
-      email: "worker@example.com",
-    } as never);
+    mockedGetUserByEmail.mockResolvedValue(
+      createMockUser({
+        admin: false,
+        email: "worker@example.com",
+      })
+    );
 
-    await adminSuggestionsHandler(request as never, response as never);
+    await adminSuggestionsHandler(toApiRequest(request), toApiResponse(response));
 
     expect(response.statusCode).toBe(403);
     expect(response.body).toBe("Forbidden");
@@ -182,7 +206,7 @@ describe("suggestions api", () => {
       })
     );
 
-    await adminSuggestionsHandler(request as never, response as never);
+    await adminSuggestionsHandler(toApiRequest(request), toApiResponse(response));
 
     expect(response.statusCode).toBe(200);
     expect(mockedSuggestionModel.findByIdAndUpdate).toHaveBeenCalledWith(
@@ -210,7 +234,7 @@ describe("suggestions api", () => {
       ])
     );
 
-    await adminSuggestionsHandler(request as never, response as never);
+    await adminSuggestionsHandler(toApiRequest(request), toApiResponse(response));
 
     expect(response.statusCode).toBe(200);
     expect(mockedSuggestionModel.find).toHaveBeenCalledWith({ archived: true });
