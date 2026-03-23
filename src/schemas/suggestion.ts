@@ -12,6 +12,13 @@ export const suggestionTextSchema = z
     `El mensaje no puede superar los ${MAX_SUGGESTION_LENGTH} caracteres`
   );
 
+export const suggestionPrivacyAcceptedSchema = z
+  .boolean()
+  .refine(
+    (value) => value,
+    "Debes aceptar la política de privacidad correspondiente"
+  );
+
 export const suggestionSchema = z
   .object({
     _id: mongoIdSchema,
@@ -26,6 +33,7 @@ export const suggestionsResponseSchema = z.array(suggestionSchema);
 export const suggestionCreateSchema = z
   .object({
     text: suggestionTextSchema,
+    privacyAccepted: suggestionPrivacyAcceptedSchema,
   })
   .strict();
 

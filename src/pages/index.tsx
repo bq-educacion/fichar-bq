@@ -6,6 +6,7 @@ import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { LOG_TYPE, UserStatus, USER_STATUS } from "@/types";
 import SuggestionModal from "@/components/SuggestionModal";
+import SuggestionPrivacyModal from "@/components/SuggestionPrivacyModal";
 import UserStats from "@/components/UserStats";
 import UserToday from "@/components/UserToday";
 import { LogModel } from "@/db/Models";
@@ -77,6 +78,7 @@ const Home: NextPage<{ pendingManualTargetDate?: string | null }> = ({
   const [logsRefreshKey, setLogsRefreshKey] = useState(0);
   const [suggestionOpen, setSuggestionOpen] = useState(false);
   const [suggestionSent, setSuggestionSent] = useState(false);
+  const [suggestionPrivacyOpen, setSuggestionPrivacyOpen] = useState(false);
 
   const getUserStatus = useCallback(
     async (signal?: AbortSignal) => {
@@ -112,7 +114,7 @@ const Home: NextPage<{ pendingManualTargetDate?: string | null }> = ({
         console.error("Failed to fetch user status", error);
       }
     },
-    [router]
+    [router],
   );
 
   useEffect(() => {
@@ -209,8 +211,15 @@ const Home: NextPage<{ pendingManualTargetDate?: string | null }> = ({
         <SuggestionCopy>
           <SuggestionTitle>Buzón laboral anónimo</SuggestionTitle>
           <SuggestionDescription>
-            Envía sugerencias o quejas sobre la empresa. Se trasladan de forma
-            anónima al director.
+            Canal para enviar sugerencias o quejas sobre la empresa. Se remiten
+            de forma anónima.{" "}
+            <SuggestionPolicyLink
+              type="button"
+              onClick={() => setSuggestionPrivacyOpen(true)}
+            >
+              Política de privacidad de sugerencias
+            </SuggestionPolicyLink>
+            .
           </SuggestionDescription>
         </SuggestionCopy>
         <SuggestionButton type="button" onClick={() => setSuggestionOpen(true)}>
@@ -226,6 +235,11 @@ const Home: NextPage<{ pendingManualTargetDate?: string | null }> = ({
         isOpen={suggestionOpen}
         onClose={() => setSuggestionOpen(false)}
         onSubmitted={() => setSuggestionSent(true)}
+        onOpenPrivacyPolicy={() => setSuggestionPrivacyOpen(true)}
+      />
+      <SuggestionPrivacyModal
+        isOpen={suggestionPrivacyOpen}
+        onClose={() => setSuggestionPrivacyOpen(false)}
       />
     </>
   );
@@ -272,6 +286,17 @@ const SuggestionDescription = styled.div`
   font-size: 13px;
   line-height: 1.5;
   color: #6d6e72;
+`;
+
+const SuggestionPolicyLink = styled.button`
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: #8a4d92;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
 `;
 
 const SuggestionButton = styled.button`

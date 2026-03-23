@@ -8,6 +8,7 @@ interface SuggestionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmitted?: () => void;
+  onOpenPrivacyPolicy: () => void;
 }
 
 const normalizeError = (error: unknown, fallback: string): string => {
@@ -22,16 +23,18 @@ const SuggestionModal: FC<SuggestionModalProps> = ({
   isOpen,
   onClose,
   onSubmitted,
+  onOpenPrivacyPolicy,
 }) => {
   const router = useRouter();
   const closeTimeoutRef = useRef<number | null>(null);
   const [text, setText] = useState("");
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
   const trimmedText = text.trim();
-  const canSubmit = !loading && trimmedText.length > 0;
+  const canSubmit = !loading && trimmedText.length > 0 && privacyAccepted;
 
   const clearCloseTimeout = () => {
     if (closeTimeoutRef.current !== null) {
@@ -46,6 +49,7 @@ const SuggestionModal: FC<SuggestionModalProps> = ({
     setSuccess(false);
     setError("");
     setText("");
+    setPrivacyAccepted(false);
     onClose();
   };
 
@@ -61,6 +65,7 @@ const SuggestionModal: FC<SuggestionModalProps> = ({
     setSuccess(false);
     setError("");
     setText("");
+    setPrivacyAccepted(false);
   }, [isOpen]);
 
   useEffect(() => {
@@ -84,7 +89,10 @@ const SuggestionModal: FC<SuggestionModalProps> = ({
       const res = await fetch("/api/suggestions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: trimmedText }),
+        body: JSON.stringify({
+          text: trimmedText,
+          privacyAccepted: privacyAccepted,
+        }),
       });
 
       if (res.status === 401) {
@@ -139,16 +147,16 @@ const SuggestionModal: FC<SuggestionModalProps> = ({
           <FieldLabel htmlFor="suggestion-text">
             Escribe tu mensaje
           </FieldLabel>
-        <TextArea
-          id="suggestion-text"
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          placeholder="Describe la situación, la propuesta o la queja laboral que quieras trasladar a dirección..."
-          maxLength={MAX_SUGGESTION_LENGTH}
-          required
-          disabled={loading}
-          autoFocus
-        />
+          <TextArea
+            id="suggestion-text"
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            placeholder="Describe la situación, la propuesta o la queja laboral que quieras trasladar a dirección..."
+            maxLength={MAX_SUGGESTION_LENGTH}
+            required
+            disabled={loading}
+            autoFocus
+          />
         </InputSection>
 
         <HelperRow>
@@ -160,6 +168,28 @@ const SuggestionModal: FC<SuggestionModalProps> = ({
             {text.length}/{MAX_SUGGESTION_LENGTH}
           </Counter>
         </HelperRow>
+
+        <ConsentRow>
+          <ConsentCheckbox
+            id="suggestion-privacy-accepted"
+            type="checkbox"
+            checked={privacyAccepted}
+            onChange={(event) => setPrivacyAccepted(event.target.checked)}
+            disabled={loading}
+          />
+          <ConsentText>
+            <ConsentLabel htmlFor="suggestion-privacy-accepted">
+              He leído la{" "}
+            </ConsentLabel>
+            <PrivacyLinkButton
+              type="button"
+              onClick={onOpenPrivacyPolicy}
+              disabled={loading}
+            >
+              política de privacidad correspondiente
+            </PrivacyLinkButton>
+          </ConsentText>
+        </ConsentRow>
 
         {success && (
           <SuccessText>Mensaje enviado correctamente de forma anónima.</SuccessText>
@@ -321,6 +351,46 @@ const HelperRow = styled.div`
 const HelperText = styled.div`
   font-size: 13px;
   color: #6d6e72;
+`;
+
+const ConsentRow = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 0 24px;
+`;
+
+const ConsentCheckbox = styled.input`
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  accent-color: #8a4d92;
+`;
+
+const ConsentText = styled.div`
+  font-size: 13px;
+  line-height: 1.5;
+  color: #5d5f66;
+`;
+
+const ConsentLabel = styled.label`
+  cursor: pointer;
+`;
+
+const PrivacyLinkButton = styled.button`
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: #8a4d92;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.7;
+  }
 `;
 
 const Counter = styled.div`
