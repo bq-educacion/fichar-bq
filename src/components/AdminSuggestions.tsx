@@ -120,8 +120,9 @@ const AdminSuggestions: FC = () => {
             {showArchived ? "Archivadas" : "Activas"} · {suggestions.length}
           </SectionTitle>
           <SectionDescription>
-            Revisa el buzón anónimo y archiva lo ya tratado para mantener la
-            lista operativa.
+            Revisa el buzón anónimo de sugerencias y quejas laborales dirigidas
+            a dirección, y archiva lo ya tratado para mantener la lista
+            operativa.
           </SectionDescription>
         </div>
         <FilterGroup>

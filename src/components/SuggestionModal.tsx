@@ -88,12 +88,12 @@ const SuggestionModal: FC<SuggestionModalProps> = ({
       });
 
       if (res.status === 401) {
-        router.push("/login");
+        void router.push("/login");
         return;
       }
 
       if (!res.ok) {
-        throw new Error((await res.text()) || "No se pudo enviar la sugerencia");
+        throw new Error((await res.text()) || "No se pudo enviar el mensaje");
       }
 
       suggestionSchema.parse(await res.json());
@@ -105,9 +105,7 @@ const SuggestionModal: FC<SuggestionModalProps> = ({
         handleClose();
       }, 1500);
     } catch (submitError) {
-      setError(
-        normalizeError(submitError, "No se pudo enviar la sugerencia")
-      );
+      setError(normalizeError(submitError, "No se pudo enviar el mensaje"));
     } finally {
       setLoading(false);
     }
@@ -118,37 +116,54 @@ const SuggestionModal: FC<SuggestionModalProps> = ({
       isOpen={isOpen}
       onRequestClose={loading ? undefined : handleClose}
       style={modalStyles}
-      contentLabel="Enviar sugerencia anónima"
+      contentLabel="Enviar sugerencia o queja laboral"
     >
       <ModalForm onSubmit={handleSubmit}>
+        <TopBar>
+          <TopBarText>Buzón laboral anónimo</TopBarText>
+        </TopBar>
+
         <Header>
-          <Title>Enviar sugerencia anónima</Title>
+          <Title>Sugerencia o queja laboral</Title>
           <Subtitle>
-            Comparte mejoras, incidencias o comentarios. El mensaje se guarda
-            sin asociarlo a tu usuario.
+            Este buzón es para comunicar propuestas, incidencias o quejas sobre
+            la empresa. El mensaje se transmite de forma anónima al director.
           </Subtitle>
+          <PrivacyNote>
+            No se asociará el envío a tu usuario ni a tu sesión visible en la
+            aplicación.
+          </PrivacyNote>
         </Header>
 
+        <InputSection>
+          <FieldLabel htmlFor="suggestion-text">
+            Escribe tu mensaje
+          </FieldLabel>
         <TextArea
+          id="suggestion-text"
           value={text}
           onChange={(event) => setText(event.target.value)}
-          placeholder="Cuéntanos qué debería mejorar, qué has detectado o qué te gustaría cambiar..."
+          placeholder="Describe la situación, la propuesta o la queja laboral que quieras trasladar a dirección..."
           maxLength={MAX_SUGGESTION_LENGTH}
           required
           disabled={loading}
           autoFocus
         />
+        </InputSection>
 
         <HelperRow>
           <HelperText>
-            Cuanto más contexto incluyas, más fácil será revisarlo.
+            Incluye el contexto necesario para que dirección pueda revisarlo con
+            criterio.
           </HelperText>
           <Counter>
             {text.length}/{MAX_SUGGESTION_LENGTH}
           </Counter>
         </HelperRow>
 
-        {success && <SuccessText>Gracias, lo hemos recibido.</SuccessText>}
+        {success && (
+          <SuccessText>Mensaje enviado correctamente de forma anónima.</SuccessText>
+        )}
         {error && <ErrorText>{error}</ErrorText>}
 
         <ButtonRow>
@@ -170,35 +185,58 @@ const SuggestionModal: FC<SuggestionModalProps> = ({
 
 const modalStyles = {
   content: {
-    top: "50%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
-    width: "460px",
-    maxWidth: "calc(100vw - 32px)",
-    maxHeight: "85vh",
-    overflow: "auto",
+    position: "static" as const,
+    inset: "auto",
+    width: "100%",
+    maxWidth: "640px",
+    overflow: "visible",
     border: "none",
-    borderRadius: "8px",
     padding: "0",
-    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.25)",
+    background: "transparent",
   },
   overlay: {
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(44, 45, 49, 0.45)",
     zIndex: 1000,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "16px",
   },
 };
 
 const ModalForm = styled.form`
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 24px;
+  gap: 14px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #f3f3f3;
+  box-shadow: 0 18px 45px rgba(34, 35, 38, 0.22);
+`;
+
+const TopBar = styled.div`
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+  box-sizing: border-box;
+  background-image: linear-gradient(220deg, #eee, #e7e7e7);
+  border-bottom: 1px solid #e0e0e0;
+`;
+
+const TopBarText = styled.div`
+  font-size: 14px;
+  font-weight: 700;
+  color: #4e4f53;
 `;
 
 const Header = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  padding: 22px 24px 0;
 `;
 
 const Title = styled.h2`
@@ -215,21 +253,56 @@ const Subtitle = styled.p`
   color: #6d6e72;
 `;
 
+const PrivacyNote = styled.div`
+  padding: 10px 12px;
+  border: 1px solid #e2d8e4;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #faf6fb, #f4edf6);
+  font-size: 13px;
+  line-height: 1.5;
+  color: #5f5f66;
+`;
+
+const InputSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 24px;
+`;
+
+const FieldLabel = styled.label`
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #4e4f53;
+`;
+
 const TextArea = styled.textarea`
   width: 100%;
-  min-height: 150px;
+  min-height: 260px;
+  box-sizing: border-box;
   border-radius: 6px;
-  border: 1px solid #d2d2d2;
-  padding: 12px;
+  border: 1px solid #d7d7d7;
+  background: #fff;
+  padding: 14px 15px;
   font-size: 14px;
   line-height: 1.5;
   color: #4e4f53;
-  resize: vertical;
+  resize: none;
 
   &:focus {
     outline: none;
     border-color: #8a4d92;
     box-shadow: 0 0 0 3px rgba(138, 77, 146, 0.14);
+  }
+
+  &::placeholder {
+    color: #8a8b91;
+  }
+
+  @media (max-width: 640px) {
+    min-height: 220px;
   }
 `;
 
@@ -238,6 +311,11 @@ const HelperRow = styled.div`
   justify-content: space-between;
   gap: 12px;
   align-items: flex-start;
+  padding: 0 24px;
+
+  @media (max-width: 640px) {
+    flex-direction: column;
+  }
 `;
 
 const HelperText = styled.div`
@@ -255,7 +333,11 @@ const ButtonRow = styled.div`
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 8px;
+  padding: 4px 24px 24px;
+
+  @media (max-width: 640px) {
+    flex-direction: column-reverse;
+  }
 `;
 
 const CancelButton = styled.button`
@@ -271,6 +353,10 @@ const CancelButton = styled.button`
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  @media (max-width: 640px) {
+    width: 100%;
   }
 `;
 
@@ -288,15 +374,21 @@ const SubmitButton = styled.button`
     opacity: 0.6;
     cursor: not-allowed;
   }
+
+  @media (max-width: 640px) {
+    width: 100%;
+  }
 `;
 
 const SuccessText = styled.div`
+  padding: 0 24px;
   color: #2e7d32;
   font-size: 13px;
   font-weight: 600;
 `;
 
 const ErrorText = styled.div`
+  padding: 0 24px;
   color: #b00020;
   font-size: 13px;
   font-weight: 600;
