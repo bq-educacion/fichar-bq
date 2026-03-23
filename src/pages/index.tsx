@@ -3,7 +3,7 @@ import type { GetServerSideProps, NextPage } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { useRouter } from "next/router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { LOG_TYPE, UserStatus, USER_STATUS } from "@/types";
 import SuggestionModal from "@/components/SuggestionModal";
 import UserStats from "@/components/UserStats";
@@ -72,36 +72,72 @@ const Home: NextPage<{ pendingManualTargetDate?: string | null }> = ({
   pendingManualTargetDate,
 }) => {
   const router = useRouter();
+  const isMountedRef = useRef(true);
   const [status, setStatus] = useState<UserStatus | undefined>(undefined);
   const [logsRefreshKey, setLogsRefreshKey] = useState(0);
   const [suggestionOpen, setSuggestionOpen] = useState(false);
   const [suggestionSent, setSuggestionSent] = useState(false);
 
-  const getUserStatus = useCallback(async () => {
-    const res = await fetch("/api/userStatus");
-    if (res.status !== 200) {
-      router.push("/login");
-      return;
-    }
-    const data = await res.json();
-    setStatus({
-      status: data.status,
-      date: new Date(data.date),
-      startDate: new Date(data.startDate),
-      hoursToday: data.hoursToday,
-    });
-  }, [router]);
+  const getUserStatus = useCallback(
+    async (signal?: AbortSignal) => {
+      try {
+        const res = await fetch("/api/userStatus", { signal });
+
+        if (signal?.aborted || !isMountedRef.current) {
+          return;
+        }
+
+        if (res.status !== 200) {
+          void router.push("/login");
+          return;
+        }
+
+        const data = await res.json();
+
+        if (signal?.aborted || !isMountedRef.current) {
+          return;
+        }
+
+        setStatus({
+          status: data.status,
+          date: new Date(data.date),
+          startDate: new Date(data.startDate),
+          hoursToday: data.hoursToday,
+        });
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+
+        console.error("Failed to fetch user status", error);
+      }
+    },
+    [router]
+  );
 
   useEffect(() => {
-    getUserStatus();
-  }, [getUserStatus]);
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
-  // refetch every 60 seconds
   useEffect(() => {
-    const interval = setInterval(() => {
-      getUserStatus();
-    }, 60 * 1000);
-    return () => clearInterval(interval);
+    let currentController: AbortController | null = null;
+
+    const refreshStatus = () => {
+      currentController?.abort();
+      currentController = new AbortController();
+      void getUserStatus(currentController.signal);
+    };
+
+    refreshStatus();
+
+    const interval = window.setInterval(refreshStatus, 60 * 1000);
+
+    return () => {
+      window.clearInterval(interval);
+      currentController?.abort();
+    };
   }, [getUserStatus]);
 
   const { data } = useSession({
@@ -110,6 +146,11 @@ const Home: NextPage<{ pendingManualTargetDate?: string | null }> = ({
 
   const onCurrentDayLogsUpdated = async () => {
     await getUserStatus();
+
+    if (!isMountedRef.current) {
+      return;
+    }
+
     setLogsRefreshKey((previous) => previous + 1);
   };
 
@@ -130,30 +171,7 @@ const Home: NextPage<{ pendingManualTargetDate?: string | null }> = ({
   return (
     <>
       <WelcomeUser data={data!} />
-      <SuggestionShortcut>
-        <SuggestionCopy>
-          <SuggestionTitle>Ayúdanos a mejorar</SuggestionTitle>
-          <SuggestionDescription>
-            Envía sugerencias o comentarios sin asociarlos a tu usuario.
-          </SuggestionDescription>
-        </SuggestionCopy>
-        <SuggestionButton
-          type="button"
-          onClick={() => setSuggestionOpen(true)}
-        >
-          Enviar sugerencia anónima
-        </SuggestionButton>
-      </SuggestionShortcut>
-      {suggestionSent && (
-        <SuggestionNotice>
-          Gracias, tu comentario se ha enviado correctamente.
-        </SuggestionNotice>
-      )}
-      <SuggestionModal
-        isOpen={suggestionOpen}
-        onClose={() => setSuggestionOpen(false)}
-        onSubmitted={() => setSuggestionSent(true)}
-      />
+
       {status &&
         ([USER_STATUS.working, USER_STATUS.paused] as USER_STATUS[]).includes(
           status.status,
@@ -187,6 +205,27 @@ const Home: NextPage<{ pendingManualTargetDate?: string | null }> = ({
       )}
       <br />
       <br />
+      <SuggestionShortcut>
+        <SuggestionCopy>
+          <SuggestionTitle>Buzón de sugerencias</SuggestionTitle>
+          <SuggestionDescription>
+            Envía sugerencias o comentarios sin asociarlos a tu usuario.
+          </SuggestionDescription>
+        </SuggestionCopy>
+        <SuggestionButton type="button" onClick={() => setSuggestionOpen(true)}>
+          Enviar sugerencia anónima
+        </SuggestionButton>
+      </SuggestionShortcut>
+      {suggestionSent && (
+        <SuggestionNotice>
+          Gracias, tu comentario se ha enviado correctamente.
+        </SuggestionNotice>
+      )}
+      <SuggestionModal
+        isOpen={suggestionOpen}
+        onClose={() => setSuggestionOpen(false)}
+        onSubmitted={() => setSuggestionSent(true)}
+      />
     </>
   );
 };
