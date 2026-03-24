@@ -294,10 +294,12 @@ export const adminManagedUserSchema = z
     email: z.string().email(),
     name: z.string().default(""),
     admin: z.boolean().default(false),
+    superadmin: z.boolean().optional(),
     isManager: z.boolean().default(false),
     active: z.boolean().default(true),
     manager: z.string().email().optional(),
     department: mongoIdSchema.nullable().optional(),
+    salary: z.number().min(0).nullable().optional(),
   })
   .strict();
 
@@ -307,10 +309,33 @@ export const adminUserUpdateBodySchema = z
   .object({
     _id: mongoIdSchema,
     admin: z.boolean(),
+    superadmin: z.boolean().optional(),
     isManager: z.boolean(),
     active: z.boolean(),
     manager: z.string().email().nullable().optional(),
     department: mongoIdSchema.nullable().optional(),
+  })
+  .strict();
+
+export const adminUserSalaryQuerySchema = z
+  .object({
+    userId: mongoIdSchema,
+  })
+  .strict();
+
+export const adminUserSalaryResponseSchema = z
+  .object({
+    _id: mongoIdSchema,
+    salary: z.number().min(0).nullable(),
+    initDate: yyyyMmDdSchema.nullable(),
+  })
+  .strict();
+
+export const adminUserSalaryUpdateBodySchema = z
+  .object({
+    _id: mongoIdSchema,
+    salary: z.number().min(0),
+    initDate: yyyyMmDdSchema,
   })
   .strict();
 
@@ -365,3 +390,6 @@ export type AdminUsersResponse = z.infer<typeof adminUsersResponseSchema>;
 export type AdminManagedUser = z.infer<typeof adminManagedUserSchema>;
 export type AdminManagedUsersResponse = z.infer<typeof adminManagedUsersResponseSchema>;
 export type AdminUserUpdateBody = z.infer<typeof adminUserUpdateBodySchema>;
+export type AdminUserSalaryQuery = z.infer<typeof adminUserSalaryQuerySchema>;
+export type AdminUserSalaryResponse = z.infer<typeof adminUserSalaryResponseSchema>;
+export type AdminUserSalaryUpdateBody = z.infer<typeof adminUserSalaryUpdateBodySchema>;

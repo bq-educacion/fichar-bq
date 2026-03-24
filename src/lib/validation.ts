@@ -1,6 +1,12 @@
 import { ZodError, ZodTypeAny, z } from "zod";
 
-const mongoMetadataKeys = new Set(["__v", "createdAt", "updatedAt"]);
+const mongoMetadataKeys = new Set([
+  "__v",
+  "createdAt",
+  "updatedAt",
+  "salaryHistory",
+  "salaryEncrypted",
+]);
 
 const stripMongoInternalFields = (value: unknown): unknown => {
   if (Array.isArray(value)) {

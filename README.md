@@ -20,6 +20,33 @@ DEFAULT_MANAGER_EMAIL=alberto.valero@bqeducacion.cc
 
 If not provided, the app falls back to `alberto.valero@bqeducacion.cc`.
 
+Salary history encryption requires an application secret:
+
+```bash
+USER_SALARY_ENCRYPTION_KEY=<32-byte base64 value or 64-character hex value>
+```
+
+Each salary history entry is stored encrypted at rest in MongoDB and decrypted
+only on explicitly authorized superadmin paths.
+
+## Superadmin Bootstrap
+
+The application enforces superadmin assignment in the backend, so at least one
+existing admin user must be marked as `superadmin: true` once during rollout.
+
+With MongoDB, the one-time bootstrap can be done directly on the user document,
+for example by setting:
+
+```json
+{
+  "admin": true,
+  "superadmin": true
+}
+```
+
+After that, superadmins can manage other superadmin flags from the admin users
+panel.
+
 You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
 
 [API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.

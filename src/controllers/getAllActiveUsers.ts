@@ -26,6 +26,11 @@ const getAllActiveUsers = async () => {
       shouldSave = true;
     }
 
+    if (typeof user.superadmin !== "boolean") {
+      user.superadmin = false;
+      shouldSave = true;
+    }
+
     if (!user.status) {
       const status = await computeUserStatus(user.email);
       user.status = status;

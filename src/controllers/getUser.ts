@@ -23,6 +23,11 @@ const getUserByEmail = async (email: string): Promise<UserDocument> => {
     await user.save();
   }
 
+  if (typeof user.superadmin !== "boolean") {
+    user.superadmin = false;
+    await user.save();
+  }
+
   parseWithSchema(userSchema, toPlainObject(user));
   return user as unknown as UserDocument;
 };

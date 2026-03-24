@@ -3,6 +3,7 @@ import {
   logTypeEnumSchema,
   userStatusEnumSchema,
 } from "@/schemas/db";
+import { getCurrentSalaryEntryFromUser } from "@/lib/userSalary";
 import mongoose from "mongoose";
 
 const DEFAULT_MANAGER_EMAIL =
@@ -40,6 +41,16 @@ const UserStatusSchema = new mongoose.Schema(
   }
 );
 
+const UserSalaryHistorySchema = new mongoose.Schema(
+  {
+    initDate: { type: Date, required: true },
+    valueEncrypted: { type: String, required: true },
+  },
+  {
+    _id: false,
+  }
+);
+
 const UserSchema = new mongoose.Schema(
   {
     email: { type: String, required: true, unique: true, index: true },
@@ -53,6 +64,12 @@ const UserSchema = new mongoose.Schema(
     image: { type: String },
     isManager: { type: Boolean, required: true, default: false },
     admin: { type: Boolean, required: true, default: false },
+    superadmin: { type: Boolean, required: true, default: false },
+    salaryHistory: {
+      type: [UserSalaryHistorySchema],
+      default: [],
+      select: false,
+    },
     department: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Department",
@@ -64,8 +81,25 @@ const UserSchema = new mongoose.Schema(
   {
     id: false,
     versionKey: false,
+    toJSON: {
+      transform: (_doc, ret) => {
+        delete ret.salaryHistory;
+        return ret;
+      },
+    },
+    toObject: {
+      transform: (_doc, ret) => {
+        delete ret.salaryHistory;
+        return ret;
+      },
+    },
   }
 );
+
+UserSchema.virtual("salary")
+  .get(function getSalary(this: mongoose.Document) {
+    return getCurrentSalaryEntryFromUser(this)?.salary;
+  });
 
 const ProjectSchema = new mongoose.Schema(
   {
