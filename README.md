@@ -132,6 +132,12 @@ The cost report shows a monthly matrix of departments (rows) × projects (column
 - **No manual general cost input**: the `monthlyGeneralCost` field and the PUT
   endpoint have been removed. All indirect costs come exclusively from users in
   indirect departments.
+- **Inactive users excluded**: Users with `active: false` are not included in
+  cost calculations.
+- **Users with no dedications excluded**: Direct department users who have no
+  dedication records in the month (e.g., on holiday) are not included in cost
+  calculations. Indirect/general department users are always included regardless
+  of dedications.
 
 ### Table layout
 

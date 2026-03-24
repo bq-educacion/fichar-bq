@@ -106,6 +106,21 @@ const AdminProjectCostsTable: FC<{
     [directTotalByProject]
   );
 
+  const generalTotalByProject = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const row of generalRows) {
+      for (const cell of row.projects) {
+        totals.set(cell.projectId, (totals.get(cell.projectId) ?? 0) + cell.baseCost);
+      }
+    }
+    return totals;
+  }, [generalRows]);
+
+  const generalTotalGlobal = useMemo(
+    () => Array.from(generalTotalByProject.values()).reduce((acc, v) => acc + v, 0),
+    [generalTotalByProject]
+  );
+
   const toggleSort = (key: AdminProjectCostsSort["key"]) => {
     if (sort.key === key) {
       onSortChange({
@@ -213,47 +228,61 @@ const AdminProjectCostsTable: FC<{
             </SubtotalRow>
           )}
           {generalRows.length > 0 && (
-            <SectionRow>
-              <SectionLabelCell colSpan={columnCount} $tone="general">
-                Gastos generales
-              </SectionLabelCell>
-            </SectionRow>
-          )}
-          {generalRows.map((row) => (
-            <GeneralDataRow key={row.departmentId}>
-              <GeneralStickyLeftCell>{row.departmentName}</GeneralStickyLeftCell>
-              {projects.map((project) => {
-                const cell =
-                  row.projects.find((item) => item.projectId === project.projectId) ?? null;
+            <>
+              <SectionRow>
+                <SectionLabelCell colSpan={columnCount} $tone="general">
+                  Gastos generales
+                </SectionLabelCell>
+              </SectionRow>
+              {generalRows.map((row) => (
+                <GeneralDataRow key={row.departmentId}>
+                  <GeneralStickyLeftCell>{row.departmentName}</GeneralStickyLeftCell>
+                  {projects.map((project) => {
+                    const cell =
+                      row.projects.find((item) => item.projectId === project.projectId) ?? null;
 
-                return (
-                  <GeneralValueCell key={project.projectId}>
+                    return (
+                      <GeneralValueCell key={project.projectId}>
+                        <GeneralValueButton
+                          type="button"
+                          onClick={() =>
+                            onSelectCell({
+                              type: "row-project",
+                              rowId: row.departmentId,
+                              projectId: project.projectId,
+                            })
+                          }
+                        >
+                          {formatCurrency(cell?.baseCost ?? 0)}
+                        </GeneralValueButton>
+                      </GeneralValueCell>
+                    );
+                  })}
+                  {projects.length === 0 && <GeneralEmptyProjectsCell>-</GeneralEmptyProjectsCell>}
+                  <GeneralStickyRightCell>
                     <GeneralValueButton
                       type="button"
-                      onClick={() =>
-                        onSelectCell({
-                          type: "row-project",
-                          rowId: row.departmentId,
-                          projectId: project.projectId,
-                        })
-                      }
+                      onClick={() => onSelectCell({ type: "row-total", rowId: row.departmentId })}
                     >
-                      {formatCurrency(cell?.baseCost ?? 0)}
+                      {formatCurrency(row.total)}
                     </GeneralValueButton>
-                  </GeneralValueCell>
-                );
-              })}
-              {projects.length === 0 && <GeneralEmptyProjectsCell>-</GeneralEmptyProjectsCell>}
-              <GeneralStickyRightCell>
-                <GeneralValueButton
-                  type="button"
-                  onClick={() => onSelectCell({ type: "row-total", rowId: row.departmentId })}
-                >
-                  {formatCurrency(row.total)}
-                </GeneralValueButton>
-              </GeneralStickyRightCell>
-            </GeneralDataRow>
-          ))}
+                  </GeneralStickyRightCell>
+                </GeneralDataRow>
+              ))}
+              <GeneralSubtotalRow>
+                <GeneralSubtotalStickyLeftCell>Total gastos generales</GeneralSubtotalStickyLeftCell>
+                {projects.map((project) => (
+                  <GeneralSubtotalCell key={project.projectId}>
+                    {formatCurrency(generalTotalByProject.get(project.projectId) ?? 0)}
+                  </GeneralSubtotalCell>
+                ))}
+                {projects.length === 0 && <GeneralSubtotalCell>-</GeneralSubtotalCell>}
+                <GeneralSubtotalStickyRightCell>
+                  {formatCurrency(generalTotalGlobal)}
+                </GeneralSubtotalStickyRightCell>
+              </GeneralSubtotalRow>
+            </>
+          )}
         </tbody>
         <tfoot>
           <tr>
@@ -540,6 +569,52 @@ const SubtotalStickyRightCell = styled.td`
   color: #4e4f53;
   background: #edf4fb !important;
   border-top: 2px solid #a9c3de;
+`;
+
+const GeneralSubtotalRow = styled.tr`
+  &:hover td,
+  &:hover th {
+    background: #fff6ea;
+  }
+`;
+
+const GeneralSubtotalCell = styled.td`
+  min-width: 160px;
+  padding: 12px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
+  color: #4e4f53;
+  background: #fff2dd !important;
+  border-top: 2px solid #d8b074;
+`;
+
+const GeneralSubtotalStickyLeftCell = styled.th`
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  min-width: 220px;
+  padding: 12px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 700;
+  color: #4e4f53;
+  background: #fff2dd !important;
+  border-top: 2px solid #d8b074;
+`;
+
+const GeneralSubtotalStickyRightCell = styled.td`
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  min-width: 160px;
+  padding: 12px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
+  color: #4e4f53;
+  background: #fff2dd !important;
+  border-top: 2px solid #d8b074;
 `;
 
 const DataRow = styled.tr`
