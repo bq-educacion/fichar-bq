@@ -5,6 +5,7 @@ import {
 } from "@/lib/adminAuthorization";
 import {
   appendSalaryToUserHistory,
+  getSalaryOperationErrorMessage,
   getCurrentSalaryEntryFromUser,
 } from "@/lib/userSalary";
 import {
@@ -107,7 +108,11 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return;
     }
 
-    res.status(500).end();
+    const salaryErrorMessage = getSalaryOperationErrorMessage(error);
+    console.error("Error handling admin salary request", error);
+    res
+      .status(500)
+      .send(salaryErrorMessage ?? "Internal Server Error");
   }
 };
 

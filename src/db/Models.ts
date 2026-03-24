@@ -164,6 +164,17 @@ const ProjectDedicationSchema = new mongoose.Schema(
 
 ProjectDedicationSchema.index({ userId: 1, date: 1 }, { unique: true });
 
+const MonthlyGeneralCostSchema = new mongoose.Schema(
+  {
+    month: { type: Date, required: true, unique: true, index: true },
+    amount: { type: Number, required: true, min: 0, default: 0 },
+  },
+  {
+    id: false,
+    versionKey: false,
+  }
+);
+
 export const LogModel = mongoose.models.Log || mongoose.model("Log", LogSchema);
 export const UserModel =
   mongoose.models.User || mongoose.model("User", UserSchema);
@@ -174,3 +185,6 @@ export const DepartmentModel =
 export const ProjectDedicationModel =
   mongoose.models.ProjectDedication ||
   mongoose.model("ProjectDedication", ProjectDedicationSchema);
+export const MonthlyGeneralCostModel =
+  mongoose.models.MonthlyGeneralCost ||
+  mongoose.model("MonthlyGeneralCost", MonthlyGeneralCostSchema);

@@ -3,7 +3,10 @@ import {
   requireAdminAuthorization,
   setNoStoreHeaders,
 } from "@/lib/adminAuthorization";
-import { getSalaryFromUser } from "@/lib/userSalary";
+import {
+  getSalaryFromUser,
+  getSalaryOperationErrorMessage,
+} from "@/lib/userSalary";
 import {
   formatZodError,
   isZodError,
@@ -294,7 +297,11 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return;
     }
 
-    res.status(500).end();
+    const salaryErrorMessage = getSalaryOperationErrorMessage(error);
+    console.error("Error handling admin users request", error);
+    res
+      .status(500)
+      .send(salaryErrorMessage ?? "Internal Server Error");
   }
 };
 

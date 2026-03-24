@@ -4,6 +4,17 @@ const SALARY_ENCRYPTION_PREFIX = "enc:v1";
 const SALARY_KEY_BYTES = 32;
 const SALARY_IV_BYTES = 12;
 const SALARY_ALGORITHM = "aes-256-gcm";
+const SALARY_DECRYPTION_AUTH_ERROR_PATTERN =
+  /unsupported state|unable to authenticate data/i;
+const salaryConfigurationErrorMessages = new Set([
+  "USER_SALARY_ENCRYPTION_KEY is not defined",
+  "USER_SALARY_ENCRYPTION_KEY must be a 32-byte base64 value or a 64-character hex value",
+]);
+const salaryDataErrorMessages = new Set([
+  "Invalid encrypted salary payload",
+  "Invalid encrypted salary history entry",
+  "Invalid salary init date",
+]);
 
 export type SalaryHistoryEntry = {
   initDate: Date;
@@ -122,6 +133,26 @@ export const decryptSalary = (encryptedSalary: string): number => {
   const salary = Number(decrypted);
 
   return assertValidSalaryValue(salary);
+};
+
+export const getSalaryOperationErrorMessage = (error: unknown): string | null => {
+  if (!(error instanceof Error)) {
+    return null;
+  }
+
+  if (salaryConfigurationErrorMessages.has(error.message)) {
+    return "Salary encryption is not configured correctly on the server";
+  }
+
+  if (salaryDataErrorMessages.has(error.message)) {
+    return "Stored salary data is invalid";
+  }
+
+  if (SALARY_DECRYPTION_AUTH_ERROR_PATTERN.test(error.message)) {
+    return "Stored salary data cannot be decrypted with the current server configuration";
+  }
+
+  return null;
 };
 
 const getRawSalaryHistory = (user: SalaryDocumentLike): SalaryHistoryStorageEntry[] => {

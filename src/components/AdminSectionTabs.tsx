@@ -4,13 +4,19 @@ import React, { FC } from "react";
 
 const sections = [
   { key: "projects", label: "Proyectos", href: "/admin/projects" },
+  { key: "project-costs", label: "Costes por proyecto", href: "/admin/project-costs" },
   { key: "departments", label: "Departamentos", href: "/admin/departments" },
   { key: "users", label: "Usuarios", href: "/admin/users" },
   { key: "suggestions", label: "Sugerencias", href: "/admin/suggestions" },
 ] as const;
 
 const AdminSectionTabs: FC<{
-  active: "projects" | "departments" | "users" | "suggestions";
+  active:
+    | "projects"
+    | "project-costs"
+    | "departments"
+    | "users"
+    | "suggestions";
   maxWidth?: string;
 }> = ({ active, maxWidth = "980px" }) => {
   return (
