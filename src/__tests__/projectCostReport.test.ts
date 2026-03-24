@@ -3,6 +3,7 @@ import {
   buildProjectCostReport,
   computeAverageMonthlyAllocations,
   computeMonthlyCompanyCost,
+  filterProjectCostReport,
   resolveSalaryForMonthEnd,
 } from "@/lib/projectCostReport";
 
@@ -93,7 +94,6 @@ describe("project cost report calculations", () => {
             allocationSourceDate: new Date("2026-03-20T00:00:00.000Z"),
           },
         ],
-        monthlyGeneralCost: 0,
       },
       monthEnd
     );
@@ -103,7 +103,6 @@ describe("project cost report calculations", () => {
     const totalB = report.totals.projects.find((project) => project.projectId === "project-b");
 
     expect(row).toBeDefined();
-    expect(row?.generalCosts.baseCost).toBeCloseTo(0, 6);
     expect(row?.projects.find((project) => project.projectId === "project-a")?.baseCost).toBeCloseTo(
       2340,
       6
@@ -117,7 +116,12 @@ describe("project cost report calculations", () => {
     expect(report.totals.totalBase).toBeCloseTo(3900, 6);
   });
 
-  it("distributes general costs proportionally by project personnel weight", () => {
+  it("distributes indirect department costs proportionally by direct project weight", () => {
+    // Ana: 36000 salary -> 3900/mo company cost, 60% A + 40% B
+    // Luis: 24000 salary -> 2600/mo company cost, in indirect dept
+    // Direct: A=2340, B=1560, total=3900
+    // Weight A = 2340/3900 = 0.6, Weight B = 1560/3900 = 0.4
+    // Indirect distributed: A = 2600*0.6 = 1560, B = 2600*0.4 = 1040
     const report = buildProjectCostReport(
       {
         month: "2026-03",
@@ -166,25 +170,31 @@ describe("project cost report calculations", () => {
             allocationSourceDate: null,
           },
         ],
-        monthlyGeneralCost: 1400,
       },
       monthEnd
     );
 
-    const projectA = report.generalCostAllocation.find((project) => project.projectId === "project-a");
-    const projectB = report.generalCostAllocation.find((project) => project.projectId === "project-b");
+    const adminRow = report.rows.find((item) => item.departmentId === "dep-admin");
+    const adminA = adminRow?.projects.find((p) => p.projectId === "project-a");
+    const adminB = adminRow?.projects.find((p) => p.projectId === "project-b");
 
-    expect(report.totals.generalCosts.baseCost).toBeCloseTo(4000, 6);
-    expect(projectA?.weight).toBeCloseTo(0.6, 6);
-    expect(projectB?.weight).toBeCloseTo(0.4, 6);
-    expect(projectA?.allocatedGeneralCost).toBeCloseTo(2400, 6);
-    expect(projectB?.allocatedGeneralCost).toBeCloseTo(1600, 6);
-    expect(projectA?.finalCost).toBeCloseTo(4740, 6);
-    expect(projectB?.finalCost).toBeCloseTo(3160, 6);
-    expect(report.totals.totalFinal).toBeCloseTo(7900, 6);
+    expect(adminA?.baseCost).toBeCloseTo(1560, 6);
+    expect(adminB?.baseCost).toBeCloseTo(1040, 6);
+    expect(adminRow?.totalBase).toBeCloseTo(2600, 6);
+
+    const totalA = report.totals.projects.find((p) => p.projectId === "project-a");
+    const totalB = report.totals.projects.find((p) => p.projectId === "project-b");
+
+    expect(totalA?.baseCost).toBeCloseTo(2340, 6);
+    expect(totalA?.allocatedGeneralCost).toBeCloseTo(1560, 6);
+    expect(totalA?.finalCost).toBeCloseTo(3900, 6);
+    expect(totalB?.baseCost).toBeCloseTo(1560, 6);
+    expect(totalB?.allocatedGeneralCost).toBeCloseTo(1040, 6);
+    expect(totalB?.finalCost).toBeCloseTo(2600, 6);
+    expect(report.totals.totalFinal).toBeCloseTo(6500, 6);
   });
 
-  it("keeps incomplete allocations visible as unassigned general cost", () => {
+  it("keeps incomplete allocations visible as unassigned general cost in pool", () => {
     const report = buildProjectCostReport(
       {
         month: "2026-03",
@@ -210,16 +220,15 @@ describe("project cost report calculations", () => {
             allocationSourceDate: new Date("2026-03-05T00:00:00.000Z"),
           },
         ],
-        monthlyGeneralCost: 0,
       },
       monthEnd
     );
 
     const row = report.rows.find((item) => item.departmentId === "dep-sales");
 
-    expect(row?.generalCosts.baseCost).toBeCloseTo(260, 6);
-    expect(row?.generalCosts.warnings).toContain("Asignaciones incompletas (80%)");
+    // 80% of 1300 = 1040 assigned to project-a
     expect(row?.projects[0].baseCost).toBeCloseTo(1040, 6);
+    expect(row?.projects[0].warnings).toContain("Asignaciones incompletas (80%)");
   });
 
   it("flags allocations above 100% without normalizing them", () => {
@@ -254,14 +263,12 @@ describe("project cost report calculations", () => {
             allocationSourceDate: new Date("2026-03-05T00:00:00.000Z"),
           },
         ],
-        monthlyGeneralCost: 0,
       },
       monthEnd
     );
 
     const row = report.rows.find((item) => item.departmentId === "dep-sales");
 
-    expect(row?.generalCosts.baseCost).toBeCloseTo(0, 6);
     expect(row?.projects.find((project) => project.projectId === "project-a")?.baseCost).toBeCloseTo(
       910,
       6
@@ -272,5 +279,153 @@ describe("project cost report calculations", () => {
     );
     expect(row?.projects[0].warnings).toContain("Asignaciones superiores al 100% (120%)");
     expect(report.totals.totalBase).toBeCloseTo(1560, 6);
+  });
+
+  it("distributes zero to indirect departments when there are no direct costs", () => {
+    const report = buildProjectCostReport(
+      {
+        month: "2026-03",
+        departments: [
+          {
+            departmentId: "dep-admin",
+            departmentName: "Administración",
+            isGeneralCostsDepartment: true,
+          },
+        ],
+        projects: [{ projectId: "project-a", projectName: "Proyecto A" }],
+        users: [
+          {
+            userId: "user-1",
+            userName: "Luis",
+            departmentId: "dep-admin",
+            departmentName: "Administración",
+            isGeneralCostsDepartment: true,
+            salaryHistory: [
+              { startDate: new Date("2026-01-01T00:00:00.000Z"), grossSalary: 24000 },
+            ],
+            allocations: [],
+            allocationSourceDate: null,
+          },
+        ],
+      },
+      monthEnd
+    );
+
+    const adminRow = report.rows.find((item) => item.departmentId === "dep-admin");
+    expect(adminRow?.projects[0].baseCost).toBeCloseTo(0, 6);
+    expect(adminRow?.totalBase).toBeCloseTo(0, 6);
+    expect(report.totals.totalFinal).toBeCloseTo(0, 6);
+  });
+
+  it("consistency: indirect department distributed sum equals its pool total", () => {
+    const report = buildProjectCostReport(
+      {
+        month: "2026-03",
+        departments: [
+          {
+            departmentId: "dep-eng",
+            departmentName: "Ingeniería",
+            isGeneralCostsDepartment: false,
+          },
+          {
+            departmentId: "dep-admin",
+            departmentName: "Administración",
+            isGeneralCostsDepartment: true,
+          },
+        ],
+        projects: [
+          { projectId: "project-a", projectName: "Proyecto A" },
+          { projectId: "project-b", projectName: "Proyecto B" },
+          { projectId: "project-c", projectName: "Proyecto C" },
+        ],
+        users: [
+          {
+            userId: "user-1",
+            userName: "Ana",
+            departmentId: "dep-eng",
+            departmentName: "Ingeniería",
+            isGeneralCostsDepartment: false,
+            salaryHistory: [
+              { startDate: new Date("2026-01-01T00:00:00.000Z"), grossSalary: 36000 },
+            ],
+            allocations: [
+              { projectId: "project-a", projectName: "Proyecto A", percentage: 50 },
+              { projectId: "project-b", projectName: "Proyecto B", percentage: 30 },
+              { projectId: "project-c", projectName: "Proyecto C", percentage: 20 },
+            ],
+            allocationSourceDate: new Date("2026-03-20T00:00:00.000Z"),
+          },
+          {
+            userId: "user-2",
+            userName: "Luis",
+            departmentId: "dep-admin",
+            departmentName: "Administración",
+            isGeneralCostsDepartment: true,
+            salaryHistory: [
+              { startDate: new Date("2026-01-01T00:00:00.000Z"), grossSalary: 30000 },
+            ],
+            allocations: [],
+            allocationSourceDate: null,
+          },
+        ],
+      },
+      monthEnd
+    );
+
+    const adminRow = report.rows.find((item) => item.departmentId === "dep-admin");
+    const distributedSum = adminRow!.projects.reduce((acc, p) => acc + p.baseCost, 0);
+    // Luis company cost = 30000 * 1.3 / 12 = 3250
+    expect(distributedSum).toBeCloseTo(3250, 4);
+  });
+
+  it("filterProjectCostReport filters by department and recalculates totals", () => {
+    const report = buildProjectCostReport(
+      {
+        month: "2026-03",
+        departments: [
+          { departmentId: "dep-a", departmentName: "Dept A", isGeneralCostsDepartment: false },
+          { departmentId: "dep-b", departmentName: "Dept B", isGeneralCostsDepartment: false },
+        ],
+        projects: [{ projectId: "project-a", projectName: "Proyecto A" }],
+        users: [
+          {
+            userId: "user-1",
+            userName: "Ana",
+            departmentId: "dep-a",
+            departmentName: "Dept A",
+            isGeneralCostsDepartment: false,
+            salaryHistory: [
+              { startDate: new Date("2026-01-01T00:00:00.000Z"), grossSalary: 24000 },
+            ],
+            allocations: [{ projectId: "project-a", projectName: "Proyecto A", percentage: 100 }],
+            allocationSourceDate: new Date("2026-03-20T00:00:00.000Z"),
+          },
+          {
+            userId: "user-2",
+            userName: "Luis",
+            departmentId: "dep-b",
+            departmentName: "Dept B",
+            isGeneralCostsDepartment: false,
+            salaryHistory: [
+              { startDate: new Date("2026-01-01T00:00:00.000Z"), grossSalary: 36000 },
+            ],
+            allocations: [{ projectId: "project-a", projectName: "Proyecto A", percentage: 100 }],
+            allocationSourceDate: new Date("2026-03-20T00:00:00.000Z"),
+          },
+        ],
+      },
+      monthEnd
+    );
+
+    const view = filterProjectCostReport(report, {
+      departmentId: "dep-a",
+      projectId: null,
+    });
+
+    expect(view.rows).toHaveLength(1);
+    expect(view.rows[0].departmentId).toBe("dep-a");
+    // Ana: 24000 * 1.3 / 12 = 2600 (direct only, no indirect depts in filtered view)
+    expect(view.totals.totalBase).toBeCloseTo(2600, 6);
+    expect(view.totals.totalFinal).toBeCloseTo(2600, 6);
   });
 });

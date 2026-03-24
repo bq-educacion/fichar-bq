@@ -1,6 +1,6 @@
-import { ProjectCostDetailItemResponse } from "@/schemas/projectCosts";
+import type { ProjectCostDetailItemResponse } from "@/schemas/projectCosts";
 import styled from "@emotion/styled";
-import React, { FC } from "react";
+import type { FC } from "react";
 
 const currencyFormatter = new Intl.NumberFormat("es-ES", {
   style: "currency",
@@ -13,9 +13,6 @@ const percentageFormatter = new Intl.NumberFormat("es-ES", {
   minimumFractionDigits: 0,
   maximumFractionDigits: 2,
 });
-
-const formatCurrency = (value: number | null): string =>
-  value === null ? "No aplica" : currencyFormatter.format(value);
 
 const formatPercentage = (value: number | null): string =>
   value === null ? "No aplica" : `${percentageFormatter.format(value)}%`;
@@ -70,26 +67,19 @@ const AdminProjectCostDetailPanel: FC<{
                 <HeaderCell>Persona / origen</HeaderCell>
                 <HeaderCell>Departamento</HeaderCell>
                 <HeaderCell>Proyecto</HeaderCell>
-                <HeaderCell>Salario bruto</HeaderCell>
-                <HeaderCell>Coste empresa</HeaderCell>
                 <HeaderCell>%</HeaderCell>
                 <HeaderCell>Coste asignado</HeaderCell>
                 <HeaderCell>Warning</HeaderCell>
               </tr>
             </thead>
             <tbody>
-              {details.map((detail, index) => (
-                <tr key={`${detail.label}-${detail.projectId ?? "general"}-${index}`}>
+              {details.map((detail) => (
+                <tr key={`${detail.userId ?? detail.label}-${detail.departmentId}-${detail.projectId ?? "none"}`}>
                   <DataCell>
                     <StrongText>{detail.label}</StrongText>
-                    {detail.salaryEffectiveDate && (
-                      <MetaText>Salario activo desde {detail.salaryEffectiveDate}</MetaText>
-                    )}
                   </DataCell>
                   <DataCell>{detail.departmentName}</DataCell>
                   <DataCell>{detail.projectName ?? "Gastos generales"}</DataCell>
-                  <DataCell>{formatCurrency(detail.grossSalary)}</DataCell>
-                  <DataCell>{formatCurrency(detail.companyCost)}</DataCell>
                   <DataCell>{formatPercentage(detail.allocationPercentage)}</DataCell>
                   <DataCell>{currencyFormatter.format(detail.assignedMonthlyCost)}</DataCell>
                   <DataCell>{detail.warning ?? "-"}</DataCell>
@@ -218,12 +208,6 @@ const DataCell = styled.td`
 
 const StrongText = styled.div`
   font-weight: 600;
-`;
-
-const MetaText = styled.div`
-  margin-top: 4px;
-  color: #7a7b80;
-  font-size: 12px;
 `;
 
 export default AdminProjectCostDetailPanel;

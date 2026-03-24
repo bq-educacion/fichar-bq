@@ -116,6 +116,47 @@ That correction flow requires:
 - Manual schedule input for the previous day
 - Project dedications before they can continue
 
+## Project Cost Report (`/admin/project-costs`)
+
+The cost report shows a monthly matrix of departments (rows) × projects (columns).
+
+### Accounting rules
+
+- **Direct departments** (`isGeneralCostsDepartment: false`): each user's company
+  cost (`grossSalary × 1.30 / 12`) is split across projects by their dedication
+  percentage.
+- **Indirect departments** (`isGeneralCostsDepartment: true`): their total company
+  cost pool is distributed proportionally among projects based on each project's
+  share of total direct costs. If there are no direct costs, indirect costs are
+  not distributed.
+- **No manual general cost input**: the `monthlyGeneralCost` field and the PUT
+  endpoint have been removed. All indirect costs come exclusively from users in
+  indirect departments.
+
+### Table layout
+
+| Section | Description |
+|---|---|
+| Costes directos | One row per direct department, showing per-project base cost |
+| Total costes directos | Subtotal row summing direct costs per project |
+| Gastos generales | One row per indirect department, showing the proportionally distributed cost per project |
+| **Total** (footer) | `finalCost` per project = direct base + allocated indirect |
+
+### Key files
+
+- `src/lib/projectCostReport.ts` — core `buildProjectCostReport` logic
+- `src/schemas/projectCosts.ts` — Zod schemas and TypeScript types
+- `src/controllers/getAdminProjectCostReport.ts` — API controller
+- `src/pages/api/admin/project-costs.ts` — GET-only API route
+- `src/components/AdminProjectCostsTable.tsx` — table UI component
+- `src/pages/admin/project-costs.tsx` — page component
+- `src/__tests__/projectCostReport.test.ts` — unit tests
+
+### Security
+
+Salary information is never exposed to non-superadmin users. The controller
+strips salary details from API responses for regular admin users.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
