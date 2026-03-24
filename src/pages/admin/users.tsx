@@ -1,5 +1,14 @@
 import AdminSectionTabs from "@/components/AdminSectionTabs";
 import getUserByEmail from "@/controllers/getUser";
+import {
+  buildAdminUsersRequestPath,
+  canUseSalaryVisibilityToggle,
+  formatSalaryForDisplay,
+  formatSalaryForInput,
+  getTodayDateForInput,
+  getSalaryToggleLabel,
+  parseSalaryInput,
+} from "@/lib/adminUsers";
 import connectMongo from "@/lib/connectMongo";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import {
@@ -10,6 +19,7 @@ import {
   adminDepartmentsResponseSchema,
   adminManagedUserSchema,
   adminManagedUsersResponseSchema,
+  adminUserSalaryResponseSchema,
 } from "@/schemas/api";
 import SimpleContainer from "@/ui/SimpleContainer";
 import styled from "@emotion/styled";
@@ -30,6 +40,10 @@ const toCapitalizedWords = (value: string): string =>
 
 const getUserDisplayName = (user: Pick<AdminManagedUser, "name" | "email">): string =>
   toCapitalizedWords(user.name.trim() || user.email);
+
+type AdminUsersPageProps = {
+  isSuperadmin: boolean;
+};
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const session = await getServerSession(context.req, context.res, authOptions);
@@ -67,23 +81,45 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   return {
     props: {
       session,
+      isSuperadmin: Boolean(user.superadmin),
     },
   };
 };
 
-const AdminUsersPage: NextPage = () => {
+const AdminUsersPage: NextPage<AdminUsersPageProps> = ({ isSuperadmin }) => {
   const router = useRouter();
 
   const [users, setUsers] = useState<AdminManagedUsersResponse>([]);
   const [departments, setDepartments] = useState<AdminDepartmentOptionsResponse>([]);
   const [showAll, setShowAll] = useState(false);
+  const [showSalaries, setShowSalaries] = useState(false);
   const [savingById, setSavingById] = useState<Record<string, boolean>>({});
+  const [salarySavingById, setSalarySavingById] = useState<Record<string, boolean>>(
+    {}
+  );
+  const [salaryLoadingById, setSalaryLoadingById] = useState<Record<string, boolean>>(
+    {}
+  );
   const [rowErrorById, setRowErrorById] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [salaryEditorUserId, setSalaryEditorUserId] = useState<string | null>(null);
+  const [salaryDraft, setSalaryDraft] = useState("");
+  const [salaryInitDateDraft, setSalaryInitDateDraft] = useState("");
   const pendingSaveById = useRef<Record<string, AdminManagedUser | undefined>>({});
   const inFlightSaveById = useRef<Record<string, boolean>>({});
   const usersByIdRef = useRef<Record<string, AdminManagedUser>>({});
+  const columnCount = isSuperadmin ? 8 : 6;
+
+  const stripSalaryFields = (items: AdminManagedUsersResponse): AdminManagedUsersResponse =>
+    items.map((user) => {
+      if (user.salary === undefined) {
+        return user;
+      }
+
+      const { salary, ...rest } = user;
+      return rest;
+    });
 
   const managerOptions = useMemo(
     () => users.filter((user) => user.active && user.isManager),
@@ -111,6 +147,21 @@ const AdminUsersPage: NextPage = () => {
       users.map((user) => [user._id, user] as const)
     );
   }, [users]);
+
+  const replaceUserInState = (updatedUser: AdminManagedUser) => {
+    usersByIdRef.current[updatedUser._id] = updatedUser;
+    setUsers((prev) =>
+      prev.map((item) => (item._id === updatedUser._id ? updatedUser : item))
+    );
+  };
+
+  const clearSalaryState = () => {
+    setShowSalaries(false);
+    setSalaryEditorUserId(null);
+    setSalaryDraft("");
+    setSalaryInitDateDraft("");
+    setUsers((prev) => stripSalaryFields(prev));
+  };
 
   const persistUser = (nextUser: AdminManagedUser) => {
     pendingSaveById.current[nextUser._id] = nextUser;
@@ -140,6 +191,9 @@ const AdminUsersPage: NextPage = () => {
             body: JSON.stringify({
               _id: userToSave._id,
               admin: userToSave.admin,
+              ...(typeof userToSave.superadmin === "boolean"
+                ? { superadmin: userToSave.superadmin }
+                : {}),
               isManager: userToSave.isManager,
               active: userToSave.active,
               manager: userToSave.manager ?? null,
@@ -161,16 +215,23 @@ const AdminUsersPage: NextPage = () => {
             throw new Error((await res.text()) || "No se pudo guardar usuario");
           }
 
-          const updatedUser = adminManagedUserSchema.parse(await res.json());
+          const parsedUser = adminManagedUserSchema.parse(await res.json());
+          const updatedUser: AdminManagedUser = {
+            ...parsedUser,
+            ...(parsedUser.superadmin === undefined &&
+            typeof userToSave.superadmin === "boolean"
+              ? { superadmin: userToSave.superadmin }
+              : {}),
+            ...(parsedUser.salary === undefined && userToSave.salary !== undefined
+              ? { salary: userToSave.salary }
+              : {}),
+          };
           if (!showAll && !updatedUser.active) {
             setUsers((prev) => prev.filter((item) => item._id !== userId));
             delete usersByIdRef.current[userId];
             pendingSaveById.current[userId] = undefined;
           } else {
-            usersByIdRef.current[userId] = updatedUser;
-            setUsers((prev) =>
-              prev.map((item) => (item._id === userId ? updatedUser : item))
-            );
+            replaceUserInState(updatedUser);
           }
 
           setRowErrorById((prev) => {
@@ -201,6 +262,164 @@ const AdminUsersPage: NextPage = () => {
     void flushSaves(nextUser._id);
   };
 
+  const clearRowError = (userId: string) => {
+    setRowErrorById((prev) => {
+      if (!prev[userId]) {
+        return prev;
+      }
+
+      const next = { ...prev };
+      delete next[userId];
+      return next;
+    });
+  };
+
+  const loadSalary = async (userId: string): Promise<number | null | undefined> => {
+    const currentUser = usersByIdRef.current[userId];
+    if (!currentUser) {
+      return undefined;
+    }
+
+    if (currentUser.salary !== undefined) {
+      return currentUser.salary;
+    }
+
+    setSalaryLoadingById((prev) => ({ ...prev, [userId]: true }));
+
+    try {
+      const res = await fetch(`/api/admin/users/salary?userId=${userId}`, {
+        cache: "no-store",
+      });
+
+      if (res.status === 401) {
+        clearSalaryState();
+        router.push("/login");
+        return undefined;
+      }
+
+      if (res.status === 403) {
+        clearSalaryState();
+        router.push("/");
+        return undefined;
+      }
+
+      if (!res.ok) {
+        throw new Error((await res.text()) || "No se pudo cargar el salario");
+      }
+
+      const salaryData = adminUserSalaryResponseSchema.parse(await res.json());
+      replaceUserInState({
+        ...currentUser,
+        salary: salaryData.salary,
+      });
+      clearRowError(userId);
+      return salaryData.salary;
+    } catch (err) {
+      setRowErrorById((prev) => ({
+        ...prev,
+        [userId]:
+          err instanceof Error ? err.message : "No se pudo cargar el salario",
+      }));
+      return undefined;
+    } finally {
+      setSalaryLoadingById((prev) => ({ ...prev, [userId]: false }));
+    }
+  };
+
+  const openSalaryEditor = async (userId: string) => {
+    const currentUser = usersByIdRef.current[userId];
+    if (!currentUser) {
+      return;
+    }
+
+    const salary =
+      currentUser.salary !== undefined ? currentUser.salary : await loadSalary(userId);
+    if (salary === undefined) {
+      return;
+    }
+
+    setSalaryDraft(formatSalaryForInput(salary));
+    setSalaryInitDateDraft(getTodayDateForInput());
+    setSalaryEditorUserId(userId);
+  };
+
+  const closeSalaryEditor = () => {
+    setSalaryEditorUserId(null);
+    setSalaryDraft("");
+    setSalaryInitDateDraft("");
+  };
+
+  const saveSalary = async (userId: string) => {
+    const salary = parseSalaryInput(salaryDraft);
+    if (salary === undefined) {
+      setRowErrorById((prev) => ({
+        ...prev,
+        [userId]: "Introduce un salario válido",
+      }));
+      return;
+    }
+
+    if (!salaryInitDateDraft) {
+      setRowErrorById((prev) => ({
+        ...prev,
+        [userId]: "Selecciona una fecha de inicio",
+      }));
+      return;
+    }
+
+    setSalarySavingById((prev) => ({ ...prev, [userId]: true }));
+
+    try {
+      const res = await fetch("/api/admin/users/salary", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          _id: userId,
+          salary,
+          initDate: salaryInitDateDraft,
+        }),
+      });
+
+      if (res.status === 401) {
+        clearSalaryState();
+        router.push("/login");
+        return;
+      }
+
+      if (res.status === 403) {
+        clearSalaryState();
+        router.push("/");
+        return;
+      }
+
+      if (!res.ok) {
+        throw new Error((await res.text()) || "No se pudo guardar el salario");
+      }
+
+      const salaryData = adminUserSalaryResponseSchema.parse(await res.json());
+      const currentUser = usersByIdRef.current[userId];
+      if (currentUser) {
+        replaceUserInState({
+          ...currentUser,
+          salary: salaryData.salary,
+        });
+      }
+
+      clearRowError(userId);
+      closeSalaryEditor();
+    } catch (err) {
+      setRowErrorById((prev) => ({
+        ...prev,
+        [userId]:
+          err instanceof Error ? err.message : "No se pudo guardar el salario",
+      }));
+    } finally {
+      setSalarySavingById((prev) => ({ ...prev, [userId]: false }));
+    }
+  };
+
   useEffect(() => {
     const fetchUsers = async () => {
       setLoading(true);
@@ -209,17 +428,28 @@ const AdminUsersPage: NextPage = () => {
       try {
         const [usersRes, departmentsRes] = await Promise.all([
           fetch(
-            `/api/admin/users?detailed=true${showAll ? "&includeInactive=true" : ""}`
+            buildAdminUsersRequestPath({
+              showAll,
+              showSalaries,
+              isSuperadmin,
+            }),
+            {
+              cache: "no-store",
+            }
           ),
-          fetch("/api/admin/departments"),
+          fetch("/api/admin/departments", {
+            cache: "no-store",
+          }),
         ]);
 
         if (usersRes.status === 401 || departmentsRes.status === 401) {
+          clearSalaryState();
           router.push("/login");
           return;
         }
 
         if (usersRes.status === 403 || departmentsRes.status === 403) {
+          clearSalaryState();
           router.push("/");
           return;
         }
@@ -258,12 +488,15 @@ const AdminUsersPage: NextPage = () => {
     };
 
     fetchUsers();
-  }, [router, showAll]);
+  }, [isSuperadmin, router, showAll, showSalaries]);
 
   const onUserChange = (
     userId: string,
     patch: Partial<
-      Pick<AdminManagedUser, "admin" | "isManager" | "manager" | "active" | "department">
+      Pick<
+        AdminManagedUser,
+        "admin" | "superadmin" | "isManager" | "manager" | "active" | "department"
+      >
     >
   ) => {
     const currentUser = usersByIdRef.current[userId];
@@ -276,19 +509,8 @@ const AdminUsersPage: NextPage = () => {
       ...patch,
     };
 
-    usersByIdRef.current[userId] = nextUser;
-
-    setUsers((prev) =>
-      prev.map((user) => (user._id === userId ? nextUser : user))
-    );
-    setRowErrorById((prev) => {
-      if (!prev[userId]) {
-        return prev;
-      }
-      const next = { ...prev };
-      delete next[userId];
-      return next;
-    });
+    replaceUserInState(nextUser);
+    clearRowError(userId);
 
     persistUser(nextUser);
   };
@@ -308,11 +530,19 @@ const AdminUsersPage: NextPage = () => {
           <TopRow>
             <IntroText>
               Configura permisos de administración, rol manager, responsable y
-              estado activo por usuario. También puedes asignar departamento.
+              estado activo por usuario. También puedes asignar departamento
+              {isSuperadmin ? " y gestionar salarios cifrados." : "."}
             </IntroText>
-            <ToggleAllButton onClick={() => setShowAll((prev) => !prev)}>
-              {showAll ? "Mostrar solo activos" : "Mostrar todos"}
-            </ToggleAllButton>
+            <ActionsRow>
+              {canUseSalaryVisibilityToggle(isSuperadmin) && (
+                <ToggleAllButton onClick={() => setShowSalaries((prev) => !prev)}>
+                  {getSalaryToggleLabel(showSalaries)}
+                </ToggleAllButton>
+              )}
+              <ToggleAllButton onClick={() => setShowAll((prev) => !prev)}>
+                {showAll ? "Mostrar solo activos" : "Mostrar todos"}
+              </ToggleAllButton>
+            </ActionsRow>
           </TopRow>
           {error && <ErrorText>{error}</ErrorText>}
           {loading ? (
@@ -326,10 +556,12 @@ const AdminUsersPage: NextPage = () => {
                   <tr>
                     <HeaderCell>Usuario</HeaderCell>
                     <HeaderCell>Admin</HeaderCell>
+                    {isSuperadmin && <HeaderCell>Superadmin</HeaderCell>}
                     <HeaderCell>Manager</HeaderCell>
                     <HeaderCell>Responsable</HeaderCell>
                     <HeaderCell>Departamento</HeaderCell>
                     <HeaderCell>Activo</HeaderCell>
+                    {isSuperadmin && <HeaderCell>Salario</HeaderCell>}
                   </tr>
                 </thead>
                 <tbody>
@@ -351,6 +583,9 @@ const AdminUsersPage: NextPage = () => {
                         )
                     );
                     const isSaving = Boolean(savingById[user._id]);
+                    const isSalaryBusy = Boolean(
+                      salarySavingById[user._id] || salaryLoadingById[user._id]
+                    );
                     const rowError = rowErrorById[user._id];
 
                     return (
@@ -367,14 +602,35 @@ const AdminUsersPage: NextPage = () => {
                                 checked={user.admin}
                                 disabled={isSaving}
                                 aria-label={`Admin ${userName}`}
-                                onChange={(event) =>
+                                onChange={(event) => {
+                                  const nextAdmin = event.target.checked;
                                   onUserChange(user._id, {
-                                    admin: event.target.checked,
-                                  })
-                                }
+                                    admin: nextAdmin,
+                                    ...(user.superadmin && !nextAdmin
+                                      ? { superadmin: false }
+                                      : {}),
+                                  });
+                                }}
                               />
                             </Centered>
                           </DataCell>
+                          {isSuperadmin && (
+                            <DataCell>
+                              <Centered>
+                                <Toggle
+                                  type="checkbox"
+                                  checked={Boolean(user.superadmin)}
+                                  disabled={isSaving || !user.admin}
+                                  aria-label={`Superadmin ${userName}`}
+                                  onChange={(event) =>
+                                    onUserChange(user._id, {
+                                      superadmin: event.target.checked,
+                                    })
+                                  }
+                                />
+                              </Centered>
+                            </DataCell>
+                          )}
                           <DataCell>
                             <Centered>
                               <Toggle
@@ -460,10 +716,82 @@ const AdminUsersPage: NextPage = () => {
                               />
                             </Centered>
                           </DataCell>
+                          {isSuperadmin && (
+                            <DataCell>
+                              <SalaryCell>
+                                {showSalaries && (
+                                  <SalaryValue>
+                                    {formatSalaryForDisplay(user.salary)}
+                                  </SalaryValue>
+                                )}
+                                <SalaryButton
+                                  type="button"
+                                  disabled={isSaving || isSalaryBusy}
+                                  onClick={() => void openSalaryEditor(user._id)}
+                                >
+                                  {user.salary === null
+                                    ? "Definir salario"
+                                    : user.salary === undefined
+                                    ? "Gestionar salario"
+                                    : "Editar salario"}
+                                </SalaryButton>
+                              </SalaryCell>
+                            </DataCell>
+                          )}
                         </tr>
+                        {isSuperadmin && salaryEditorUserId === user._id && (
+                          <tr>
+                            <EditorCell colSpan={columnCount}>
+                              <SalaryEditorForm
+                                onSubmit={(event) => {
+                                  event.preventDefault();
+                                  void saveSalary(user._id);
+                                }}
+                              >
+                                <SalaryInput
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={salaryDraft}
+                                  disabled={isSalaryBusy}
+                                  aria-label={`Salario ${userName}`}
+                                  placeholder="Ej. 24500.50"
+                                  onChange={(event) =>
+                                    setSalaryDraft(event.target.value)
+                                  }
+                                />
+                                <DateInput
+                                  type="date"
+                                  value={salaryInitDateDraft}
+                                  disabled={isSalaryBusy}
+                                  aria-label={`Fecha salario ${userName}`}
+                                  onChange={(event) =>
+                                    setSalaryInitDateDraft(event.target.value)
+                                  }
+                                />
+                                <SalaryFormActions>
+                                  <SalaryButton
+                                    type="submit"
+                                    disabled={isSalaryBusy}
+                                  >
+                                    Guardar salario
+                                  </SalaryButton>
+                                  <SecondaryActionButton
+                                    type="button"
+                                    disabled={isSalaryBusy}
+                                    onClick={closeSalaryEditor}
+                                  >
+                                    Cancelar
+                                  </SecondaryActionButton>
+                                </SalaryFormActions>
+                              </SalaryEditorForm>
+                            </EditorCell>
+                          </tr>
+                        )}
                         {rowError && (
                           <tr>
-                            <RowErrorCell colSpan={6}>{rowError}</RowErrorCell>
+                            <RowErrorCell colSpan={columnCount}>
+                              {rowError}
+                            </RowErrorCell>
                           </tr>
                         )}
                       </React.Fragment>
@@ -504,6 +832,12 @@ const TopRow = styled.div`
     flex-direction: column;
     align-items: flex-start;
   }
+`;
+
+const ActionsRow = styled.div`
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 `;
 
 const ToggleAllButton = styled.button`
@@ -577,6 +911,11 @@ const RowErrorCell = styled.td`
   padding: 8px 10px;
 `;
 
+const EditorCell = styled.td`
+  background: #eee;
+  padding: 12px 10px;
+`;
+
 const UserName = styled.div`
   font-size: 13px;
   font-weight: 600;
@@ -599,6 +938,64 @@ const Toggle = styled.input`
   width: 16px;
   height: 16px;
   cursor: pointer;
+`;
+
+const SalaryCell = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+`;
+
+const SalaryValue = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: #4e4f53;
+`;
+
+const SalaryEditorForm = styled.form`
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+`;
+
+const SalaryInput = styled.input`
+  width: 180px;
+  max-width: 100%;
+  height: 36px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  color: #4e4f53;
+  padding: 0 10px;
+  font-size: 13px;
+`;
+
+const DateInput = styled(SalaryInput)`
+  width: 170px;
+`;
+
+const SalaryFormActions = styled.div`
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+`;
+
+const SalaryButton = styled.button`
+  border: 1px solid #c9c9c9;
+  border-radius: 4px;
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4e4f53;
+  background: #fff;
+  cursor: pointer;
+`;
+
+const SecondaryActionButton = styled(SalaryButton)`
+  color: #6d6e72;
 `;
 
 const ManagerSelect = styled.select`

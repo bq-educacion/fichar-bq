@@ -1,13 +1,15 @@
-import getUserByEmail from "@/controllers/getUser";
 import { DepartmentModel, ProjectModel, UserModel } from "@/db/Models";
-import connectMongo from "@/lib/connectMongo";
+import {
+  requireAdminAuthorization,
+  setNoStoreHeaders,
+} from "@/lib/adminAuthorization";
+import { getSalaryFromUser } from "@/lib/userSalary";
 import {
   formatZodError,
   isZodError,
   parseWithSchema,
   toPlainObject,
 } from "@/lib/validation";
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import {
   adminManagedUserSchema,
   adminManagedUsersResponseSchema,
@@ -15,7 +17,6 @@ import {
   adminUsersResponseSchema,
 } from "@/schemas/api";
 import { NextApiRequest, NextApiResponse } from "next";
-import { getServerSession } from "next-auth/next";
 
 const firstQueryValue = (value: string | string[] | undefined): string | undefined =>
   Array.isArray(value) ? value[0] : value;
@@ -32,35 +33,69 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   try {
-    const session = await getServerSession(req, res, authOptions);
-    if (!session?.user?.email) {
-      res.status(401).send("Unauthorized");
+    const me = await requireAdminAuthorization(req, res);
+    if (!me) {
       return;
     }
-
-    const me = await getUserByEmail(session.user.email);
-    if (!me.admin) {
-      res.status(403).send("Forbidden");
-      return;
-    }
-
-    await connectMongo();
 
     if (req.method === "GET") {
       const detailed = isTruthyQuery(req.query.detailed);
       const includeInactive = isTruthyQuery(req.query.includeInactive);
+      const includeSalaryRequested = isTruthyQuery(req.query.includeSalary);
       const filter = includeInactive ? {} : { active: true };
 
+      if (includeSalaryRequested) {
+        setNoStoreHeaders(res);
+      }
+
+      if (includeSalaryRequested && !me.superadmin) {
+        res.status(403).send("Forbidden");
+        return;
+      }
+
       if (detailed) {
+        const includeSalary = includeSalaryRequested && me.superadmin;
+        const selectFields = [
+          "_id",
+          "email",
+          "name",
+          "admin",
+          "isManager",
+          "manager",
+          "active",
+          "department",
+        ];
+
+        if (me.superadmin) {
+          selectFields.push("superadmin");
+        }
+
+        if (includeSalary) {
+          selectFields.push("+salaryHistory");
+        }
+
         const users = await UserModel.find(filter)
           .collation({ locale: "es" })
           .sort({ name: 1, email: 1 })
-          .select("_id email name admin isManager manager active department")
+          .select(selectFields.join(" "))
           .exec();
 
         const payload = parseWithSchema(
           adminManagedUsersResponseSchema,
-          toPlainObject(users)
+          toPlainObject(
+            users.map((user) => ({
+              _id: user._id,
+              email: user.email,
+              name: user.name,
+              admin: user.admin,
+              isManager: user.isManager,
+              manager: user.manager,
+              active: user.active,
+              department: user.department,
+              ...(me.superadmin ? { superadmin: Boolean(user.superadmin) } : {}),
+              ...(includeSalary ? { salary: getSalaryFromUser(user) } : {}),
+            }))
+          )
         );
 
         res.status(200).json(payload);
@@ -116,6 +151,22 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     const target = await UserModel.findById(body._id).exec();
     if (!target) {
       res.status(404).send("User not found");
+      return;
+    }
+
+    if (body.superadmin !== undefined && !me.superadmin) {
+      res.status(403).send("Solo un superadmin puede modificar permisos de superadmin");
+      return;
+    }
+
+    if (target.superadmin && !me.superadmin && !body.admin) {
+      res.status(403).send("Solo un superadmin puede revocar permisos de superadmin");
+      return;
+    }
+
+    const nextSuperadmin = body.superadmin ?? Boolean(target.superadmin);
+    if (nextSuperadmin && !body.admin) {
+      res.status(400).send("Solo los usuarios admin pueden ser superadmin");
       return;
     }
 
@@ -187,6 +238,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     target.admin = body.admin;
+    target.superadmin = nextSuperadmin;
     target.isManager = body.isManager;
     target.active = body.active;
 
@@ -228,6 +280,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         email: target.email,
         name: target.name,
         admin: target.admin,
+        ...(me.superadmin ? { superadmin: Boolean(target.superadmin) } : {}),
         isManager: target.isManager,
         active: target.active,
         manager: target.manager,
