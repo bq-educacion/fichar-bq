@@ -73,8 +73,8 @@ const AdminProjectCostDetailPanel: FC<{
               </tr>
             </thead>
             <tbody>
-              {details.map((detail, index) => (
-                <tr key={`${detail.label}-${detail.projectId ?? "general"}-${index}`}>
+              {details.map((detail) => (
+                <tr key={`${detail.userId ?? detail.label}-${detail.departmentId}-${detail.projectId ?? "none"}`}>
                   <DataCell>
                     <StrongText>{detail.label}</StrongText>
                   </DataCell>
