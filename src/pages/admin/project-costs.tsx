@@ -155,7 +155,7 @@ const AdminProjectCostsPage: NextPage<PageProps> = ({ initialMonth }) => {
     void fetchReport();
   }, [month, router, selectedDepartmentId, selectedProjectId]);
 
-  const selectedSummary = report?.summaries.base ?? null;
+  const selectedSummary = report?.summary ?? null;
 
   const rowById = useMemo(
     () => new Map((report?.rows ?? []).map((row) => [row.departmentId, row] as const)),
@@ -197,7 +197,7 @@ const AdminProjectCostsPage: NextPage<PageProps> = ({ initialMonth }) => {
 
       setDetailPanel({
         title: `${row.departmentName} · Total`,
-        value: row.totalBase,
+        value: row.total,
         details: concatDetails(
           ...row.projects.map((project) => project.details)
         ),
@@ -222,7 +222,7 @@ const AdminProjectCostsPage: NextPage<PageProps> = ({ initialMonth }) => {
 
       setDetailPanel({
         title: `Total · ${totalCell.projectName}`,
-        value: totalCell.finalCost,
+        value: totalCell.baseCost + totalCell.allocatedGeneralCost,
         details: totalCell.details,
         warnings: totalCell.warnings,
         allocatedGeneralCost: totalCell.allocatedGeneralCost,
@@ -364,7 +364,7 @@ const AdminProjectCostsPage: NextPage<PageProps> = ({ initialMonth }) => {
             {loading || !report ? (
               <LoadingText>Cargando serie...</LoadingText>
             ) : (
-              <AdminProjectCostChart mode="final" series={report.chart} />
+              <AdminProjectCostChart series={report.chart} />
             )}
           </PanelSection>
 
@@ -389,7 +389,6 @@ const AdminProjectCostsPage: NextPage<PageProps> = ({ initialMonth }) => {
         open={detailPanel !== null}
         title={detailPanel?.title ?? ""}
         value={detailPanel?.value ?? 0}
-        mode="base"
         details={detailPanel?.details ?? []}
         warnings={detailPanel?.warnings ?? []}
         allocatedGeneralCost={detailPanel?.allocatedGeneralCost ?? 0}

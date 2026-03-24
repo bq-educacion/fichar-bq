@@ -11,20 +11,20 @@ import {
   computeAverageMonthlyAllocations,
   filterProjectCostReport,
   NO_DEPARTMENT_ROW_ID,
-  ProjectCostAllocationInput,
-  ProjectCostMonthlyDedicationRecord,
-  ProjectCostDetailItem,
-  ProjectCostProjectCell,
-  ProjectCostProjectInput,
-  ProjectCostReport,
-  ProjectCostReportInput,
-  ProjectCostReportView,
-  ProjectCostRow,
+  type ProjectCostAllocationInput,
+  type ProjectCostMonthlyDedicationRecord,
+  type ProjectCostDetailItem,
+  type ProjectCostProjectCell,
+  type ProjectCostProjectInput,
+  type ProjectCostReport,
+  type ProjectCostReportInput,
+  type ProjectCostReportView,
+  type ProjectCostRow,
 } from "@/lib/projectCostReport";
 import { getSalaryHistoryFromUser } from "@/lib/userSalary";
 import {
-  AdminProjectCostReportQuery,
-  AdminProjectCostReportResponse,
+  type AdminProjectCostReportQuery,
+  type AdminProjectCostReportResponse,
   adminProjectCostReportResponseSchema,
 } from "@/schemas/projectCosts";
 import { parseWithSchema } from "@/lib/validation";
@@ -56,6 +56,7 @@ type UserDoc = {
   _id: { toString(): string };
   email: string;
   name?: string;
+  active?: boolean;
   department?: { toString(): string } | null;
   salaryHistory?: Array<{
     initDate?: unknown;
@@ -170,7 +171,6 @@ const serializeProjectCell = (cell: ProjectCostProjectCell) => ({
   projectId: cell.projectId,
   projectName: cell.projectName,
   baseCost: cell.baseCost,
-  finalCost: cell.finalCost,
   allocatedGeneralCost: cell.allocatedGeneralCost,
   details: cell.details.map(stripSalaryFromDetail),
   warnings: [...cell.warnings],
@@ -182,8 +182,7 @@ const serializeRow = (row: ProjectCostRow) => ({
   isGeneralCostsDepartment: row.isGeneralCostsDepartment,
   isSynthetic: row.isSynthetic,
   projects: row.projects.map(serializeProjectCell),
-  totalBase: row.totalBase,
-  totalFinal: row.totalFinal,
+  total: row.total,
 });
 
 const serializeReportView = (
@@ -213,7 +212,7 @@ const serializeReportView = (
       totalBase: view.totals.totalBase,
       totalFinal: view.totals.totalFinal,
     },
-    summaries: view.summaries,
+    summary: view.summary,
     chart,
     developerNote: DEVELOPER_NOTE,
   });
@@ -291,6 +290,18 @@ const buildReportForMonth = async ({
     }
   }
 
+  const eligibleUsers = users.filter((user) => {
+    if (user.active === false) {
+      return false;
+    }
+    const departmentId = user.department?.toString() ?? NO_DEPARTMENT_ROW_ID;
+    const department = departmentInfo.get(departmentId);
+    if (department?.isGeneralCostsDepartment) {
+      return true;
+    }
+    return monthlyDedicationsByUser.has(user._id.toString());
+  });
+
   const reportInput: ProjectCostReportInput = {
     month: month.monthKey,
     departments: Array.from(departmentInfo.values()).sort((left, right) =>
@@ -300,7 +311,7 @@ const buildReportForMonth = async ({
       projectId: project.projectId,
       projectName: project.projectName,
     })),
-    users: users.map((user) => {
+    users: eligibleUsers.map((user) => {
       const departmentId = user.department?.toString() ?? NO_DEPARTMENT_ROW_ID;
       const department =
         departmentInfo.get(departmentId) ??
@@ -354,8 +365,7 @@ const buildChart = (views: ProjectCostReportView[]) =>
     projectName: series.projectName,
     points: series.points.map((point) => ({
       month: point.month,
-      baseCost: point.baseCost,
-      finalCost: point.finalCost,
+      cost: point.cost,
     })),
   }));
 
@@ -381,7 +391,7 @@ export const getAdminProjectCostReport = async (
     UserModel.find({})
       .collation({ locale: "es" })
       .sort({ name: 1, email: 1 })
-      .select("_id email name department +salaryHistory")
+      .select("_id email name active department +salaryHistory")
       .exec(),
   ]);
 

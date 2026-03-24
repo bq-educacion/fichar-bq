@@ -49,7 +49,7 @@ const sortRows = (
     if (sort.key === "department") {
       value = left.departmentName.localeCompare(right.departmentName, "es");
     } else if (sort.key === "total") {
-      value = compareNumbers(left.totalBase, right.totalBase);
+      value = compareNumbers(left.total, right.total);
     } else {
       const projectId = sort.key.replace(/^project:/, "");
       const leftProject = left.projects.find((project) => project.projectId === projectId);
@@ -193,7 +193,7 @@ const AdminProjectCostsTable: FC<{
                   type="button"
                   onClick={() => onSelectCell({ type: "row-total", rowId: row.departmentId })}
                 >
-                  {formatCurrency(row.totalBase)}
+                  {formatCurrency(row.total)}
                 </ValueButton>
               </StickyRightCell>
             </DataRow>
@@ -249,7 +249,7 @@ const AdminProjectCostsTable: FC<{
                   type="button"
                   onClick={() => onSelectCell({ type: "row-total", rowId: row.departmentId })}
                 >
-                  {formatCurrency(row.totalBase)}
+                  {formatCurrency(row.total)}
                 </GeneralValueButton>
               </GeneralStickyRightCell>
             </GeneralDataRow>
@@ -278,7 +278,9 @@ const AdminProjectCostsTable: FC<{
                         })
                       }
                     >
-                      {formatCurrency(totalProject?.finalCost ?? 0)}
+                      {formatCurrency(
+                        (totalProject?.baseCost ?? 0) + (totalProject?.allocatedGeneralCost ?? 0)
+                      )}
                     </ValueButton>
                   </FooterCell>
                 );

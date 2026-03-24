@@ -180,17 +180,17 @@ describe("project cost report calculations", () => {
 
     expect(adminA?.baseCost).toBeCloseTo(1560, 6);
     expect(adminB?.baseCost).toBeCloseTo(1040, 6);
-    expect(adminRow?.totalBase).toBeCloseTo(2600, 6);
+    expect(adminRow?.total).toBeCloseTo(2600, 6);
 
     const totalA = report.totals.projects.find((p) => p.projectId === "project-a");
     const totalB = report.totals.projects.find((p) => p.projectId === "project-b");
 
     expect(totalA?.baseCost).toBeCloseTo(2340, 6);
     expect(totalA?.allocatedGeneralCost).toBeCloseTo(1560, 6);
-    expect(totalA?.finalCost).toBeCloseTo(3900, 6);
+    expect((totalA?.baseCost ?? 0) + (totalA?.allocatedGeneralCost ?? 0)).toBeCloseTo(3900, 6);
     expect(totalB?.baseCost).toBeCloseTo(1560, 6);
     expect(totalB?.allocatedGeneralCost).toBeCloseTo(1040, 6);
-    expect(totalB?.finalCost).toBeCloseTo(2600, 6);
+    expect((totalB?.baseCost ?? 0) + (totalB?.allocatedGeneralCost ?? 0)).toBeCloseTo(2600, 6);
     expect(report.totals.totalFinal).toBeCloseTo(6500, 6);
   });
 
@@ -313,7 +313,7 @@ describe("project cost report calculations", () => {
 
     const adminRow = report.rows.find((item) => item.departmentId === "dep-admin");
     expect(adminRow?.projects[0].baseCost).toBeCloseTo(0, 6);
-    expect(adminRow?.totalBase).toBeCloseTo(0, 6);
+    expect(adminRow?.total).toBeCloseTo(0, 6);
     expect(report.totals.totalFinal).toBeCloseTo(0, 6);
   });
 
@@ -376,6 +376,43 @@ describe("project cost report calculations", () => {
     const distributedSum = adminRow!.projects.reduce((acc, p) => acc + p.baseCost, 0);
     // Luis company cost = 30000 * 1.3 / 12 = 3250
     expect(distributedSum).toBeCloseTo(3250, 4);
+  });
+
+  it("excludes users not present in input from cost calculations (inactive / no dedications)", () => {
+    // Simulates controller filtering: Ana is included, Luis is excluded (inactive or no dedications)
+    const report = buildProjectCostReport(
+      {
+        month: "2026-03",
+        departments: [
+          { departmentId: "dep-sales", departmentName: "Ventas", isGeneralCostsDepartment: false },
+          { departmentId: "dep-admin", departmentName: "Administración", isGeneralCostsDepartment: true },
+        ],
+        projects: [{ projectId: "project-a", projectName: "Proyecto A" }],
+        users: [
+          {
+            userId: "user-1",
+            userName: "Ana",
+            departmentId: "dep-sales",
+            departmentName: "Ventas",
+            isGeneralCostsDepartment: false,
+            salaryHistory: [
+              { startDate: new Date("2026-01-01T00:00:00.000Z"), grossSalary: 24000 },
+            ],
+            allocations: [{ projectId: "project-a", projectName: "Proyecto A", percentage: 100 }],
+            allocationSourceDate: new Date("2026-03-20T00:00:00.000Z"),
+          },
+          // Luis (dep-admin, 36000 salary) is NOT included — filtered by controller
+        ],
+      },
+      monthEnd
+    );
+
+    // Only Ana's cost: 24000 * 1.3 / 12 = 2600
+    expect(report.totals.totalBase).toBeCloseTo(2600, 6);
+    expect(report.totals.totalFinal).toBeCloseTo(2600, 6);
+    // No indirect cost distributed because Luis was excluded
+    const totalA = report.totals.projects.find((p) => p.projectId === "project-a");
+    expect(totalA?.allocatedGeneralCost).toBeCloseTo(0, 6);
   });
 
   it("filterProjectCostReport filters by department and recalculates totals", () => {

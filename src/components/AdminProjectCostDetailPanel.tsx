@@ -21,12 +21,11 @@ const AdminProjectCostDetailPanel: FC<{
   open: boolean;
   title: string;
   value: number;
-  mode: "base" | "final";
   details: ProjectCostDetailItemResponse[];
   warnings: string[];
   allocatedGeneralCost: number;
   onClose: () => void;
-}> = ({ open, title, value, mode, details, warnings, allocatedGeneralCost, onClose }) => {
+}> = ({ open, title, value, details, warnings, allocatedGeneralCost, onClose }) => {
   if (!open) {
     return null;
   }
@@ -52,7 +51,7 @@ const AdminProjectCostDetailPanel: FC<{
           </WarningBox>
         )}
 
-        {mode === "final" && allocatedGeneralCost > 0 && (
+        {allocatedGeneralCost > 0 && (
           <InfoBox>
             Coste general repartido en esta celda: {currencyFormatter.format(allocatedGeneralCost)}
           </InfoBox>

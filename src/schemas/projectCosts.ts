@@ -38,7 +38,6 @@ export const projectCostDetailItemSchema = z
 export const projectCostCellSchema = z
   .object({
     baseCost: z.number(),
-    finalCost: z.number(),
     allocatedGeneralCost: z.number(),
     details: z.array(projectCostDetailItemSchema),
     warnings: z.array(z.string()),
@@ -59,8 +58,7 @@ export const projectCostRowSchema = z
     isGeneralCostsDepartment: z.boolean(),
     isSynthetic: z.boolean(),
     projects: z.array(projectCostProjectCellSchema),
-    totalBase: z.number(),
-    totalFinal: z.number(),
+    total: z.number(),
   })
   .strict();
 
@@ -84,8 +82,7 @@ export const projectCostSummarySchema = z
 export const projectCostChartPointSchema = z
   .object({
     month: yyyyMmSchema,
-    baseCost: z.number(),
-    finalCost: z.number(),
+    cost: z.number(),
   })
   .strict();
 
@@ -118,12 +115,7 @@ export const adminProjectCostReportResponseSchema = z
         .strict()
     ),
     totals: projectCostTotalsSchema,
-    summaries: z
-      .object({
-        base: projectCostSummarySchema,
-        final: projectCostSummarySchema,
-      })
-      .strict(),
+    summary: projectCostSummarySchema,
     chart: z.array(projectCostChartSeriesSchema),
     developerNote: z.array(z.string().min(1)),
   })
