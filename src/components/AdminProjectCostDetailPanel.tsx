@@ -80,7 +80,6 @@ const AdminProjectCostDetailPanel: FC<{
                   <DataCell>{detail.departmentName}</DataCell>
                   <DataCell>{detail.projectName ?? "Gastos generales"}</DataCell>
                   <DataCell>{formatPercentage(detail.allocationPercentage)}</DataCell>
-                  <DataCell>{currencyFormatter.format(detail.assignedMonthlyCost)}</DataCell>
                   <DataCell>{detail.warning ?? "-"}</DataCell>
                 </tr>
               ))}
