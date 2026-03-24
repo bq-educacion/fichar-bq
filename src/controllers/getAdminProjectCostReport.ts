@@ -1,6 +1,5 @@
 import {
   DepartmentModel,
-  MonthlyGeneralCostModel,
   ProjectDedicationModel,
   ProjectModel,
   UserModel,
@@ -11,10 +10,10 @@ import {
   buildProjectCostReport,
   computeAverageMonthlyAllocations,
   filterProjectCostReport,
-  MONTHLY_GENERAL_COST_ROW_ID,
   NO_DEPARTMENT_ROW_ID,
   ProjectCostAllocationInput,
   ProjectCostMonthlyDedicationRecord,
+  ProjectCostDetailItem,
   ProjectCostProjectCell,
   ProjectCostProjectInput,
   ProjectCostReport,
@@ -36,7 +35,7 @@ const DEVELOPER_NOTE = [
   "El multiplicador 1.30 representa el coste empresarial fijo usado en el informe.",
   "El salario aplicado es el vigente al cierre del mes: la última entrada con fecha <= fin de mes.",
   "La asignación mensual a proyecto se calcula como la media de las dedicaciones registradas dentro del mes; si solo hay un proyecto activo, se asume 100%.",
-  "Los gastos generales se reparten por proyecto según el peso del coste personal directo de cada proyecto.",
+  "Los gastos generales se reparten por proyecto proporcionalmente al coste directo de cada proyecto.",
 ];
 
 type MonthBounds = {
@@ -100,12 +99,6 @@ const buildMonthKeys = (targetMonth: string, count: number): string[] => {
   });
 };
 
-const normalizeMonthStart = (value: Date): Date =>
-  new Date(value.getFullYear(), value.getMonth(), 1, 0, 0, 0, 0);
-
-const toDateOnlyString = (value: Date | null): string | null =>
-  value ? value.toISOString().slice(0, 10) : null;
-
 const getDisplayName = (user: Pick<UserDoc, "name" | "email">): string =>
   user.name?.trim() || user.email;
 
@@ -159,16 +152,27 @@ const getMonthlyDedicationsByUser = async (
   return recordsByUser;
 };
 
+const stripSalaryFromDetail = (detail: ProjectCostDetailItem) => ({
+  kind: detail.kind,
+  label: detail.label,
+  userId: detail.userId,
+  userName: detail.userName,
+  departmentId: detail.departmentId,
+  departmentName: detail.departmentName,
+  projectId: detail.projectId,
+  projectName: detail.projectName,
+  allocationPercentage: detail.allocationPercentage,
+  assignedMonthlyCost: detail.assignedMonthlyCost,
+  warning: detail.warning,
+});
+
 const serializeProjectCell = (cell: ProjectCostProjectCell) => ({
   projectId: cell.projectId,
   projectName: cell.projectName,
   baseCost: cell.baseCost,
   finalCost: cell.finalCost,
   allocatedGeneralCost: cell.allocatedGeneralCost,
-  details: cell.details.map((detail) => ({
-    ...detail,
-    salaryEffectiveDate: toDateOnlyString(detail.salaryEffectiveDate),
-  })),
+  details: cell.details.map(stripSalaryFromDetail),
   warnings: [...cell.warnings],
 });
 
@@ -177,16 +181,6 @@ const serializeRow = (row: ProjectCostRow) => ({
   departmentName: row.departmentName,
   isGeneralCostsDepartment: row.isGeneralCostsDepartment,
   isSynthetic: row.isSynthetic,
-  generalCosts: {
-    baseCost: row.generalCosts.baseCost,
-    finalCost: row.generalCosts.finalCost,
-    allocatedGeneralCost: row.generalCosts.allocatedGeneralCost,
-    details: row.generalCosts.details.map((detail) => ({
-      ...detail,
-      salaryEffectiveDate: toDateOnlyString(detail.salaryEffectiveDate),
-    })),
-    warnings: [...row.generalCosts.warnings],
-  },
   projects: row.projects.map(serializeProjectCell),
   totalBase: row.totalBase,
   totalFinal: row.totalFinal,
@@ -195,7 +189,6 @@ const serializeRow = (row: ProjectCostRow) => ({
 const serializeReportView = (
   month: string,
   view: ProjectCostReportView,
-  generalCostAmount: number,
   departmentOptions: Array<{ id: string; label: string }>,
   projectOptions: Array<{ id: string; label: string }>,
   selectedDepartmentId: string | null,
@@ -204,9 +197,6 @@ const serializeReportView = (
 ): AdminProjectCostReportResponse =>
   parseWithSchema(adminProjectCostReportResponseSchema, {
     month,
-    generalCostInput: {
-      amount: generalCostAmount,
-    },
     filters: {
       selectedDepartmentId,
       selectedProjectId,
@@ -219,29 +209,17 @@ const serializeReportView = (
       projectName: project.projectName,
     })),
     totals: {
-      generalCosts: {
-        baseCost: view.totals.generalCosts.baseCost,
-        finalCost: view.totals.generalCosts.finalCost,
-        allocatedGeneralCost: view.totals.generalCosts.allocatedGeneralCost,
-        details: view.totals.generalCosts.details.map((detail) => ({
-          ...detail,
-          salaryEffectiveDate: toDateOnlyString(detail.salaryEffectiveDate),
-        })),
-        warnings: [...view.totals.generalCosts.warnings],
-      },
       projects: view.totals.projects.map(serializeProjectCell),
       totalBase: view.totals.totalBase,
       totalFinal: view.totals.totalFinal,
     },
     summaries: view.summaries,
-    generalCostAllocation: view.generalCostAllocation.map((row) => ({ ...row })),
     chart,
     developerNote: DEVELOPER_NOTE,
   });
 
 const buildDepartmentOptions = (report: ProjectCostReport): Array<{ id: string; label: string }> =>
   report.rows
-    .filter((row) => row.departmentId !== MONTHLY_GENERAL_COST_ROW_ID)
     .map((row) => ({
       id: row.departmentId,
       label: row.departmentName,
@@ -261,13 +239,11 @@ const buildReportForMonth = async ({
   departments,
   projects,
   users,
-  monthlyGeneralCostAmount,
 }: {
   month: MonthBounds;
   departments: DepartmentDoc[];
   projects: ProjectDoc[];
   users: UserDoc[];
-  monthlyGeneralCostAmount: number;
 }): Promise<ProjectCostReport> => {
   const departmentInfo = new Map(
     departments.map((department) => [
@@ -367,7 +343,6 @@ const buildReportForMonth = async ({
               : null,
       };
     }),
-    monthlyGeneralCost: monthlyGeneralCostAmount,
   };
 
   return buildProjectCostReport(reportInput, month.end);
@@ -393,7 +368,7 @@ export const getAdminProjectCostReport = async (
   const historyMonthKeys = buildMonthKeys(query.month, 6);
   const earliestMonth = buildMonthBounds(historyMonthKeys[0]);
 
-  const [departments, projects, users, generalCosts] = await Promise.all([
+  const [departments, projects, users] = await Promise.all([
     DepartmentModel.find({}).collation({ locale: "es" }).sort({ name: 1 }).exec(),
     ProjectModel.find({
       startDate: { $lte: selectedMonth.end },
@@ -408,19 +383,7 @@ export const getAdminProjectCostReport = async (
       .sort({ name: 1, email: 1 })
       .select("_id email name department +salaryHistory")
       .exec(),
-    MonthlyGeneralCostModel.find({
-      month: {
-        $gte: normalizeMonthStart(earliestMonth.start),
-        $lte: normalizeMonthStart(selectedMonth.start),
-      },
-    })
-      .select("_id month amount")
-      .exec(),
   ]);
-
-  const generalCostAmountByMonth = new Map(
-    generalCosts.map((entry) => [toMonthKey(new Date(entry.month)), Number(entry.amount) || 0] as const)
-  );
 
   const months = historyMonthKeys.map((monthKey) => buildMonthBounds(monthKey));
   const reports = await Promise.all(
@@ -430,7 +393,6 @@ export const getAdminProjectCostReport = async (
         departments,
         projects,
         users,
-        monthlyGeneralCostAmount: generalCostAmountByMonth.get(month.monthKey) ?? 0,
       })
     )
   );
@@ -450,7 +412,6 @@ export const getAdminProjectCostReport = async (
   return serializeReportView(
     query.month,
     selectedView,
-    generalCostAmountByMonth.get(query.month) ?? 0,
     buildDepartmentOptions(selectedReport),
     buildProjectOptions(selectedReport),
     query.departmentId ?? null,

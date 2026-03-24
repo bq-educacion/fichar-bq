@@ -1,4 +1,3 @@
-import { yyyyMmDdSchema } from "@/schemas/api";
 import { z } from "zod";
 
 export const yyyyMmSchema = z
@@ -13,13 +12,6 @@ export const adminProjectCostReportQuerySchema = z
   })
   .strict();
 
-export const adminProjectCostGeneralCostUpdateBodySchema = z
-  .object({
-    month: yyyyMmSchema,
-    amount: z.number().min(0),
-  })
-  .strict();
-
 export const projectCostFilterOptionSchema = z
   .object({
     id: z.string().min(1),
@@ -29,7 +21,7 @@ export const projectCostFilterOptionSchema = z
 
 export const projectCostDetailItemSchema = z
   .object({
-    kind: z.enum(["user", "monthly_general_cost"]),
+    kind: z.enum(["user"]),
     label: z.string().min(1),
     userId: z.string().nullable(),
     userName: z.string().nullable(),
@@ -37,9 +29,6 @@ export const projectCostDetailItemSchema = z
     departmentName: z.string().min(1),
     projectId: z.string().nullable(),
     projectName: z.string().nullable(),
-    salaryEffectiveDate: yyyyMmDdSchema.nullable(),
-    grossSalary: z.number().min(0).nullable(),
-    companyCost: z.number().min(0).nullable(),
     allocationPercentage: z.number().nullable(),
     assignedMonthlyCost: z.number(),
     warning: z.string().nullable(),
@@ -69,7 +58,6 @@ export const projectCostRowSchema = z
     departmentName: z.string().min(1),
     isGeneralCostsDepartment: z.boolean(),
     isSynthetic: z.boolean(),
-    generalCosts: projectCostCellSchema,
     projects: z.array(projectCostProjectCellSchema),
     totalBase: z.number(),
     totalFinal: z.number(),
@@ -78,21 +66,9 @@ export const projectCostRowSchema = z
 
 export const projectCostTotalsSchema = z
   .object({
-    generalCosts: projectCostCellSchema,
     projects: z.array(projectCostProjectCellSchema),
     totalBase: z.number(),
     totalFinal: z.number(),
-  })
-  .strict();
-
-export const projectCostAllocationRowSchema = z
-  .object({
-    projectId: z.string().min(1),
-    projectName: z.string().min(1),
-    personnelCost: z.number(),
-    weight: z.number(),
-    allocatedGeneralCost: z.number(),
-    finalCost: z.number(),
   })
   .strict();
 
@@ -124,11 +100,6 @@ export const projectCostChartSeriesSchema = z
 export const adminProjectCostReportResponseSchema = z
   .object({
     month: yyyyMmSchema,
-    generalCostInput: z
-      .object({
-        amount: z.number().min(0),
-      })
-      .strict(),
     filters: z
       .object({
         selectedDepartmentId: z.string().nullable(),
@@ -153,7 +124,6 @@ export const adminProjectCostReportResponseSchema = z
         final: projectCostSummarySchema,
       })
       .strict(),
-    generalCostAllocation: z.array(projectCostAllocationRowSchema),
     chart: z.array(projectCostChartSeriesSchema),
     developerNote: z.array(z.string().min(1)),
   })
@@ -163,18 +133,12 @@ export type YyyyMm = z.infer<typeof yyyyMmSchema>;
 export type AdminProjectCostReportQuery = z.infer<
   typeof adminProjectCostReportQuerySchema
 >;
-export type AdminProjectCostGeneralCostUpdateBody = z.infer<
-  typeof adminProjectCostGeneralCostUpdateBodySchema
->;
 export type ProjectCostFilterOption = z.infer<typeof projectCostFilterOptionSchema>;
 export type ProjectCostDetailItemResponse = z.infer<typeof projectCostDetailItemSchema>;
 export type ProjectCostCellResponse = z.infer<typeof projectCostCellSchema>;
 export type ProjectCostProjectCellResponse = z.infer<typeof projectCostProjectCellSchema>;
 export type ProjectCostRowResponse = z.infer<typeof projectCostRowSchema>;
 export type ProjectCostTotalsResponse = z.infer<typeof projectCostTotalsSchema>;
-export type ProjectCostAllocationRowResponse = z.infer<
-  typeof projectCostAllocationRowSchema
->;
 export type ProjectCostSummaryResponse = z.infer<typeof projectCostSummarySchema>;
 export type ProjectCostChartSeriesResponse = z.infer<typeof projectCostChartSeriesSchema>;
 export type AdminProjectCostReportResponse = z.infer<

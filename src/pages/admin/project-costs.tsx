@@ -1,28 +1,24 @@
-import AdminProjectCostAllocationTable from "@/components/AdminProjectCostAllocationTable";
 import AdminProjectCostChart from "@/components/AdminProjectCostChart";
 import AdminProjectCostDetailPanel from "@/components/AdminProjectCostDetailPanel";
 import AdminProjectCostsTable, {
-  AdminProjectCostsCellSelection,
-  AdminProjectCostsMode,
-  AdminProjectCostsSort,
+  type AdminProjectCostsCellSelection,
+  type AdminProjectCostsSort,
 } from "@/components/AdminProjectCostsTable";
 import AdminSectionTabs from "@/components/AdminSectionTabs";
 import getUserByEmail from "@/controllers/getUser";
 import connectMongo from "@/lib/connectMongo";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import {
-  AdminProjectCostReportResponse,
-  ProjectCostDetailItemResponse,
-  ProjectCostProjectCellResponse,
-  ProjectCostRowResponse,
+  type AdminProjectCostReportResponse,
+  type ProjectCostDetailItemResponse,
   adminProjectCostReportResponseSchema,
 } from "@/schemas/projectCosts";
 import SimpleContainer from "@/ui/SimpleContainer";
 import styled from "@emotion/styled";
-import { GetServerSideProps, NextPage } from "next";
+import type { GetServerSideProps, NextPage } from "next";
 import { getServerSession } from "next-auth";
 import { useRouter } from "next/router";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const ADMIN_PANEL_MAX_WIDTH = "1440px";
 
@@ -52,37 +48,8 @@ const getCurrentMonthInput = (): string => {
   return `${year}-${month}`;
 };
 
-const getDisplayedCellValue = (
-  mode: AdminProjectCostsMode,
-  cell: Pick<ProjectCostProjectCellResponse, "baseCost" | "finalCost">
-): number => (mode === "base" ? cell.baseCost : cell.finalCost);
-
-const getDisplayedGeneralValue = (
-  mode: AdminProjectCostsMode,
-  cell: Pick<ProjectCostRowResponse["generalCosts"], "baseCost" | "finalCost">
-): number => (mode === "base" ? cell.baseCost : cell.finalCost);
-
-const getDisplayedTotalValue = (
-  mode: AdminProjectCostsMode,
-  row: Pick<ProjectCostRowResponse | AdminProjectCostReportResponse["totals"], "totalBase" | "totalFinal">
-): number => (mode === "base" ? row.totalBase : row.totalFinal);
-
 const uniqueWarnings = (warnings: string[]): string[] =>
   Array.from(new Set(warnings.filter(Boolean)));
-
-const parseAmountInput = (value: string): number | null => {
-  const normalized = value.trim().replace(",", ".");
-  if (!normalized) {
-    return 0;
-  }
-
-  const parsed = Number(normalized);
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return null;
-  }
-
-  return parsed;
-};
 
 export const getServerSideProps: GetServerSideProps<PageProps> = async (context) => {
   const session = await getServerSession(context.req, context.res, authOptions);
@@ -131,16 +98,13 @@ const AdminProjectCostsPage: NextPage<PageProps> = ({ initialMonth }) => {
   const [month, setMonth] = useState(initialMonth);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState("");
-  const [mode, setMode] = useState<AdminProjectCostsMode>("base");
   const [sort, setSort] = useState<AdminProjectCostsSort>({
     key: "department",
     direction: "asc",
   });
   const [report, setReport] = useState<AdminProjectCostReportResponse | null>(null);
-  const [generalCostDraft, setGeneralCostDraft] = useState("0");
   const [detailPanel, setDetailPanel] = useState<DetailPanelState | null>(null);
   const [loading, setLoading] = useState(false);
-  const [savingGeneralCost, setSavingGeneralCost] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -191,27 +155,11 @@ const AdminProjectCostsPage: NextPage<PageProps> = ({ initialMonth }) => {
     void fetchReport();
   }, [month, router, selectedDepartmentId, selectedProjectId]);
 
-  useEffect(() => {
-    if (!report) {
-      return;
-    }
-
-    setGeneralCostDraft(String(report.generalCostInput.amount));
-  }, [report?.generalCostInput.amount, report]);
-
-  const selectedSummary = report?.summaries[mode] ?? null;
+  const selectedSummary = report?.summaries.base ?? null;
 
   const rowById = useMemo(
     () => new Map((report?.rows ?? []).map((row) => [row.departmentId, row] as const)),
     [report?.rows]
-  );
-
-  const projectNameById = useMemo(
-    () =>
-      new Map(
-        (report?.projects ?? []).map((project) => [project.projectId, project.projectName] as const)
-      ),
-    [report?.projects]
   );
 
   const openDetailPanel = (selection: AdminProjectCostsCellSelection) => {
@@ -224,22 +172,6 @@ const AdminProjectCostsPage: NextPage<PageProps> = ({ initialMonth }) => {
     const concatWarnings = (...warningSets: string[][]) =>
       uniqueWarnings(warningSets.flat());
 
-    if (selection.type === "row-general") {
-      const row = rowById.get(selection.rowId);
-      if (!row) {
-        return;
-      }
-
-      setDetailPanel({
-        title: `${row.departmentName} · Gastos generales`,
-        value: getDisplayedGeneralValue(mode, row.generalCosts),
-        details: row.generalCosts.details,
-        warnings: row.generalCosts.warnings,
-        allocatedGeneralCost: row.generalCosts.allocatedGeneralCost,
-      });
-      return;
-    }
-
     if (selection.type === "row-project") {
       const row = rowById.get(selection.rowId);
       const cell = row?.projects.find((project) => project.projectId === selection.projectId);
@@ -249,7 +181,7 @@ const AdminProjectCostsPage: NextPage<PageProps> = ({ initialMonth }) => {
 
       setDetailPanel({
         title: `${row.departmentName} · ${cell.projectName}`,
-        value: getDisplayedCellValue(mode, cell),
+        value: cell.baseCost,
         details: cell.details,
         warnings: cell.warnings,
         allocatedGeneralCost: cell.allocatedGeneralCost,
@@ -265,30 +197,17 @@ const AdminProjectCostsPage: NextPage<PageProps> = ({ initialMonth }) => {
 
       setDetailPanel({
         title: `${row.departmentName} · Total`,
-        value: getDisplayedTotalValue(mode, row),
+        value: row.totalBase,
         details: concatDetails(
-          row.generalCosts.details,
           ...row.projects.map((project) => project.details)
         ),
         warnings: concatWarnings(
-          row.generalCosts.warnings,
           ...row.projects.map((project) => project.warnings)
         ),
         allocatedGeneralCost: row.projects.reduce(
           (acc, project) => acc + project.allocatedGeneralCost,
           0
         ),
-      });
-      return;
-    }
-
-    if (selection.type === "totals-general") {
-      setDetailPanel({
-        title: "Total · Gastos generales",
-        value: getDisplayedGeneralValue(mode, report.totals.generalCosts),
-        details: report.totals.generalCosts.details,
-        warnings: report.totals.generalCosts.warnings,
-        allocatedGeneralCost: report.totals.generalCosts.allocatedGeneralCost,
       });
       return;
     }
@@ -303,7 +222,7 @@ const AdminProjectCostsPage: NextPage<PageProps> = ({ initialMonth }) => {
 
       setDetailPanel({
         title: `Total · ${totalCell.projectName}`,
-        value: getDisplayedCellValue(mode, totalCell),
+        value: totalCell.finalCost,
         details: totalCell.details,
         warnings: totalCell.warnings,
         allocatedGeneralCost: totalCell.allocatedGeneralCost,
@@ -313,13 +232,11 @@ const AdminProjectCostsPage: NextPage<PageProps> = ({ initialMonth }) => {
 
     setDetailPanel({
       title: "Total general",
-      value: getDisplayedTotalValue(mode, report.totals),
+      value: report.totals.totalFinal,
       details: concatDetails(
-        report.totals.generalCosts.details,
         ...report.totals.projects.map((project) => project.details)
       ),
       warnings: concatWarnings(
-        report.totals.generalCosts.warnings,
         ...report.totals.projects.map((project) => project.warnings)
       ),
       allocatedGeneralCost: report.totals.projects.reduce(
@@ -327,72 +244,6 @@ const AdminProjectCostsPage: NextPage<PageProps> = ({ initialMonth }) => {
         0
       ),
     });
-  };
-
-  const saveGeneralCost = async () => {
-    const parsedAmount = parseAmountInput(generalCostDraft);
-    if (parsedAmount === null) {
-      setError("Introduce un importe válido para los gastos generales");
-      return;
-    }
-
-    setSavingGeneralCost(true);
-    setError("");
-
-    try {
-      const response = await fetch("/api/admin/project-costs", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          month,
-          amount: parsedAmount,
-        }),
-      });
-
-      if (response.status === 401) {
-        router.push("/login");
-        return;
-      }
-
-      if (response.status === 403) {
-        router.push("/");
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error((await response.text()) || "No se pudo guardar el gasto general");
-      }
-
-      const query = new URLSearchParams({ month });
-      if (selectedDepartmentId) {
-        query.set("departmentId", selectedDepartmentId);
-      }
-      if (selectedProjectId) {
-        query.set("projectId", selectedProjectId);
-      }
-
-      const refreshResponse = await fetch(`/api/admin/project-costs?${query.toString()}`, {
-        cache: "no-store",
-      });
-      if (!refreshResponse.ok) {
-        throw new Error((await refreshResponse.text()) || "No se pudo refrescar el informe");
-      }
-
-      const payload = adminProjectCostReportResponseSchema.parse(
-        await refreshResponse.json()
-      );
-      setReport(payload);
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "No se pudo guardar el gasto general"
-      );
-    } finally {
-      setSavingGeneralCost(false);
-    }
   };
 
   return (
@@ -408,90 +259,52 @@ const AdminProjectCostsPage: NextPage<PageProps> = ({ initialMonth }) => {
       >
         <Content>
           <PanelSection>
-            <TopGrid>
-              <FiltersCard>
-                <SectionTitle>Filtros</SectionTitle>
-                <FiltersGrid>
-                  <Field>
-                    <Label>Mes</Label>
-                    <Input
-                      type="month"
-                      value={month}
-                      onChange={(event) => setMonth(event.target.value)}
-                    />
-                  </Field>
-                  <Field>
-                    <Label>Departamento</Label>
-                    <Select
-                      value={selectedDepartmentId}
-                      onChange={(event) => setSelectedDepartmentId(event.target.value)}
-                    >
-                      <option value="">Todos</option>
-                      {report?.filters.departments.map((department) => (
-                        <option key={department.id} value={department.id}>
-                          {department.label}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                  <Field>
-                    <Label>Proyecto</Label>
-                    <Select
-                      value={selectedProjectId}
-                      onChange={(event) => setSelectedProjectId(event.target.value)}
-                    >
-                      <option value="">Todos</option>
-                      {report?.filters.projects.map((project) => (
-                        <option key={project.id} value={project.id}>
-                          {project.label}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                </FiltersGrid>
-                <ToggleRow>
-                  <ToggleButton
-                    type="button"
-                    $active={mode === "base"}
-                    onClick={() => setMode("base")}
-                  >
-                    Base (coste personal)
-                  </ToggleButton>
-                  <ToggleButton
-                    type="button"
-                    $active={mode === "final"}
-                    onClick={() => setMode("final")}
-                  >
-                    Con gastos generales
-                  </ToggleButton>
-                </ToggleRow>
-              </FiltersCard>
-
-              <FiltersCard>
-                <SectionTitle>Gasto general mensual</SectionTitle>
-                <HelperText>
-                  Este importe se añade al pool de gastos generales del mes antes del reparto
-                  proporcional por proyecto.
-                </HelperText>
-                <SaveRow>
+            <FiltersCard>
+              <SectionTitle>Filtros</SectionTitle>
+              <FiltersGrid>
+                <Field>
+                  <Label>Mes</Label>
                   <Input
-                    type="text"
-                    inputMode="decimal"
-                    value={generalCostDraft}
-                    onChange={(event) => setGeneralCostDraft(event.target.value)}
-                    placeholder="0"
+                    type="month"
+                    value={month}
+                    onChange={(event) => setMonth(event.target.value)}
                   />
-                  <PrimaryButton type="button" onClick={saveGeneralCost} disabled={savingGeneralCost}>
-                    {savingGeneralCost ? "Guardando..." : "Guardar"}
-                  </PrimaryButton>
-                </SaveRow>
-              </FiltersCard>
-            </TopGrid>
+                </Field>
+                <Field>
+                  <Label>Departamento</Label>
+                  <Select
+                    value={selectedDepartmentId}
+                    onChange={(event) => setSelectedDepartmentId(event.target.value)}
+                  >
+                    <option value="">Todos</option>
+                    {report?.filters.departments.map((department) => (
+                      <option key={department.id} value={department.id}>
+                        {department.label}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field>
+                  <Label>Proyecto</Label>
+                  <Select
+                    value={selectedProjectId}
+                    onChange={(event) => setSelectedProjectId(event.target.value)}
+                  >
+                    <option value="">Todos</option>
+                    {report?.filters.projects.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.label}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </FiltersGrid>
+            </FiltersCard>
 
             {selectedSummary && (
               <KpiGrid>
                 <KpiCard>
-                  <KpiLabel>Total coste personal</KpiLabel>
+                  <KpiLabel>Total coste directo</KpiLabel>
                   <KpiValue>{currencyFormatter.format(selectedSummary.totalPersonnelCost)}</KpiValue>
                 </KpiCard>
                 <KpiCard>
@@ -518,10 +331,9 @@ const AdminProjectCostsPage: NextPage<PageProps> = ({ initialMonth }) => {
                 <SectionTitle>Matriz mensual por departamento y proyecto</SectionTitle>
                 <HelperText>
                   Las filas se agrupan primero por departamentos de coste directo y, debajo,
-                  en un bloque separado, por departamentos de gastos generales. Haz clic en
-                  cualquier celda para ver el detalle auditable del cálculo.
-                  {mode === "final" &&
-                    " En modo final la columna de gastos generales queda a cero porque el pool ya está repartido por proyecto."}
+                  en un bloque separado, por departamentos de gastos generales. Los gastos
+                  generales se distribuyen proporcionalmente según el peso del coste directo
+                  de cada proyecto. Haz clic en cualquier celda para ver el detalle.
                 </HelperText>
               </div>
             </SectionHeader>
@@ -530,7 +342,6 @@ const AdminProjectCostsPage: NextPage<PageProps> = ({ initialMonth }) => {
               <LoadingText>Cargando informe...</LoadingText>
             ) : (
               <AdminProjectCostsTable
-                mode={mode}
                 rows={report.rows}
                 projects={report.projects}
                 totals={report.totals}
@@ -544,34 +355,16 @@ const AdminProjectCostsPage: NextPage<PageProps> = ({ initialMonth }) => {
           <PanelSection>
             <SectionHeader>
               <div>
-                <SectionTitle>Reparto de gastos generales</SectionTitle>
-                <HelperText>
-                  La distribución usa el peso del coste personal directo de cada proyecto sobre
-                  el total directo del mes seleccionado.
-                </HelperText>
-              </div>
-            </SectionHeader>
-            {loading || !report ? (
-              <LoadingText>Cargando reparto...</LoadingText>
-            ) : (
-              <AdminProjectCostAllocationTable rows={report.generalCostAllocation} />
-            )}
-          </PanelSection>
-
-          <PanelSection>
-            <SectionHeader>
-              <div>
                 <SectionTitle>Serie temporal</SectionTitle>
                 <HelperText>
-                  Evolución de los últimos seis meses para los proyectos visibles, usando el
-                  mismo modo de visualización.
+                  Evolución de los últimos seis meses para los proyectos visibles.
                 </HelperText>
               </div>
             </SectionHeader>
             {loading || !report ? (
               <LoadingText>Cargando serie...</LoadingText>
             ) : (
-              <AdminProjectCostChart mode={mode} series={report.chart} />
+              <AdminProjectCostChart mode="final" series={report.chart} />
             )}
           </PanelSection>
 
@@ -596,7 +389,7 @@ const AdminProjectCostsPage: NextPage<PageProps> = ({ initialMonth }) => {
         open={detailPanel !== null}
         title={detailPanel?.title ?? ""}
         value={detailPanel?.value ?? 0}
-        mode={mode}
+        mode="base"
         details={detailPanel?.details ?? []}
         warnings={detailPanel?.warnings ?? []}
         allocatedGeneralCost={detailPanel?.allocatedGeneralCost ?? 0}
@@ -622,16 +415,6 @@ const PanelSection = styled.div`
   display: flex;
   flex-direction: column;
   gap: 14px;
-`;
-
-const TopGrid = styled.div`
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 12px;
-
-  @media (max-width: 980px) {
-    grid-template-columns: 1fr;
-  }
 `;
 
 const FiltersCard = styled.div`
@@ -690,51 +473,6 @@ const Select = styled.select`
   padding: 0 12px;
   font-size: 14px;
   color: #4e4f53;
-`;
-
-const ToggleRow = styled.div`
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-`;
-
-const ToggleButton = styled.button<{ $active: boolean }>`
-  border: 1px solid ${({ $active }) => ($active ? "#8a4d92" : "#d0d0d0")};
-  border-radius: 999px;
-  min-height: 38px;
-  padding: 0 14px;
-  background: ${({ $active }) => ($active ? "#fff2ff" : "#fff")};
-  color: #4e4f53;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-`;
-
-const SaveRow = styled.div`
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px;
-
-  @media (max-width: 600px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const PrimaryButton = styled.button`
-  border: none;
-  border-radius: 4px;
-  min-height: 40px;
-  padding: 0 16px;
-  background-image: linear-gradient(256deg, #b68fbb, #ff5776);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-
-  &:disabled {
-    opacity: 0.65;
-    cursor: wait;
-  }
 `;
 
 const KpiGrid = styled.div`

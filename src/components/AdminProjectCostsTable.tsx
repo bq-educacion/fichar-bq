@@ -1,23 +1,16 @@
-import {
-  ProjectCostProjectCellResponse,
+import type {
   ProjectCostRowResponse,
   ProjectCostTotalsResponse,
 } from "@/schemas/projectCosts";
 import styled from "@emotion/styled";
-import React, { FC, useMemo } from "react";
-
-export type AdminProjectCostsMode = "base" | "final";
+import { type FC, useMemo } from "react";
 
 export type AdminProjectCostsSort = {
-  key: "department" | "general" | "total" | `project:${string}`;
+  key: "department" | "total" | `project:${string}`;
   direction: "asc" | "desc";
 };
 
 export type AdminProjectCostsCellSelection =
-  | {
-      type: "row-general";
-      rowId: string;
-    }
   | {
       type: "row-project";
       rowId: string;
@@ -28,30 +21,12 @@ export type AdminProjectCostsCellSelection =
       rowId: string;
     }
   | {
-      type: "totals-general";
-    }
-  | {
       type: "totals-project";
       projectId: string;
     }
   | {
       type: "totals-total";
     };
-
-const getDisplayedCellValue = (
-  mode: AdminProjectCostsMode,
-  cell: Pick<ProjectCostProjectCellResponse, "baseCost" | "finalCost">
-): number => (mode === "base" ? cell.baseCost : cell.finalCost);
-
-const getDisplayedGeneralValue = (
-  mode: AdminProjectCostsMode,
-  cell: ProjectCostRowResponse["generalCosts"] | ProjectCostTotalsResponse["generalCosts"]
-): number => (mode === "base" ? cell.baseCost : cell.finalCost);
-
-const getDisplayedTotalValue = (
-  mode: AdminProjectCostsMode,
-  row: Pick<ProjectCostRowResponse | ProjectCostTotalsResponse, "totalBase" | "totalFinal">
-): number => (mode === "base" ? row.totalBase : row.totalFinal);
 
 const compareNumbers = (left: number, right: number): number => left - right;
 
@@ -64,8 +39,7 @@ const currencyFormatter = new Intl.NumberFormat("es-ES", {
 
 const sortRows = (
   rows: ProjectCostRowResponse[],
-  sort: AdminProjectCostsSort,
-  mode: AdminProjectCostsMode
+  sort: AdminProjectCostsSort
 ): ProjectCostRowResponse[] => {
   const sorted = [...rows];
 
@@ -74,24 +48,16 @@ const sortRows = (
 
     if (sort.key === "department") {
       value = left.departmentName.localeCompare(right.departmentName, "es");
-    } else if (sort.key === "general") {
-      value = compareNumbers(
-        getDisplayedGeneralValue(mode, left.generalCosts),
-        getDisplayedGeneralValue(mode, right.generalCosts)
-      );
     } else if (sort.key === "total") {
-      value = compareNumbers(
-        getDisplayedTotalValue(mode, left),
-        getDisplayedTotalValue(mode, right)
-      );
+      value = compareNumbers(left.totalBase, right.totalBase);
     } else {
       const projectId = sort.key.replace(/^project:/, "");
       const leftProject = left.projects.find((project) => project.projectId === projectId);
       const rightProject = right.projects.find((project) => project.projectId === projectId);
 
       value = compareNumbers(
-        getDisplayedCellValue(mode, leftProject ?? { baseCost: 0, finalCost: 0 }),
-        getDisplayedCellValue(mode, rightProject ?? { baseCost: 0, finalCost: 0 })
+        leftProject?.baseCost ?? 0,
+        rightProject?.baseCost ?? 0
       );
     }
 
@@ -107,15 +73,14 @@ const renderSortIndicator = (sort: AdminProjectCostsSort, key: AdminProjectCosts
 const formatCurrency = (value: number): string => currencyFormatter.format(value);
 
 const AdminProjectCostsTable: FC<{
-  mode: AdminProjectCostsMode;
   rows: ProjectCostRowResponse[];
   projects: Array<{ projectId: string; projectName: string }>;
   totals: ProjectCostTotalsResponse;
   sort: AdminProjectCostsSort;
   onSortChange: (sort: AdminProjectCostsSort) => void;
   onSelectCell: (selection: AdminProjectCostsCellSelection) => void;
-}> = ({ mode, rows, projects, totals, sort, onSortChange, onSelectCell }) => {
-  const sortedRows = useMemo(() => sortRows(rows, sort, mode), [mode, rows, sort]);
+}> = ({ rows, projects, totals, sort, onSortChange, onSelectCell }) => {
+  const sortedRows = useMemo(() => sortRows(rows, sort), [rows, sort]);
   const directRows = useMemo(
     () => sortedRows.filter((row) => !row.isGeneralCostsDepartment),
     [sortedRows]
@@ -124,7 +89,22 @@ const AdminProjectCostsTable: FC<{
     () => sortedRows.filter((row) => row.isGeneralCostsDepartment),
     [sortedRows]
   );
-  const columnCount = projects.length + 3;
+  const columnCount = projects.length + 2;
+
+  const directTotalByProject = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const row of directRows) {
+      for (const cell of row.projects) {
+        totals.set(cell.projectId, (totals.get(cell.projectId) ?? 0) + cell.baseCost);
+      }
+    }
+    return totals;
+  }, [directRows]);
+
+  const directTotalGlobal = useMemo(
+    () => Array.from(directTotalByProject.values()).reduce((acc, v) => acc + v, 0),
+    [directTotalByProject]
+  );
 
   const toggleSort = (key: AdminProjectCostsSort["key"]) => {
     if (sort.key === key) {
@@ -168,11 +148,6 @@ const AdminProjectCostsTable: FC<{
                 </HeaderCell>
               ))
             )}
-            <HeaderCell>
-              <SortButton type="button" onClick={() => toggleSort("general")}>
-                Gastos generales{renderSortIndicator(sort, "general")}
-              </SortButton>
-            </HeaderCell>
             <StickyRightHeader>
               <SortButton type="button" onClick={() => toggleSort("total")}>
                 Total{renderSortIndicator(sort, "total")}
@@ -207,39 +182,40 @@ const AdminProjectCostsTable: FC<{
                         })
                       }
                     >
-                      {formatCurrency(
-                        getDisplayedCellValue(
-                          mode,
-                          cell ?? { baseCost: 0, finalCost: 0 }
-                        )
-                      )}
+                      {formatCurrency(cell?.baseCost ?? 0)}
                     </ValueButton>
                   </ValueCell>
                 );
               })}
               {projects.length === 0 && <EmptyProjectsCell>Sin coste directo</EmptyProjectsCell>}
-              <GeneralValueCell>
-                <GeneralValueButton
-                  type="button"
-                  onClick={() => onSelectCell({ type: "row-general", rowId: row.departmentId })}
-                >
-                  {formatCurrency(getDisplayedGeneralValue(mode, row.generalCosts))}
-                </GeneralValueButton>
-              </GeneralValueCell>
               <StickyRightCell>
                 <ValueButton
                   type="button"
                   onClick={() => onSelectCell({ type: "row-total", rowId: row.departmentId })}
                 >
-                  {formatCurrency(getDisplayedTotalValue(mode, row))}
+                  {formatCurrency(row.totalBase)}
                 </ValueButton>
               </StickyRightCell>
             </DataRow>
           ))}
+          {directRows.length > 0 && (
+            <SubtotalRow>
+              <SubtotalStickyLeftCell>Total costes directos</SubtotalStickyLeftCell>
+              {projects.map((project) => (
+                <SubtotalCell key={project.projectId}>
+                  {formatCurrency(directTotalByProject.get(project.projectId) ?? 0)}
+                </SubtotalCell>
+              ))}
+              {projects.length === 0 && <SubtotalCell>-</SubtotalCell>}
+              <SubtotalStickyRightCell>
+                {formatCurrency(directTotalGlobal)}
+              </SubtotalStickyRightCell>
+            </SubtotalRow>
+          )}
           {generalRows.length > 0 && (
             <SectionRow>
               <SectionLabelCell colSpan={columnCount} $tone="general">
-                Departamentos de gastos generales
+                Gastos generales
               </SectionLabelCell>
             </SectionRow>
           )}
@@ -262,31 +238,18 @@ const AdminProjectCostsTable: FC<{
                         })
                       }
                     >
-                      {formatCurrency(
-                        getDisplayedCellValue(
-                          mode,
-                          cell ?? { baseCost: 0, finalCost: 0 }
-                        )
-                      )}
+                      {formatCurrency(cell?.baseCost ?? 0)}
                     </GeneralValueButton>
                   </GeneralValueCell>
                 );
               })}
-              {projects.length === 0 && <GeneralEmptyProjectsCell>Sin coste directo</GeneralEmptyProjectsCell>}
-              <GeneralValueCell>
-                <GeneralValueButton
-                  type="button"
-                  onClick={() => onSelectCell({ type: "row-general", rowId: row.departmentId })}
-                >
-                  {formatCurrency(getDisplayedGeneralValue(mode, row.generalCosts))}
-                </GeneralValueButton>
-              </GeneralValueCell>
+              {projects.length === 0 && <GeneralEmptyProjectsCell>-</GeneralEmptyProjectsCell>}
               <GeneralStickyRightCell>
                 <GeneralValueButton
                   type="button"
                   onClick={() => onSelectCell({ type: "row-total", rowId: row.departmentId })}
                 >
-                  {formatCurrency(getDisplayedTotalValue(mode, row))}
+                  {formatCurrency(row.totalBase)}
                 </GeneralValueButton>
               </GeneralStickyRightCell>
             </GeneralDataRow>
@@ -315,28 +278,15 @@ const AdminProjectCostsTable: FC<{
                         })
                       }
                     >
-                      {formatCurrency(
-                        getDisplayedCellValue(
-                          mode,
-                          totalProject ?? { baseCost: 0, finalCost: 0 }
-                        )
-                      )}
+                      {formatCurrency(totalProject?.finalCost ?? 0)}
                     </ValueButton>
                   </FooterCell>
                 );
               })
             )}
-            <GeneralFooterCell>
-              <GeneralValueButton
-                type="button"
-                onClick={() => onSelectCell({ type: "totals-general" })}
-              >
-                {formatCurrency(getDisplayedGeneralValue(mode, totals.generalCosts))}
-              </GeneralValueButton>
-            </GeneralFooterCell>
             <StickyRightFooter>
               <ValueButton type="button" onClick={() => onSelectCell({ type: "totals-total" })}>
-                {formatCurrency(getDisplayedTotalValue(mode, totals))}
+                {formatCurrency(totals.totalFinal)}
               </ValueButton>
             </StickyRightFooter>
           </tr>
@@ -460,10 +410,6 @@ const FooterCell = styled.td`
   background: #f4f4f4;
 `;
 
-const GeneralFooterCell = styled(FooterCell)<{ $hasLeftDivider?: boolean }>`
-  background: #f7f0e5;
-`;
-
 const StickyLeftFooter = styled.th`
   position: sticky;
   left: 0;
@@ -546,6 +492,52 @@ const SectionLabelCell = styled.td<{ $tone: "direct" | "general" }>`
   color: #4e4f53;
   background: ${({ $tone }) => ($tone === "direct" ? "#edf4fb" : "#fff2dd")} !important;
   border-top: 3px solid ${({ $tone }) => ($tone === "direct" ? "#a9c3de" : "#d8b074")};
+`;
+
+const SubtotalRow = styled.tr`
+  &:hover td,
+  &:hover th {
+    background: #edf4fb;
+  }
+`;
+
+const SubtotalCell = styled.td`
+  min-width: 160px;
+  padding: 12px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
+  color: #4e4f53;
+  background: #edf4fb !important;
+  border-top: 2px solid #a9c3de;
+`;
+
+const SubtotalStickyLeftCell = styled.th`
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  min-width: 220px;
+  padding: 12px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 700;
+  color: #4e4f53;
+  background: #edf4fb !important;
+  border-top: 2px solid #a9c3de;
+`;
+
+const SubtotalStickyRightCell = styled.td`
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  min-width: 160px;
+  padding: 12px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
+  color: #4e4f53;
+  background: #edf4fb !important;
+  border-top: 2px solid #a9c3de;
 `;
 
 const DataRow = styled.tr`
