@@ -67,7 +67,6 @@ const AdminProjectCostDetailPanel: FC<{
                 <HeaderCell>Departamento</HeaderCell>
                 <HeaderCell>Proyecto</HeaderCell>
                 <HeaderCell>%</HeaderCell>
-                <HeaderCell>Coste asignado</HeaderCell>
                 <HeaderCell>Warning</HeaderCell>
               </tr>
             </thead>
