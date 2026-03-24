@@ -407,6 +407,68 @@ describe("admin users api", () => {
     });
   });
 
+  it("returns a clear error when salary encryption is not configured", async () => {
+    const request: MockRequest = {
+      method: "PUT",
+      body: {
+        _id: "507f191e810c19729de860aa",
+        salary: 26000,
+        initDate: "2026-03-15",
+      },
+    };
+    const response = createMockResponse();
+    const targetUser = createManagedUserDoc({
+      salaryHistory: [],
+    });
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    delete process.env.USER_SALARY_ENCRYPTION_KEY;
+    mockedUserModel.findById.mockReturnValue(makeFindByIdQuery(targetUser));
+
+    await adminUserSalaryHandler(toApiRequest(request), toApiResponse(response));
+
+    expect(response.statusCode).toBe(500);
+    expect(response.body).toBe(
+      "Salary encryption is not configured correctly on the server"
+    );
+    expect(targetUser.save).not.toHaveBeenCalled();
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("returns a clear error when salary visibility is requested without encryption configuration", async () => {
+    const request: MockRequest = {
+      method: "GET",
+      query: { detailed: "true", includeSalary: "true" },
+    };
+    const response = createMockResponse();
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    process.env.USER_SALARY_ENCRYPTION_KEY =
+      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    mockedUserModel.find.mockReturnValue(
+      makeFindQuery([
+        createManagedUserDoc({
+          salaryHistory: [createSalaryHistoryEntry(24000, "2026-02-01")],
+        }),
+      ])
+    );
+    delete process.env.USER_SALARY_ENCRYPTION_KEY;
+
+    await adminUsersHandler(toApiRequest(request), toApiResponse(response));
+
+    expect(response.statusCode).toBe(500);
+    expect(response.body).toBe(
+      "Salary encryption is not configured correctly on the server"
+    );
+
+    consoleErrorSpy.mockRestore();
+  });
+
   it("forbids non-superadmins from reading salary through the dedicated API", async () => {
     const request: MockRequest = {
       method: "GET",
