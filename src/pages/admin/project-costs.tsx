@@ -517,9 +517,9 @@ const AdminProjectCostsPage: NextPage<PageProps> = ({ initialMonth }) => {
               <div>
                 <SectionTitle>Matriz mensual por departamento y proyecto</SectionTitle>
                 <HelperText>
-                  La tabla separa primero el coste personal directo y después los gastos
-                  generales. Haz clic en cualquier celda para ver el detalle auditable del
-                  cálculo.
+                  Las filas se agrupan primero por departamentos de coste directo y, debajo,
+                  en un bloque separado, por departamentos de gastos generales. Haz clic en
+                  cualquier celda para ver el detalle auditable del cálculo.
                   {mode === "final" &&
                     " En modo final la columna de gastos generales queda a cero porque el pool ya está repartido por proyecto."}
                 </HelperText>
