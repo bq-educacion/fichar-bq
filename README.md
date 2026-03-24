@@ -137,10 +137,18 @@ The cost report shows a monthly matrix of departments (rows) × projects (column
 
 | Section | Description |
 |---|---|
-| Costes directos | One row per direct department, showing per-project base cost |
+| Costes directos | One row per direct department, showing per-project `baseCost` |
 | Total costes directos | Subtotal row summing direct costs per project |
 | Gastos generales | One row per indirect department, showing the proportionally distributed cost per project |
-| **Total** (footer) | `finalCost` per project = direct base + allocated indirect |
+| **Total** (footer) | Per project = `baseCost + allocatedGeneralCost` |
+
+### Data model (simplified)
+
+- **Cell** (`ProjectCostCell`): `baseCost`, `allocatedGeneralCost`, `details`, `warnings` — no redundant `finalCost`.
+- **Row** (`ProjectCostRow`): `total` (single field, not dual `totalBase`/`totalFinal`).
+- **Totals** (`ProjectCostTotals`): `totalBase` (direct only) and `totalFinal` (direct + indirect) — these differ meaningfully.
+- **Summary**: single `summary` object (no `base`/`final` modes).
+- **Chart point**: single `cost` field.
 
 ### Key files
 

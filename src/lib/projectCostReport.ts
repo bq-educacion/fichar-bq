@@ -67,7 +67,6 @@ export type ProjectCostDetailItem = {
 
 export type ProjectCostCell = {
   baseCost: number;
-  finalCost: number;
   allocatedGeneralCost: number;
   details: ProjectCostDetailItem[];
   warnings: string[];
@@ -84,8 +83,7 @@ export type ProjectCostRow = {
   isGeneralCostsDepartment: boolean;
   isSynthetic: boolean;
   projects: ProjectCostProjectCell[];
-  totalBase: number;
-  totalFinal: number;
+  total: number;
 };
 
 export type ProjectCostTotals = {
@@ -118,16 +116,12 @@ export type ProjectCostReportView = {
   projects: ProjectCostProjectInput[];
   rows: ProjectCostRow[];
   totals: ProjectCostTotals;
-  summaries: {
-    base: ProjectCostReportSummary;
-    final: ProjectCostReportSummary;
-  };
+  summary: ProjectCostReportSummary;
 };
 
 export type ProjectCostChartPoint = {
   month: string;
-  baseCost: number;
-  finalCost: number;
+  cost: number;
 };
 
 export type ProjectCostChartSeries = {
@@ -155,7 +149,6 @@ const buildUserWarning = (allocationTotal: number): string | null => {
 
 const cloneCell = (cell: ProjectCostCell): ProjectCostCell => ({
   baseCost: cell.baseCost,
-  finalCost: cell.finalCost,
   allocatedGeneralCost: cell.allocatedGeneralCost,
   details: [...cell.details],
   warnings: [...cell.warnings],
@@ -169,7 +162,6 @@ const cloneProjectCell = (cell: ProjectCostProjectCell): ProjectCostProjectCell 
 
 const buildEmptyCell = (): ProjectCostCell => ({
   baseCost: 0,
-  finalCost: 0,
   allocatedGeneralCost: 0,
   details: [],
   warnings: [],
@@ -277,8 +269,7 @@ const buildRowMap = (
         projectId: project.projectId,
         projectName: project.projectName,
       })),
-      totalBase: 0,
-      totalFinal: 0,
+      total: 0,
     });
   }
 
@@ -294,8 +285,7 @@ const buildRowMap = (
         projectId: project.projectId,
         projectName: project.projectName,
       })),
-      totalBase: 0,
-      totalFinal: 0,
+      total: 0,
     });
   }
 
@@ -343,7 +333,7 @@ const addDetailToProject = (
 
 const getProjectIdsWithCost = (projects: ProjectCostProjectCell[]): string[] =>
   projects
-    .filter((project) => project.baseCost > 0 || project.finalCost > 0)
+    .filter((project) => project.baseCost > 0 || project.allocatedGeneralCost > 0)
     .map((project) => project.projectId);
 
 export const buildProjectCostReport = (
@@ -500,22 +490,17 @@ export const buildProjectCostReport = (
       const directProjectCost = directTotalByProject.get(projectCell.projectId) ?? 0;
       const weight = totalDirectoGlobal === 0 ? 0 : directProjectCost / totalDirectoGlobal;
       projectCell.baseCost = departmentTotal * weight;
-      projectCell.finalCost = projectCell.baseCost;
     }
   }
 
-  const rows: ProjectCostRow[] = internalRows.map((row) => {
-    const totalBase = sumNumbers(row.projects.map((p) => p.baseCost));
-    return {
-      departmentId: row.departmentId,
-      departmentName: row.departmentName,
-      isGeneralCostsDepartment: row.isGeneralCostsDepartment,
-      isSynthetic: row.isSynthetic,
-      projects: row.projects,
-      totalBase,
-      totalFinal: totalBase,
-    };
-  });
+  const rows: ProjectCostRow[] = internalRows.map((row) => ({
+    departmentId: row.departmentId,
+    departmentName: row.departmentName,
+    isGeneralCostsDepartment: row.isGeneralCostsDepartment,
+    isSynthetic: row.isSynthetic,
+    projects: row.projects,
+    total: sumNumbers(row.projects.map((p) => p.baseCost)),
+  }));
 
   const projectTotals: ProjectCostProjectCell[] = projects.map((project) => {
     const baseCost = sumNumbers(
@@ -536,7 +521,6 @@ export const buildProjectCostReport = (
       projectName: project.projectName,
       baseCost,
       allocatedGeneralCost,
-      finalCost: baseCost + allocatedGeneralCost,
       details: internalRows.flatMap(
         (row) =>
           row.projects.find((p) => p.projectId === project.projectId)?.details ?? []
@@ -555,7 +539,9 @@ export const buildProjectCostReport = (
   const totals: ProjectCostTotals = {
     projects: projectTotals,
     totalBase: sumNumbers(projectTotals.map((p) => p.baseCost)),
-    totalFinal: sumNumbers(projectTotals.map((p) => p.finalCost)),
+    totalFinal: sumNumbers(
+      projectTotals.map((p) => p.baseCost + p.allocatedGeneralCost)
+    ),
   };
 
   return {
@@ -579,20 +565,15 @@ const filterProjectCells = (
   projectId ? projects.filter((project) => project.projectId === projectId) : projects;
 
 export const buildProjectCostReportSummary = (
-  totals: ProjectCostTotals,
-  mode: "base" | "final"
-): ProjectCostReportSummary => {
-  const activeProjects = getProjectIdsWithCost(totals.projects).length;
-
-  return {
-    totalPersonnelCost: sumNumbers(totals.projects.map((project) => project.baseCost)),
-    totalGeneralCosts: sumNumbers(
-      totals.projects.map((project) => project.allocatedGeneralCost)
-    ),
-    totalFinalCost: mode === "base" ? totals.totalBase : totals.totalFinal,
-    activeProjects,
-  };
-};
+  totals: ProjectCostTotals
+): ProjectCostReportSummary => ({
+  totalPersonnelCost: sumNumbers(totals.projects.map((project) => project.baseCost)),
+  totalGeneralCosts: sumNumbers(
+    totals.projects.map((project) => project.allocatedGeneralCost)
+  ),
+  totalFinalCost: totals.totalFinal,
+  activeProjects: getProjectIdsWithCost(totals.projects).length,
+});
 
 export const filterProjectCostReport = (
   report: ProjectCostReport,
@@ -604,13 +585,11 @@ export const filterProjectCostReport = (
     : report.rows
   ).map((row) => {
     const projectCells = filterProjectCells(row.projects, filters.projectId).map(cloneProjectCell);
-    const totalBase = sumNumbers(projectCells.map((project) => project.baseCost));
 
     return {
       ...row,
       projects: projectCells,
-      totalBase,
-      totalFinal: totalBase,
+      total: sumNumbers(projectCells.map((project) => project.baseCost)),
     };
   });
 
@@ -624,7 +603,6 @@ export const filterProjectCostReport = (
     for (let index = 0; index < row.projects.length; index++) {
       const projectCell = row.projects[index];
       projectTotals[index].baseCost += row.isGeneralCostsDepartment ? 0 : projectCell.baseCost;
-      projectTotals[index].finalCost += projectCell.baseCost;
       if (row.isGeneralCostsDepartment) {
         projectTotals[index].allocatedGeneralCost += projectCell.baseCost;
       }
@@ -638,7 +616,9 @@ export const filterProjectCostReport = (
   const totals: ProjectCostTotals = {
     projects: projectTotals,
     totalBase: sumNumbers(projectTotals.map((project) => project.baseCost)),
-    totalFinal: sumNumbers(projectTotals.map((project) => project.finalCost)),
+    totalFinal: sumNumbers(
+      projectTotals.map((project) => project.baseCost + project.allocatedGeneralCost)
+    ),
   };
 
   return {
@@ -646,10 +626,7 @@ export const filterProjectCostReport = (
     projects: visibleProjects.map((project) => ({ ...project })),
     rows: visibleRows,
     totals,
-    summaries: {
-      base: buildProjectCostReportSummary(totals, "base"),
-      final: buildProjectCostReportSummary(totals, "final"),
-    },
+    summary: buildProjectCostReportSummary(totals),
   };
 };
 
@@ -671,11 +648,10 @@ export const buildProjectCostChartSeries = (
         projectId,
         projectName,
         points: views.map((view) => {
-          const totals = view.totals.projects.find((project) => project.projectId === projectId);
+          const cell = view.totals.projects.find((project) => project.projectId === projectId);
           return {
             month: view.month,
-            baseCost: totals?.baseCost ?? 0,
-            finalCost: totals?.finalCost ?? 0,
+            cost: (cell?.baseCost ?? 0) + (cell?.allocatedGeneralCost ?? 0),
           };
         }),
       };

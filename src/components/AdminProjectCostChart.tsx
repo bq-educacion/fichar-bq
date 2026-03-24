@@ -1,6 +1,6 @@
-import { ProjectCostChartSeriesResponse } from "@/schemas/projectCosts";
+import type { ProjectCostChartSeriesResponse } from "@/schemas/projectCosts";
 import styled from "@emotion/styled";
-import React, { FC, useMemo } from "react";
+import { type FC, useMemo } from "react";
 
 const COLORS = ["#1f5f8b", "#ff6b35", "#2d936c", "#9b5de5", "#c44536", "#0081a7"];
 
@@ -11,23 +11,17 @@ const currencyFormatter = new Intl.NumberFormat("es-ES", {
 });
 
 const AdminProjectCostChart: FC<{
-  mode: "base" | "final";
   series: ProjectCostChartSeriesResponse[];
-}> = ({ mode, series }) => {
+}> = ({ series }) => {
   const normalizedSeries = useMemo(
-    () =>
-      series.filter((item) =>
-        item.points.some((point) => (mode === "base" ? point.baseCost : point.finalCost) > 0)
-      ),
-    [mode, series]
+    () => series.filter((item) => item.points.some((point) => point.cost > 0)),
+    [series]
   );
 
   const months = normalizedSeries[0]?.points.map((point) => point.month) ?? [];
   const maxValue = Math.max(
     0,
-    ...normalizedSeries.flatMap((item) =>
-      item.points.map((point) => (mode === "base" ? point.baseCost : point.finalCost))
-    )
+    ...normalizedSeries.flatMap((item) => item.points.map((point) => point.cost))
   );
 
   if (normalizedSeries.length === 0 || months.length === 0) {
@@ -83,8 +77,7 @@ const AdminProjectCostChart: FC<{
                 months.length === 1
                   ? paddingLeft + plotWidth / 2
                   : paddingLeft + (plotWidth * pointIndex) / (months.length - 1);
-              const value = mode === "base" ? point.baseCost : point.finalCost;
-              const ratio = maxValue === 0 ? 0 : value / maxValue;
+              const ratio = maxValue === 0 ? 0 : point.cost / maxValue;
               const y = paddingTop + plotHeight * (1 - ratio);
               return `${x},${y}`;
             })
@@ -98,7 +91,7 @@ const AdminProjectCostChart: FC<{
                   months.length === 1
                     ? paddingLeft + plotWidth / 2
                     : paddingLeft + (plotWidth * pointIndex) / (months.length - 1);
-                const value = mode === "base" ? point.baseCost : point.finalCost;
+                const value = point.cost;
                 const ratio = maxValue === 0 ? 0 : value / maxValue;
                 const y = paddingTop + plotHeight * (1 - ratio);
                 return <Point key={`${item.projectId}-${point.month}`} cx={x} cy={y} fill={color} />;
