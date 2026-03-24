@@ -16,7 +16,7 @@ export const canUseSalaryVisibilityToggle = (isSuperadmin: boolean): boolean =>
   isSuperadmin;
 
 export const getSalaryToggleLabel = (showSalaries: boolean): string =>
-  showSalaries ? "Hide salaries" : "Show salaries";
+  showSalaries ? "Ocultar salarios" : "Mostrar salarios";
 
 export const buildAdminUsersRequestPath = ({
   showAll,

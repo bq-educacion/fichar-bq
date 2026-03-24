@@ -1,6 +1,7 @@
 import {
   COMPANY_COST_MULTIPLIER,
   buildProjectCostReport,
+  computeAverageMonthlyAllocations,
   computeMonthlyCompanyCost,
   resolveSalaryForMonthEnd,
 } from "@/lib/projectCostReport";
@@ -30,6 +31,34 @@ describe("project cost report calculations", () => {
 
     expect(COMPANY_COST_MULTIPLIER).toBe(1.3);
     expect(computeMonthlyCompanyCost(grossSalary)).toBeCloseTo(3250, 6);
+  });
+
+  it("computes the average project dedication for the month", () => {
+    const allocations = computeAverageMonthlyAllocations(
+      [
+        {
+          dedications: [
+            { projectId: "project-a", dedication: 60 },
+            { projectId: "project-b", dedication: 40 },
+          ],
+        },
+        {
+          dedications: [
+            { projectId: "project-a", dedication: 20 },
+            { projectId: "project-b", dedication: 80 },
+          ],
+        },
+      ],
+      [
+        { projectId: "project-a", projectName: "Proyecto A" },
+        { projectId: "project-b", projectName: "Proyecto B" },
+      ]
+    );
+
+    expect(allocations).toEqual([
+      { projectId: "project-a", projectName: "Proyecto A", percentage: 40 },
+      { projectId: "project-b", projectName: "Proyecto B", percentage: 60 },
+    ]);
   });
 
   it("allocates user monthly company cost across projects", () => {

@@ -137,27 +137,42 @@ const AdminProjectCostsTable: FC<{
       <StyledTable>
         <thead>
           <tr>
-            <StickyLeftHeader>
-              <SortButton type="button" onClick={() => toggleSort("department")}>
-                Departamento{renderSortIndicator(sort, "department")}
-              </SortButton>
+            <StickyLeftHeader rowSpan={2}>
+              <StaticHeaderLabel>Departamento</StaticHeaderLabel>
             </StickyLeftHeader>
-            <HeaderCell>
+            <SectionHeaderCell colSpan={Math.max(projects.length, 1)} $tone="direct">
+              Coste personal directo
+            </SectionHeaderCell>
+            <SectionHeaderCell $tone="general" $hasLeftDivider>
+              Gastos generales
+            </SectionHeaderCell>
+            <StickyRightSectionHeader $tone="summary">
+              Resumen
+            </StickyRightSectionHeader>
+          </tr>
+          <tr>
+            {projects.length === 0 ? (
+              <HeaderCell>
+                <StaticHeaderLabel>Sin proyectos</StaticHeaderLabel>
+              </HeaderCell>
+            ) : (
+              projects.map((project) => (
+                <HeaderCell key={project.projectId}>
+                  <SortButton
+                    type="button"
+                    onClick={() => toggleSort(`project:${project.projectId}`)}
+                  >
+                    {project.projectName}
+                    {renderSortIndicator(sort, `project:${project.projectId}`)}
+                  </SortButton>
+                </HeaderCell>
+              ))
+            )}
+            <SectionColumnHeader $hasLeftDivider>
               <SortButton type="button" onClick={() => toggleSort("general")}>
                 Gastos generales{renderSortIndicator(sort, "general")}
               </SortButton>
-            </HeaderCell>
-            {projects.map((project) => (
-              <HeaderCell key={project.projectId}>
-                <SortButton
-                  type="button"
-                  onClick={() => toggleSort(`project:${project.projectId}`)}
-                >
-                  {project.projectName}
-                  {renderSortIndicator(sort, `project:${project.projectId}`)}
-                </SortButton>
-              </HeaderCell>
-            ))}
+            </SectionColumnHeader>
             <StickyRightHeader>
               <SortButton type="button" onClick={() => toggleSort("total")}>
                 Total{renderSortIndicator(sort, "total")}
@@ -169,14 +184,6 @@ const AdminProjectCostsTable: FC<{
           {sortedRows.map((row) => (
             <tr key={row.departmentId}>
               <StickyLeftCell>{row.departmentName}</StickyLeftCell>
-              <ValueCell>
-                <ValueButton
-                  type="button"
-                  onClick={() => onSelectCell({ type: "row-general", rowId: row.departmentId })}
-                >
-                  {formatCurrency(getDisplayedGeneralValue(mode, row.generalCosts))}
-                </ValueButton>
-              </ValueCell>
               {projects.map((project) => {
                 const cell =
                   row.projects.find((item) => item.projectId === project.projectId) ?? null;
@@ -203,6 +210,15 @@ const AdminProjectCostsTable: FC<{
                   </ValueCell>
                 );
               })}
+              {projects.length === 0 && <EmptyProjectsCell>Sin coste directo</EmptyProjectsCell>}
+              <GeneralValueCell $hasLeftDivider>
+                <GeneralValueButton
+                  type="button"
+                  onClick={() => onSelectCell({ type: "row-general", rowId: row.departmentId })}
+                >
+                  {formatCurrency(getDisplayedGeneralValue(mode, row.generalCosts))}
+                </GeneralValueButton>
+              </GeneralValueCell>
               <StickyRightCell>
                 <ValueButton
                   type="button"
@@ -217,36 +233,45 @@ const AdminProjectCostsTable: FC<{
         <tfoot>
           <tr>
             <StickyLeftFooter>Total</StickyLeftFooter>
-            <FooterCell>
-              <ValueButton type="button" onClick={() => onSelectCell({ type: "totals-general" })}>
-                {formatCurrency(getDisplayedGeneralValue(mode, totals.generalCosts))}
-              </ValueButton>
-            </FooterCell>
-            {projects.map((project) => {
-              const totalProject =
-                totals.projects.find((item) => item.projectId === project.projectId) ?? null;
+            {projects.length === 0 ? (
+              <FooterCell>
+                <MutedFooterText>Sin proyectos</MutedFooterText>
+              </FooterCell>
+            ) : (
+              projects.map((project) => {
+                const totalProject =
+                  totals.projects.find((item) => item.projectId === project.projectId) ?? null;
 
-              return (
-                <FooterCell key={project.projectId}>
-                  <ValueButton
-                    type="button"
-                    onClick={() =>
-                      onSelectCell({
-                        type: "totals-project",
-                        projectId: project.projectId,
-                      })
-                    }
-                  >
-                    {formatCurrency(
-                      getDisplayedCellValue(
-                        mode,
-                        totalProject ?? { baseCost: 0, finalCost: 0 }
-                      )
-                    )}
-                  </ValueButton>
-                </FooterCell>
-              );
-            })}
+                return (
+                  <FooterCell key={project.projectId}>
+                    <ValueButton
+                      type="button"
+                      onClick={() =>
+                        onSelectCell({
+                          type: "totals-project",
+                          projectId: project.projectId,
+                        })
+                      }
+                    >
+                      {formatCurrency(
+                        getDisplayedCellValue(
+                          mode,
+                          totalProject ?? { baseCost: 0, finalCost: 0 }
+                        )
+                      )}
+                    </ValueButton>
+                  </FooterCell>
+                );
+              })
+            )}
+            <GeneralFooterCell $hasLeftDivider>
+              <GeneralValueButton
+                type="button"
+                onClick={() => onSelectCell({ type: "totals-general" })}
+              >
+                {formatCurrency(getDisplayedGeneralValue(mode, totals.generalCosts))}
+              </GeneralValueButton>
+            </GeneralFooterCell>
             <StickyRightFooter>
               <ValueButton type="button" onClick={() => onSelectCell({ type: "totals-total" })}>
                 {formatCurrency(getDisplayedTotalValue(mode, totals))}
@@ -293,7 +318,7 @@ const StyledTable = styled.table`
 
 const BaseHeaderCell = styled.th`
   position: sticky;
-  top: 0;
+  top: 38px;
   z-index: 3;
   background: #f0f0f0;
   text-align: left;
@@ -306,11 +331,51 @@ const HeaderCell = styled(BaseHeaderCell)``;
 const StickyLeftHeader = styled(BaseHeaderCell)`
   left: 0;
   z-index: 5;
+  top: 0;
+  min-width: 220px;
 `;
 
 const StickyRightHeader = styled(BaseHeaderCell)`
   right: 0;
   z-index: 5;
+`;
+
+const SectionHeaderCell = styled.th<{ $tone: "direct" | "general" | "summary"; $hasLeftDivider?: boolean }>`
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  height: 38px;
+  padding: 0 12px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #4e4f53;
+  background: ${({ $tone }) =>
+    $tone === "direct" ? "#eaf2fb" : $tone === "general" ? "#fff0d9" : "#ececec"};
+  border-left: ${({ $hasLeftDivider }) => ($hasLeftDivider ? "3px solid #c8a564" : "none")};
+`;
+
+const StickyRightSectionHeader = styled(SectionHeaderCell)`
+  position: sticky;
+  right: 0;
+  z-index: 6;
+`;
+
+const SectionColumnHeader = styled(HeaderCell)<{ $hasLeftDivider?: boolean }>`
+  border-left: ${({ $hasLeftDivider }) => ($hasLeftDivider ? "3px solid #c8a564" : "none")};
+  background: #fff7ea;
+`;
+
+const StaticHeaderLabel = styled.div`
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #4e4f53;
 `;
 
 const SortButton = styled.button`
@@ -334,6 +399,11 @@ const BaseCell = styled.td`
 
 const ValueCell = styled(BaseCell)``;
 
+const GeneralValueCell = styled(BaseCell)<{ $hasLeftDivider?: boolean }>`
+  border-left: ${({ $hasLeftDivider }) => ($hasLeftDivider ? "3px solid #c8a564" : "none")};
+  background: #fffaf1;
+`;
+
 const StickyLeftCell = styled.th`
   position: sticky;
   left: 0;
@@ -356,6 +426,11 @@ const StickyRightCell = styled(BaseCell)`
 const FooterCell = styled.td`
   padding: 0;
   background: #f4f4f4;
+`;
+
+const GeneralFooterCell = styled(FooterCell)<{ $hasLeftDivider?: boolean }>`
+  border-left: ${({ $hasLeftDivider }) => ($hasLeftDivider ? "3px solid #c8a564" : "none")};
+  background: #f7f0e5;
 `;
 
 const StickyLeftFooter = styled.th`
@@ -391,6 +466,33 @@ const ValueButton = styled.button`
   &:hover {
     background: rgba(138, 77, 146, 0.06);
   }
+`;
+
+const GeneralValueButton = styled(ValueButton)`
+  background: #fffaf1;
+
+  &:hover {
+    background: rgba(200, 165, 100, 0.14);
+  }
+`;
+
+const EmptyProjectsCell = styled.td`
+  min-width: 160px;
+  padding: 12px;
+  text-align: center;
+  color: #8b8c90;
+  font-size: 13px;
+  background: #fcfdff;
+`;
+
+const MutedFooterText = styled.div`
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  color: #8b8c90;
+  font-size: 13px;
 `;
 
 export default AdminProjectCostsTable;
