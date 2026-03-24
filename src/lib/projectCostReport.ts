@@ -13,6 +13,13 @@ export type ProjectCostAllocationInput = {
   percentage: number;
 };
 
+export type ProjectCostMonthlyDedicationRecord = {
+  dedications: Array<{
+    projectId: string;
+    dedication: number;
+  }>;
+};
+
 export type ProjectCostDepartmentInput = {
   departmentId: string;
   departmentName: string;
@@ -226,6 +233,43 @@ export const resolveSalaryForMonthEnd = (
 export const computeMonthlyCompanyCost = (grossSalary: number): number =>
   (grossSalary * COMPANY_COST_MULTIPLIER) / 12;
 
+export const computeAverageMonthlyAllocations = (
+  records: ProjectCostMonthlyDedicationRecord[],
+  activeProjects: ProjectCostProjectInput[]
+): ProjectCostAllocationInput[] => {
+  const activeProjectNameById = new Map(
+    activeProjects.map((project) => [project.projectId, project.projectName] as const)
+  );
+  const validRecords = records.filter((record) => record.dedications.length > 0);
+
+  if (validRecords.length === 0) {
+    return [];
+  }
+
+  const totalByProject = new Map<string, number>();
+
+  for (const record of validRecords) {
+    for (const dedication of record.dedications) {
+      if (!activeProjectNameById.has(dedication.projectId)) {
+        continue;
+      }
+
+      totalByProject.set(
+        dedication.projectId,
+        (totalByProject.get(dedication.projectId) ?? 0) + dedication.dedication
+      );
+    }
+  }
+
+  return activeProjects
+    .map((project) => ({
+      projectId: project.projectId,
+      projectName: project.projectName,
+      percentage: (totalByProject.get(project.projectId) ?? 0) / validRecords.length,
+    }))
+    .filter((allocation) => allocation.percentage > 0);
+};
+
 const buildRowMap = (
   departments: ProjectCostDepartmentInput[],
   projects: ProjectCostProjectInput[]
@@ -392,7 +436,7 @@ export const buildProjectCostReport = (
           assignedMonthlyCost,
           warning:
             user.allocationSourceDate === null
-              ? "Sin snapshot de asignación para el cierre del mes"
+              ? "Sin dedicaciones registradas en el mes"
               : salaryWarning,
         },
         salaryWarning
@@ -419,7 +463,7 @@ export const buildProjectCostReport = (
           assignedMonthlyCost: monthlyCompanyCost * (unassignedPercentage / 100),
           warning:
             allocationTotal === 0
-              ? "Sin asignaciones a proyecto; el coste queda en gastos generales"
+              ? "Sin dedicaciones registradas en el mes; el coste queda en gastos generales"
               : salaryWarning,
         },
         salaryWarning

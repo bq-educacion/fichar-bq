@@ -9,10 +9,12 @@ import connectMongo from "@/lib/connectMongo";
 import {
   buildProjectCostChartSeries,
   buildProjectCostReport,
+  computeAverageMonthlyAllocations,
   filterProjectCostReport,
   MONTHLY_GENERAL_COST_ROW_ID,
   NO_DEPARTMENT_ROW_ID,
   ProjectCostAllocationInput,
+  ProjectCostMonthlyDedicationRecord,
   ProjectCostProjectCell,
   ProjectCostProjectInput,
   ProjectCostReport,
@@ -33,7 +35,7 @@ const DEVELOPER_NOTE = [
   "Coste empresa mensual = (salario bruto anual x 1.30) / 12.",
   "El multiplicador 1.30 representa el coste empresarial fijo usado en el informe.",
   "El salario aplicado es el vigente al cierre del mes: la última entrada con fecha <= fin de mes.",
-  "La asignación a proyecto se resuelve con el último snapshot de dedicación disponible hasta el cierre del mes; si solo hay un proyecto activo, se asume 100%.",
+  "La asignación mensual a proyecto se calcula como la media de las dedicaciones registradas dentro del mes; si solo hay un proyecto activo, se asume 100%.",
   "Los gastos generales se reparten por proyecto según el peso del coste personal directo de cada proyecto.",
 ];
 
@@ -68,15 +70,6 @@ type DepartmentDoc = {
   _id: { toString(): string };
   name?: string;
   costesGenerales?: boolean;
-};
-
-type LatestDedicationSnapshot = {
-  userId: string;
-  date: Date;
-  dedications: Array<{
-    projectId: string;
-    dedication: number;
-  }>;
 };
 
 const buildMonthBounds = (monthKey: string): MonthBounds => {
@@ -116,49 +109,36 @@ const toDateOnlyString = (value: Date | null): string | null =>
 const getDisplayName = (user: Pick<UserDoc, "name" | "email">): string =>
   user.name?.trim() || user.email;
 
-const getLatestDedicationsByUser = async (
+const getMonthlyDedicationsByUser = async (
   userIds: string[],
-  monthEnd: Date
-): Promise<Map<string, LatestDedicationSnapshot>> => {
+  month: MonthBounds
+): Promise<Map<string, ProjectCostMonthlyDedicationRecord[]>> => {
   if (userIds.length === 0) {
     return new Map();
   }
 
-  const snapshotsRaw = await ProjectDedicationModel.aggregate([
-    {
-      $match: {
-        userId: {
-          $in: userIds.map((userId) => new mongoose.Types.ObjectId(userId)),
-        },
-        date: { $lte: monthEnd },
-      },
+  const docs = await ProjectDedicationModel.find({
+    userId: {
+      $in: userIds.map((userId) => new mongoose.Types.ObjectId(userId)),
     },
-    {
-      $sort: {
-        userId: 1,
-        date: -1,
-      },
+    date: {
+      $gte: month.start,
+      $lte: month.end,
     },
-    {
-      $group: {
-        _id: "$userId",
-        date: { $first: "$date" },
-        dedications: { $first: "$dedications" },
-      },
-    },
-  ]);
+  })
+    .select("userId dedications")
+    .exec();
 
-  const snapshots = new Map<string, LatestDedicationSnapshot>();
+  const recordsByUser = new Map<string, ProjectCostMonthlyDedicationRecord[]>();
 
-  for (const item of snapshotsRaw) {
-    const userId = item?._id?.toString?.();
-    const date = item?.date instanceof Date ? item.date : new Date(item?.date);
-    if (!userId || Number.isNaN(date.getTime())) {
+  for (const doc of docs) {
+    const userId = doc.userId?.toString?.();
+    if (!userId) {
       continue;
     }
 
-    const dedications = Array.isArray(item?.dedications)
-      ? (item.dedications as Array<{ projectId?: { toString(): string }; dedication?: unknown }>)
+    const dedications = Array.isArray(doc.dedications)
+      ? (doc.dedications as Array<{ projectId?: { toString(): string }; dedication?: unknown }>)
           .map((dedication) => ({
             projectId: dedication?.projectId?.toString?.() ?? "",
             dedication: Number(dedication?.dedication),
@@ -169,14 +149,14 @@ const getLatestDedicationsByUser = async (
           )
       : [];
 
-    snapshots.set(userId, {
-      userId,
-      date,
+    const current = recordsByUser.get(userId) ?? [];
+    current.push({
       dedications,
     });
+    recordsByUser.set(userId, current);
   }
 
-  return snapshots;
+  return recordsByUser;
 };
 
 const serializeProjectCell = (cell: ProjectCostProjectCell) => ({
@@ -321,7 +301,7 @@ const buildReportForMonth = async ({
     .sort((left, right) => left.projectName.localeCompare(right.projectName, "es"));
 
   const userIds = users.map((user) => user._id.toString());
-  const latestDedications = await getLatestDedicationsByUser(userIds, month.end);
+  const monthlyDedicationsByUser = await getMonthlyDedicationsByUser(userIds, month);
 
   const activeProjectsByUser = new Map<string, ProjectCostProjectInput[]>();
   for (const project of activeProjects) {
@@ -354,21 +334,13 @@ const buildReportForMonth = async ({
           isGeneralCostsDepartment: false,
         } as const);
       const assignedProjects = activeProjectsByUser.get(user._id.toString()) ?? [];
-      const snapshot = latestDedications.get(user._id.toString()) ?? null;
-      const projectNameById = new Map(
-        assignedProjects.map((project) => [project.projectId, project.projectName] as const)
+      const monthlyDedications = monthlyDedicationsByUser.get(user._id.toString()) ?? [];
+      const averagedAllocations = computeAverageMonthlyAllocations(
+        monthlyDedications,
+        assignedProjects
       );
-      const allocations: ProjectCostAllocationInput[] =
-        snapshot?.dedications
-          .filter((dedication) => projectNameById.has(dedication.projectId))
-          .map((dedication) => ({
-            projectId: dedication.projectId,
-            projectName: projectNameById.get(dedication.projectId) ?? dedication.projectId,
-            percentage: dedication.dedication,
-          })) ?? [];
-
-      const resolvedAllocations =
-        allocations.length === 0 && assignedProjects.length === 1
+      const resolvedAllocations: ProjectCostAllocationInput[] =
+        averagedAllocations.length === 0 && assignedProjects.length === 1
           ? [
               {
                 projectId: assignedProjects[0].projectId,
@@ -376,7 +348,7 @@ const buildReportForMonth = async ({
                 percentage: 100,
               },
             ]
-          : allocations;
+          : averagedAllocations;
 
       return {
         userId: user._id.toString(),
@@ -390,9 +362,7 @@ const buildReportForMonth = async ({
         })),
         allocations: resolvedAllocations,
         allocationSourceDate:
-          allocations.length > 0
-            ? snapshot?.date ?? null
-            : assignedProjects.length === 1
+          resolvedAllocations.length > 0 || assignedProjects.length === 1
               ? month.end
               : null,
       };

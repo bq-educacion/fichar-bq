@@ -26,7 +26,7 @@ import styled from "@emotion/styled";
 import { GetServerSideProps, NextPage } from "next";
 import { getServerSession } from "next-auth";
 import { useRouter } from "next/router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const ADMIN_PANEL_MAX_WIDTH = "1320px";
 
@@ -111,15 +111,18 @@ const AdminUsersPage: NextPage<AdminUsersPageProps> = ({ isSuperadmin }) => {
   const usersByIdRef = useRef<Record<string, AdminManagedUser>>({});
   const columnCount = isSuperadmin ? 8 : 6;
 
-  const stripSalaryFields = (items: AdminManagedUsersResponse): AdminManagedUsersResponse =>
-    items.map((user) => {
-      if (user.salary === undefined) {
-        return user;
-      }
+  const stripSalaryFields = useCallback(
+    (items: AdminManagedUsersResponse): AdminManagedUsersResponse =>
+      items.map((user) => {
+        if (user.salary === undefined) {
+          return user;
+        }
 
-      const { salary, ...rest } = user;
-      return rest;
-    });
+        const { salary, ...rest } = user;
+        return rest;
+      }),
+    []
+  );
 
   const managerOptions = useMemo(
     () => users.filter((user) => user.active && user.isManager),
@@ -155,13 +158,17 @@ const AdminUsersPage: NextPage<AdminUsersPageProps> = ({ isSuperadmin }) => {
     );
   };
 
-  const clearSalaryState = () => {
-    setShowSalaries(false);
+  const closeSalaryEditor = useCallback(() => {
     setSalaryEditorUserId(null);
     setSalaryDraft("");
     setSalaryInitDateDraft("");
+  }, []);
+
+  const clearSalaryState = useCallback(() => {
+    setShowSalaries(false);
+    closeSalaryEditor();
     setUsers((prev) => stripSalaryFields(prev));
-  };
+  }, [closeSalaryEditor, stripSalaryFields]);
 
   const persistUser = (nextUser: AdminManagedUser) => {
     pendingSaveById.current[nextUser._id] = nextUser;
@@ -327,6 +334,11 @@ const AdminUsersPage: NextPage<AdminUsersPageProps> = ({ isSuperadmin }) => {
   };
 
   const openSalaryEditor = async (userId: string) => {
+    if (salaryEditorUserId === userId) {
+      closeSalaryEditor();
+      return;
+    }
+
     const currentUser = usersByIdRef.current[userId];
     if (!currentUser) {
       return;
@@ -343,10 +355,13 @@ const AdminUsersPage: NextPage<AdminUsersPageProps> = ({ isSuperadmin }) => {
     setSalaryEditorUserId(userId);
   };
 
-  const closeSalaryEditor = () => {
-    setSalaryEditorUserId(null);
-    setSalaryDraft("");
-    setSalaryInitDateDraft("");
+  const toggleSalaryVisibility = () => {
+    if (showSalaries) {
+      closeSalaryEditor();
+      setUsers((prev) => stripSalaryFields(prev));
+    }
+
+    setShowSalaries((prev) => !prev);
   };
 
   const saveSalary = async (userId: string) => {
@@ -488,7 +503,7 @@ const AdminUsersPage: NextPage<AdminUsersPageProps> = ({ isSuperadmin }) => {
     };
 
     fetchUsers();
-  }, [isSuperadmin, router, showAll, showSalaries]);
+  }, [clearSalaryState, isSuperadmin, router, showAll, showSalaries]);
 
   const onUserChange = (
     userId: string,
@@ -535,9 +550,25 @@ const AdminUsersPage: NextPage<AdminUsersPageProps> = ({ isSuperadmin }) => {
             </IntroText>
             <ActionsRow>
               {canUseSalaryVisibilityToggle(isSuperadmin) && (
-                <ToggleAllButton onClick={() => setShowSalaries((prev) => !prev)}>
-                  {getSalaryToggleLabel(showSalaries)}
-                </ToggleAllButton>
+                <SalaryVisibilityControl>
+                  <ToggleGroupLabel>Salarios</ToggleGroupLabel>
+                  <SalaryVisibilityToggle
+                    type="button"
+                    role="switch"
+                    aria-checked={showSalaries}
+                    aria-label={getSalaryToggleLabel(showSalaries)}
+                    title={getSalaryToggleLabel(showSalaries)}
+                    $checked={showSalaries}
+                    onClick={toggleSalaryVisibility}
+                  >
+                    <SalaryVisibilityOption $active={!showSalaries}>
+                      Ocultos
+                    </SalaryVisibilityOption>
+                    <SalaryVisibilityOption $active={showSalaries}>
+                      Visibles
+                    </SalaryVisibilityOption>
+                  </SalaryVisibilityToggle>
+                </SalaryVisibilityControl>
               )}
               <ToggleAllButton onClick={() => setShowAll((prev) => !prev)}>
                 {showAll ? "Mostrar solo activos" : "Mostrar todos"}
@@ -583,8 +614,10 @@ const AdminUsersPage: NextPage<AdminUsersPageProps> = ({ isSuperadmin }) => {
                         )
                     );
                     const isSaving = Boolean(savingById[user._id]);
+                    const isSalaryLoading = Boolean(salaryLoadingById[user._id]);
+                    const isSalarySaving = Boolean(salarySavingById[user._id]);
                     const isSalaryBusy = Boolean(
-                      salarySavingById[user._id] || salaryLoadingById[user._id]
+                      isSalarySaving || isSalaryLoading
                     );
                     const rowError = rowErrorById[user._id];
 
@@ -719,22 +752,26 @@ const AdminUsersPage: NextPage<AdminUsersPageProps> = ({ isSuperadmin }) => {
                           {isSuperadmin && (
                             <DataCell>
                               <SalaryCell>
-                                {showSalaries && (
-                                  <SalaryValue>
-                                    {formatSalaryForDisplay(user.salary)}
-                                  </SalaryValue>
+                                {showSalaries ? (
+                                  <SalaryValueButton
+                                    type="button"
+                                    disabled={isSaving || isSalaryBusy}
+                                    onClick={() => void openSalaryEditor(user._id)}
+                                    title={
+                                      user.salary === null
+                                        ? "Definir salario"
+                                        : "Editar salario"
+                                    }
+                                  >
+                                    {isSalaryLoading
+                                      ? "Cargando..."
+                                      : isSalarySaving
+                                      ? "Guardando..."
+                                      : formatSalaryForDisplay(user.salary)}
+                                  </SalaryValueButton>
+                                ) : (
+                                  <SalaryHiddenValue>Oculto</SalaryHiddenValue>
                                 )}
-                                <SalaryButton
-                                  type="button"
-                                  disabled={isSaving || isSalaryBusy}
-                                  onClick={() => void openSalaryEditor(user._id)}
-                                >
-                                  {user.salary === null
-                                    ? "Definir salario"
-                                    : user.salary === undefined
-                                    ? "Gestionar salario"
-                                    : "Editar salario"}
-                                </SalaryButton>
                               </SalaryCell>
                             </DataCell>
                           )}
@@ -840,6 +877,63 @@ const ActionsRow = styled.div`
   flex-wrap: wrap;
 `;
 
+const SalaryVisibilityControl = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+`;
+
+const ToggleGroupLabel = styled.span`
+  font-size: 13px;
+  font-weight: 600;
+  color: #4e4f53;
+`;
+
+const SalaryVisibilityToggle = styled.button<{ $checked: boolean }>`
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  width: 176px;
+  height: 38px;
+  padding: 4px;
+  border: 1px solid #cbd3df;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffffff 0%, #f1f4f8 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 4px;
+    left: ${({ $checked }) => ($checked ? "calc(50% + 2px)" : "4px")};
+    width: calc(50% - 6px);
+    height: calc(100% - 8px);
+    border-radius: 999px;
+    background: linear-gradient(180deg, #4e4f53 0%, #3d3f43 100%);
+    box-shadow: 0 8px 18px rgba(78, 79, 83, 0.2);
+    transition: left 0.2s ease;
+  }
+
+  &:focus-visible {
+    outline: none;
+    border-color: #7a8ca4;
+    box-shadow: 0 0 0 3px rgba(122, 140, 164, 0.22);
+  }
+`;
+
+const SalaryVisibilityOption = styled.span<{ $active: boolean }>`
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: ${({ $active }) => ($active ? "#ffffff" : "#6d7682")};
+  transition: color 0.2s ease;
+`;
+
 const ToggleAllButton = styled.button`
   border: 1px solid #c9c9c9;
   border-radius: 4px;
@@ -942,15 +1036,40 @@ const Toggle = styled.input`
 
 const SalaryCell = styled.div`
   display: flex;
-  flex-direction: column;
-  gap: 8px;
   align-items: flex-start;
 `;
 
-const SalaryValue = styled.div`
+const SalaryValueButton = styled.button`
+  border: 0;
+  padding: 0;
+  background: transparent;
   font-size: 13px;
   font-weight: 600;
-  color: #4e4f53;
+  color: #2d5a7a;
+  cursor: pointer;
+  border-bottom: 1px dashed transparent;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    opacity 0.2s ease;
+
+  &:hover:not(:disabled),
+  &:focus-visible:not(:disabled) {
+    color: #1f4560;
+    border-color: currentColor;
+    outline: none;
+  }
+
+  &:disabled {
+    color: #8b8c90;
+    cursor: wait;
+    opacity: 0.85;
+  }
+`;
+
+const SalaryHiddenValue = styled.div`
+  font-size: 13px;
+  color: #8b8c90;
 `;
 
 const SalaryEditorForm = styled.form`

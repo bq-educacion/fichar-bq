@@ -41,8 +41,8 @@ describe("admin users ui helpers", () => {
   });
 
   it("switches the salary toggle label between show and hide", () => {
-    expect(getSalaryToggleLabel(false)).toBe("Show salaries");
-    expect(getSalaryToggleLabel(true)).toBe("Hide salaries");
+    expect(getSalaryToggleLabel(false)).toBe("Mostrar salarios");
+    expect(getSalaryToggleLabel(true)).toBe("Ocultar salarios");
   });
 
   it("parses decimal salary input correctly for the editor", () => {
