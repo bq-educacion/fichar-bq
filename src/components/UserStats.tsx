@@ -1,11 +1,13 @@
 import { USER_STATUS, UserStats } from "@/types";
 import React, { FC, useEffect, useState } from "react";
+import { createBrowserTimeSearchParams } from "@/lib/browserTime";
 import UserStatsViewer from "./UserStatsViewer";
 
 const UserStats: FC<{ status: USER_STATUS }> = ({ status }) => {
   const [stats, setStats] = useState<UserStats | undefined>(undefined);
   const fetchUserStats = async () => {
-    const response = await fetch(`/api/myUserStats`);
+    const query = createBrowserTimeSearchParams();
+    const response = await fetch(`/api/myUserStats?${query.toString()}`);
     const data = await response.json();
     setStats(data);
   };

@@ -78,7 +78,7 @@ const processLogs = (logs: Log[], includeMissingWeekdays: boolean): ProcessedDay
     }
   }
 
-  return [...logsByDay.entries()]
+  return Array.from(logsByDay.entries())
     .map(([inputDate, dayLogs]) => {
       const date = fromInputDateValue(inputDate);
       return {

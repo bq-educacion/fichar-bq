@@ -11,6 +11,10 @@ import IconConfussion from "@/assets/icons/icon-confussion.svg";
 import { useRouter } from "next/router";
 import TimedButton from "../ui/TimedButton";
 import getMobileDetect from "@/lib/getmobileDetect";
+import {
+  createBrowserTimeSearchParams,
+  getBrowserTimeInput,
+} from "@/lib/browserTime";
 import ManualLogsModal, { ManualLogsData } from "./ManualLogsModal";
 import ProjectDedicationsModal from "./ProjectDedicationsModal";
 
@@ -46,7 +50,12 @@ const ThreeBoxAction: FC<{
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ type, isMobile: device.isMobile, projectDedications }),
+      body: JSON.stringify({
+        type,
+        isMobile: device.isMobile,
+        projectDedications,
+        ...getBrowserTimeInput(),
+      }),
     });
   };
 
@@ -65,7 +74,10 @@ const ThreeBoxAction: FC<{
 
   const onOutAction = async () => {
     try {
-      const optionsRes = await fetch("/api/myProjectDedications");
+      const query = createBrowserTimeSearchParams();
+      const optionsRes = await fetch(
+        `/api/myProjectDedications?${query.toString()}`
+      );
       if (optionsRes.status === 401) {
         router.push("/login");
         return;
@@ -141,6 +153,7 @@ const ThreeBoxAction: FC<{
       const res = await fetch("/api/removeLastLog", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(getBrowserTimeInput()),
       });
       if (res.status === 401) {
         router.push("/login");

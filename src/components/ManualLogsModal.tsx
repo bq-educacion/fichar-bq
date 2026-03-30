@@ -4,6 +4,10 @@ import {
   validateManualLogsChronology,
 } from "@/lib/utils";
 import {
+  createBrowserTimeSearchParams,
+  getBrowserTimeInput,
+} from "@/lib/browserTime";
+import {
   myProjectDedicationsResponseSchema,
   ProjectDedicationInput,
   type ManualLogsBody,
@@ -53,7 +57,6 @@ const ManualLogsModal: FC<{
   preserveProjectDedications = false,
 }) => {
   const getCurrentBrowserHour = () => dateToTimeInputValue(new Date());
-  const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const browserTodayDate = dateToInputDateValue(new Date());
   const effectiveTargetDate = targetDate ?? browserTodayDate;
   const isTargetToday = effectiveTargetDate === browserTodayDate;
@@ -126,7 +129,9 @@ const ManualLogsModal: FC<{
       setDedicationsLoading(true);
       setDedicationsError("");
       try {
-        const query = new URLSearchParams({ targetDate: effectiveTargetDate });
+        const query = createBrowserTimeSearchParams({
+          targetDate: effectiveTargetDate,
+        });
         const res = await fetch(`/api/myProjectDedications?${query.toString()}`);
         if (!res.ok) {
           throw new Error(
@@ -207,8 +212,7 @@ const ManualLogsModal: FC<{
       endHour,
       pauses: pauses.map(({ start, end }) => ({ start, end })),
       projectDedications: showDedicationsState ? projectDedications : [],
-      clientTimezoneOffsetMinutes: new Date().getTimezoneOffset(),
-      clientTimeZone: browserTimeZone,
+      ...getBrowserTimeInput(),
       targetDate: effectiveTargetDate,
       preserveProjectDedications,
     });

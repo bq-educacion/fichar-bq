@@ -125,6 +125,11 @@ export const parseYyyyMmDdToLocalDate = (value: string): LocalDate => {
   return { year, month, day };
 };
 
+export const localDateToYyyyMmDd = (date: LocalDate) =>
+  `${date.year.toString().padStart(4, "0")}-${date.month
+    .toString()
+    .padStart(2, "0")}-${date.day.toString().padStart(2, "0")}`;
+
 export const addDays = (date: LocalDate, days: number): LocalDate => {
   const shifted = new Date(Date.UTC(date.year, date.month - 1, date.day + days));
   return {
@@ -166,6 +171,27 @@ export const resolveClientTimeContext = (
       day: shiftedNow.getUTCDate(),
     },
     nowMinutes: shiftedNow.getUTCHours() * 60 + shiftedNow.getUTCMinutes(),
+  };
+};
+
+export const getLocalDateForUtcDate = (
+  context: ClientTimeContext,
+  utcDate: Date
+): LocalDate => {
+  if (context.mode === "timezone") {
+    const parts = getDateTimePartsInTimeZone(utcDate, context.timeZone);
+    return {
+      year: parts.year,
+      month: parts.month,
+      day: parts.day,
+    };
+  }
+
+  const shiftedDate = new Date(utcDate.getTime() - context.offsetMinutes * 60 * 1000);
+  return {
+    year: shiftedDate.getUTCFullYear(),
+    month: shiftedDate.getUTCMonth() + 1,
+    day: shiftedDate.getUTCDate(),
   };
 };
 

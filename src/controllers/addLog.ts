@@ -17,6 +17,8 @@ import updateUserStatus from "./updateUserStatus";
 import {
   type ClientTimeInput,
   getUtcRangeForLocalDate,
+  getLocalDateForUtcDate,
+  localDateToYyyyMmDd,
   resolveClientTimeContext,
 } from "@/lib/clientTime";
 
@@ -30,12 +32,6 @@ const addLogInputSchema = z
     clientTimeZone: ianaTimezoneSchema.optional(),
   })
   .strict();
-
-const dateToInputDateValue = (date: Date) =>
-  `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}-${date
-    .getDate()
-    .toString()
-    .padStart(2, "0")}`;
 
 export class PreviousDayNotClosedError extends Error {
   public readonly targetDate: string;
@@ -96,7 +92,9 @@ const addLog = async (
 
   if (isLastLogFromPreviousDay) {
     if (lastLog.type !== LOG_TYPE.out && input.type === LOG_TYPE.in) {
-      throw new PreviousDayNotClosedError(dateToInputDateValue(lastLog.date));
+      throw new PreviousDayNotClosedError(
+        localDateToYyyyMmDd(getLocalDateForUtcDate(context, lastLog.date))
+      );
     }
 
     if (input.type !== LOG_TYPE.in) {

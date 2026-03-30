@@ -1,6 +1,8 @@
 import {
+  getLocalDateForUtcDate,
   getUtcRangeForLocalDate,
   localDateTimeToUtc,
+  localDateToYyyyMmDd,
   resolveClientTimeContext,
 } from "@/lib/clientTime";
 
@@ -45,5 +47,18 @@ describe("clientTime", () => {
 
     expect(springMs).toBe(23 * 60 * 60 * 1000);
     expect(fallMs).toBe(25 * 60 * 60 * 1000);
+  });
+
+  it("formats stored utc timestamps using the client local date", () => {
+    const context = resolveClientTimeContext({
+      clientTimeZone: "America/New_York",
+    });
+    expect(context.mode).toBe("timezone");
+
+    const storedUtcDate = new Date("2026-03-30T03:30:00.000Z");
+
+    expect(localDateToYyyyMmDd(getLocalDateForUtcDate(context, storedUtcDate))).toBe(
+      "2026-03-29"
+    );
   });
 });

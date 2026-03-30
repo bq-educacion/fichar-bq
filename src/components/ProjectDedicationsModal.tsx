@@ -2,6 +2,7 @@ import {
   myProjectDedicationsResponseSchema,
   ProjectDedicationInput,
 } from "@/schemas/api";
+import { createBrowserTimeSearchParams } from "@/lib/browserTime";
 import styled from "@emotion/styled";
 import React, { FC, useEffect, useMemo, useState } from "react";
 import Modal from "react-modal";
@@ -32,7 +33,8 @@ const ProjectDedicationsModal: FC<{
       setError("");
 
       try {
-        const res = await fetch("/api/myProjectDedications");
+        const query = createBrowserTimeSearchParams();
+        const res = await fetch(`/api/myProjectDedications?${query.toString()}`);
         if (!res.ok) {
           throw new Error((await res.text()) || "No se pudieron cargar los proyectos");
         }

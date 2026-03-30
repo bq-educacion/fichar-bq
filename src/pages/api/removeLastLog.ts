@@ -1,7 +1,10 @@
 import removeLastLogOfToday from "@/controllers/removeLastLogOfToday";
 import { formatZodError, isZodError, parseWithSchema, toPlainObject } from "@/lib/validation";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
-import { removeLastLogResponseSchema } from "@/schemas/api";
+import {
+  removeLastLogBodySchema,
+  removeLastLogResponseSchema,
+} from "@/schemas/api";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 
@@ -18,7 +21,11 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return;
     }
 
-    const deletedLog = await removeLastLogOfToday(session.user.email);
+    const body = parseWithSchema(removeLastLogBodySchema, req.body ?? {});
+    const deletedLog = await removeLastLogOfToday(session.user.email, {
+      clientTimezoneOffsetMinutes: body.clientTimezoneOffsetMinutes,
+      clientTimeZone: body.clientTimeZone,
+    });
     const payload = parseWithSchema(
       removeLastLogResponseSchema,
       toPlainObject(deletedLog)

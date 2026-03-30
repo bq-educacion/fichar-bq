@@ -128,6 +128,13 @@ export const myUserStatsQuerySchema = z
   })
   .strict();
 
+export const removeLastLogBodySchema = z
+  .object({
+    clientTimezoneOffsetMinutes: timezoneOffsetMinutesSchema.optional(),
+    clientTimeZone: ianaTimezoneSchema.optional(),
+  })
+  .strict();
+
 export const removeLastLogResponseSchema = logSchema;
 
 export const myProjectDedicationProjectSchema = z
@@ -378,6 +385,7 @@ export type WorkerLogsBody = z.infer<typeof workerLogsBodySchema>;
 export type MyProjectDedicationsQuery = z.infer<
   typeof myProjectDedicationsQuerySchema
 >;
+export type RemoveLastLogBody = z.infer<typeof removeLastLogBodySchema>;
 export type WorkerStatsBody = z.infer<typeof workerStatsBodySchema>;
 export type UploadUrlQuery = z.infer<typeof uploadUrlQuerySchema>;
 export type AuthGoogleProfile = z.infer<typeof authGoogleProfileSchema>;
