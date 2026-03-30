@@ -5,29 +5,37 @@ import { parseWithSchema, toPlainObject } from "@/lib/validation";
 import { logsStatsSchema, userSchema } from "@/schemas/db";
 import { LogsStats, User } from "@/types";
 import { z } from "zod";
+import {
+  type ClientTimeInput,
+  addDays,
+  getUtcRangeForLocalDate,
+  resolveClientTimeContext,
+} from "@/lib/clientTime";
 
 const managerEmailSchema = z.string().email();
 const workerWithStatsSchema = userSchema.extend({ stats: logsStatsSchema }).strict();
 const MANAGER_STATS_DAYS_WINDOW = 30;
 
 const getMyWorkers = async (
-  manager: string
+  manager: string,
+  clientTimeInput: ClientTimeInput = {}
 ): Promise<Array<User & { stats: LogsStats }>> => {
   const parsedManager = parseWithSchema(managerEmailSchema, manager);
 
   await connectMongo();
   const workers = await getWorkers(parsedManager);
 
-  const now = new Date();
-  const last30Days = new Date(now);
-  last30Days.setHours(0, 0, 0, 0);
-  last30Days.setDate(last30Days.getDate() - (MANAGER_STATS_DAYS_WINDOW - 1));
+  const context = resolveClientTimeContext(clientTimeInput);
+  
+  const nowUtc = new Date();
+  const thirtyDaysAgoLocalDate = addDays(context.nowLocalDate, -(MANAGER_STATS_DAYS_WINDOW - 1));
+  const thirtyDaysAgoStartUtc = getUtcRangeForLocalDate(context, thirtyDaysAgoLocalDate).startUtc;
 
   const last30DaysWorkers = await Promise.all(
     workers.map(async (worker) => {
       return await LogModel.find({
         user: worker.email,
-        date: { $gte: last30Days, $lte: now },
+        date: { $gte: thirtyDaysAgoStartUtc, $lte: nowUtc },
       })
         .sort({ date: 1 })
         .exec();
@@ -67,12 +75,13 @@ const getWorkers = async (manager: string): Promise<User[]> => {
 
 export const isMyWorker = async (
   manager: string,
-  worker: string
+  worker: string,
+  clientTimeInput: ClientTimeInput = {}
 ): Promise<boolean> => {
   const parsedManager = parseWithSchema(managerEmailSchema, manager);
   const parsedWorker = parseWithSchema(managerEmailSchema, worker);
 
-  const workers = await getMyWorkers(parsedManager);
+  const workers = await getMyWorkers(parsedManager, clientTimeInput);
   return workers.some((w) => w.email === parsedWorker);
 };
 

@@ -5,47 +5,67 @@ import { parseWithSchema } from "@/lib/validation";
 import { userStatsSchema } from "@/schemas/db";
 import { UserStats } from "@/types";
 import { z } from "zod";
+import {
+  type ClientTimeInput,
+  addDays,
+  getUtcRangeForLocalDate,
+  resolveClientTimeContext,
+} from "@/lib/clientTime";
 
-const getUserStats = async (email: string): Promise<UserStats> => {
+const getUserStats = async (
+  email: string,
+  clientTimeInput: ClientTimeInput = {}
+): Promise<UserStats> => {
   const parsedEmail = parseWithSchema(z.string().email(), email);
 
   await connectMongo();
 
-  const now = new Date();
-  const todayMidnight = new Date(now).setHours(0, 0, 0, 0);
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
+  const context = resolveClientTimeContext(clientTimeInput);
+  const { year, month, day } = context.nowLocalDate;
 
-  const dayOfWeek = now.getDay();
+  // Boundary for the end of the queried periods
+  // We query strictly < todayStartUtc, so today is excluded from historical stats
+  const todayRange = getUtcRangeForLocalDate(context, context.nowLocalDate);
+  const todayStartUtc = todayRange.startUtc;
+
+  const localIsoDate = new Date(Date.UTC(year, month - 1, day));
+  const dayOfWeek = localIsoDate.getUTCDay();
   const daysPassedWeek = dayOfWeek === 0 ? 7 : dayOfWeek;
+
+  const weekStartLocalDate = addDays(context.nowLocalDate, -daysPassedWeek);
+  const weekStartUtc = getUtcRangeForLocalDate(context, weekStartLocalDate).startUtc;
 
   const logsThisWeek = await LogModel.find({
     user: parsedEmail,
     date: {
-      $gte: new Date(todayMidnight - daysPassedWeek * 24 * 60 * 60 * 1000),
-      $lt: new Date(todayMidnight),
+      $gte: weekStartUtc,
+      $lt: todayStartUtc,
     },
   });
 
   const weekStats = statsFromLogs([...logsThisWeek]);
 
+  const monthStartLocalDate = { year, month, day: 1 };
+  const monthStartUtc = getUtcRangeForLocalDate(context, monthStartLocalDate).startUtc;
+
   const logsThisMonth = await LogModel.find({
     user: parsedEmail,
     date: {
-      $gte: new Date(
-        new Date(currentYear, currentMonth, 1).setHours(0, 0, 0, 0)
-      ),
-      $lt: new Date(todayMidnight),
+      $gte: monthStartUtc,
+      $lt: todayStartUtc,
     },
   });
 
   const monthStats = statsFromLogs([...logsThisMonth]);
 
+  const yearStartLocalDate = { year, month: 1, day: 1 };
+  const yearStartUtc = getUtcRangeForLocalDate(context, yearStartLocalDate).startUtc;
+
   const logsThisYear = await LogModel.find({
     user: parsedEmail,
     date: {
-      $gte: new Date(new Date(currentYear, 0, 1).setHours(0, 0, 0, 0)),
-      $lt: new Date(todayMidnight),
+      $gte: yearStartUtc,
+      $lt: todayStartUtc,
     },
   });
 

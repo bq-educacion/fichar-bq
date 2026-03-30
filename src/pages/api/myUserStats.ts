@@ -1,7 +1,7 @@
 import getUserStats from "@/controllers/getUserStats";
 import { formatZodError, isZodError, parseWithSchema, toPlainObject } from "@/lib/validation";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
-import { myUserStatsResponseSchema } from "@/schemas/api";
+import { myUserStatsQuerySchema, myUserStatsResponseSchema } from "@/schemas/api";
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 
@@ -18,7 +18,21 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return;
     }
 
-    const data = await getUserStats(session.user.email);
+    const query = parseWithSchema(myUserStatsQuerySchema, {
+      clientTimezoneOffsetMinutes: Array.isArray(
+        req.query.clientTimezoneOffsetMinutes
+      )
+        ? req.query.clientTimezoneOffsetMinutes[0]
+        : req.query.clientTimezoneOffsetMinutes,
+      clientTimeZone: Array.isArray(req.query.clientTimeZone)
+        ? req.query.clientTimeZone[0]
+        : req.query.clientTimeZone,
+    });
+
+    const data = await getUserStats(session.user.email, {
+      clientTimezoneOffsetMinutes: query.clientTimezoneOffsetMinutes,
+      clientTimeZone: query.clientTimeZone,
+    });
     const payload = parseWithSchema(myUserStatsResponseSchema, toPlainObject(data));
 
     res.status(200).json(payload);

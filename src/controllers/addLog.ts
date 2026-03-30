@@ -1,7 +1,11 @@
 import { LogModel } from "@/db/Models";
 import connectMongo from "@/lib/connectMongo";
 import { parseWithSchema, toPlainObject } from "@/lib/validation";
-import { projectDedicationInputSchema } from "@/schemas/api";
+import {
+  ianaTimezoneSchema,
+  projectDedicationInputSchema,
+  timezoneOffsetMinutesSchema,
+} from "@/schemas/api";
 import { logCreateSchema, logSchema, logTypeEnumSchema } from "@/schemas/db";
 import { LOG_TYPE, Log } from "@/types";
 import { z } from "zod";
@@ -10,6 +14,13 @@ import {
   saveProjectDedicationsForToday,
 } from "./projectDedications";
 import updateUserStatus from "./updateUserStatus";
+import {
+  type ClientTimeInput,
+  getUtcRangeForLocalDate,
+  getLocalDateForUtcDate,
+  localDateToYyyyMmDd,
+  resolveClientTimeContext,
+} from "@/lib/clientTime";
 
 const addLogInputSchema = z
   .object({
@@ -17,14 +28,10 @@ const addLogInputSchema = z
     type: logTypeEnumSchema,
     isMobile: z.boolean(),
     projectDedications: z.array(projectDedicationInputSchema).default([]),
+    clientTimezoneOffsetMinutes: timezoneOffsetMinutesSchema.optional(),
+    clientTimeZone: ianaTimezoneSchema.optional(),
   })
   .strict();
-
-const dateToInputDateValue = (date: Date) =>
-  `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}-${date
-    .getDate()
-    .toString()
-    .padStart(2, "0")}`;
 
 export class PreviousDayNotClosedError extends Error {
   public readonly targetDate: string;
@@ -45,13 +52,16 @@ const addLog = async (
   email: string,
   type: LOG_TYPE,
   isMobile: boolean,
-  projectDedications: z.infer<typeof projectDedicationInputSchema>[] = []
+  projectDedications: z.infer<typeof projectDedicationInputSchema>[] = [],
+  clientTimeInput: ClientTimeInput = {}
 ): Promise<Log> => {
   const input = parseWithSchema(addLogInputSchema, {
     email,
     type,
     isMobile,
     projectDedications,
+    clientTimezoneOffsetMinutes: clientTimeInput.clientTimezoneOffsetMinutes,
+    clientTimeZone: clientTimeInput.clientTimeZone,
   });
 
   if (input.type !== LOG_TYPE.out && input.projectDedications.length > 0) {
@@ -76,12 +86,15 @@ const addLog = async (
     return parseWithSchema(logSchema, toPlainObject(log));
   }
 
-  const startOfToday = new Date(new Date().setHours(0, 0, 0, 0));
+  const context = resolveClientTimeContext(input);
+  const startOfToday = getUtcRangeForLocalDate(context, context.nowLocalDate).startUtc;
   const isLastLogFromPreviousDay = lastLog.date < startOfToday;
 
   if (isLastLogFromPreviousDay) {
     if (lastLog.type !== LOG_TYPE.out && input.type === LOG_TYPE.in) {
-      throw new PreviousDayNotClosedError(dateToInputDateValue(lastLog.date));
+      throw new PreviousDayNotClosedError(
+        localDateToYyyyMmDd(getLocalDateForUtcDate(context, lastLog.date))
+      );
     }
 
     if (input.type !== LOG_TYPE.in) {
@@ -104,7 +117,7 @@ const addLog = async (
       user: input.email,
     });
 
-    await clearProjectDedicationsForToday(input.email);
+    await clearProjectDedicationsForToday(input.email, input);
     await updateUserStatus(input.email);
     return parseWithSchema(logSchema, toPlainObject(log));
   }
@@ -133,7 +146,7 @@ const addLog = async (
 
   if (input.type === LOG_TYPE.out) {
     try {
-      await saveProjectDedicationsForToday(input.email, input.projectDedications);
+      await saveProjectDedicationsForToday(input.email, input.projectDedications, input);
     } catch (error) {
       await LogModel.deleteOne({ _id: log._id }).exec();
       throw error;

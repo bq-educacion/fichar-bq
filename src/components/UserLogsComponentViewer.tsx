@@ -11,11 +11,85 @@ import IconDoctor from "@/assets/icons/icon-doctor.svg";
 import IconManual from "@/assets/icons/icon-manual.svg";
 import ManualLogsModal, { ManualLogsData } from "./ManualLogsModal";
 
+const LAST_LOGS_DAYS = 7;
+type ManualMode = "overwrite" | "add";
+type ProcessedDayLogs = {
+  inputDate: string;
+  date: Date;
+  label: string;
+  logs: Log[];
+};
+
 const toInputDateValue = (date: Date) =>
   `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}-${date
     .getDate()
     .toString()
     .padStart(2, "0")}`;
+
+const fromInputDateValue = (inputDate: string) => {
+  const [year, month, day] = inputDate.split("-").map(Number);
+  return new Date(year, month - 1, day);
+};
+
+const formatDisplayDate = (date: Date) =>
+  date.toLocaleDateString("es-ES", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+const isWeekday = (date: Date) => {
+  const day = date.getDay();
+  return day >= 1 && day <= 5;
+};
+
+const processLogs = (logs: Log[], includeMissingWeekdays: boolean): ProcessedDayLogs[] => {
+  const logsByDay = new Map<string, Log[]>();
+
+  logs.forEach((log) => {
+    const logDate = new Date(log.date);
+    const inputDate = toInputDateValue(logDate);
+    const dayLogs = logsByDay.get(inputDate) ?? [];
+    dayLogs.push(log);
+    logsByDay.set(inputDate, dayLogs);
+  });
+
+  logsByDay.forEach((dayLogs) => {
+    dayLogs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  });
+
+  if (includeMissingWeekdays) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let offset = 0; offset < LAST_LOGS_DAYS; offset += 1) {
+      const candidateDay = new Date(today);
+      candidateDay.setDate(today.getDate() - offset);
+
+      if (!isWeekday(candidateDay)) {
+        continue;
+      }
+
+      const inputDate = toInputDateValue(candidateDay);
+      if (!logsByDay.has(inputDate)) {
+        logsByDay.set(inputDate, []);
+      }
+    }
+  }
+
+  return Array.from(logsByDay.entries())
+    .map(([inputDate, dayLogs]) => {
+      const date = fromInputDateValue(inputDate);
+      return {
+        inputDate,
+        date,
+        label: formatDisplayDate(date),
+        logs: dayLogs,
+      };
+    })
+    .sort((a, b) => b.date.getTime() - a.date.getTime());
+};
 
 const UserLogsComponentViewer: FC<{
   logs: Log[];
@@ -66,61 +140,55 @@ const UserLogsComponentViewer: FC<{
 
         updatedLog!.note = LOG_NOTES.doctor;
         updatedLog!.logFile = `${url}${filename}`;
-        setProcessedLogs({ ...processLogs(logs) });
+        setProcessedLogs(processLogs(logs, allowManualOverwrite));
       } else {
         console.error("Upload failed.");
       }
     }
   };
 
-  const processLogs = (logs: Log[]) => {
-    const processedLogs = logs.reduce((acc, log) => {
-      const date = new Date(log.date);
-      // key is readable date in spanish
-      const key = date.toLocaleDateString("es-ES", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-      if (!acc[key]) {
-        acc[key] = [];
-      }
-      acc[key] = [log, ...acc[key]];
-      return acc;
-    }, {} as { [key: string]: Log[] });
-
-    return processedLogs;
-  };
-  const [processedLogs, setProcessedLogs] = useState<{ [key: string]: Log[] }>({
-    ...processLogs(logs),
-  });
+  const [processedLogs, setProcessedLogs] = useState<ProcessedDayLogs[]>(
+    processLogs(logs, allowManualOverwrite)
+  );
   const [manualTargetDate, setManualTargetDate] = useState<string | null>(null);
   const [manualModalOpen, setManualModalOpen] = useState(false);
+  const [manualMode, setManualMode] = useState<ManualMode>("overwrite");
 
   useEffect(() => {
-    setProcessedLogs({ ...processLogs(logs) });
-  }, [logs]);
+    setProcessedLogs(processLogs(logs, allowManualOverwrite));
+  }, [allowManualOverwrite, logs]);
 
-  const openManualOverwriteForDay = (dayLogs: Log[]) => {
-    if (dayLogs.length === 0) {
+  const closeManualModal = () => {
+    setManualModalOpen(false);
+    setManualTargetDate(null);
+    setManualMode("overwrite");
+  };
+
+  const openManualOverwriteForDay = (day: ProcessedDayLogs) => {
+    if (day.logs.length === 0) {
       return;
     }
 
-    const targetDate = toInputDateValue(new Date(dayLogs[0].date));
-    setManualTargetDate(targetDate);
+    setManualMode("overwrite");
+    setManualTargetDate(day.inputDate);
     setManualModalOpen(true);
   };
 
-  const submitManualOverwriteForDay = async (data: ManualLogsData) => {
+  const openManualAddForDay = (day: ProcessedDayLogs) => {
+    if (day.logs.length > 0) {
+      return;
+    }
+
+    setManualMode("add");
+    setManualTargetDate(day.inputDate);
+    setManualModalOpen(true);
+  };
+
+  const submitManualForDay = async (data: ManualLogsData) => {
     const res = await fetch("/api/manualLogs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...data,
-        preserveProjectDedications: true,
-        projectDedications: [],
-      }),
+      body: JSON.stringify(data),
     });
 
     if (res.status === 401) {
@@ -131,8 +199,7 @@ const UserLogsComponentViewer: FC<{
       return;
     }
 
-    setManualModalOpen(false);
-    setManualTargetDate(null);
+    closeManualModal();
     await refreshLogs?.();
   };
 
@@ -140,7 +207,7 @@ const UserLogsComponentViewer: FC<{
     [key: string]: HTMLInputElement;
   }>({});
 
-  if (Object.keys(processedLogs).length === 0) {
+  if (processedLogs.length === 0) {
     return null;
   }
 
@@ -175,14 +242,11 @@ const UserLogsComponentViewer: FC<{
       {allowManualOverwrite && (
         <ManualLogsModal
           isOpen={manualModalOpen}
-          onClose={() => {
-            setManualModalOpen(false);
-            setManualTargetDate(null);
-          }}
-          onSubmit={submitManualOverwriteForDay}
+          onClose={closeManualModal}
+          onSubmit={submitManualForDay}
           targetDate={manualTargetDate ?? undefined}
-          showDedications={false}
-          preserveProjectDedications={true}
+          showDedications={manualMode === "add"}
+          preserveProjectDedications={manualMode === "overwrite"}
         />
       )}
       <DisplayContent
@@ -191,10 +255,10 @@ const UserLogsComponentViewer: FC<{
         title="Registro de fichajes (últimos 7 días)"
       >
         <Container>
-          {Object.keys(processedLogs).map((key, index) => {
-            const dayLogs = processedLogs[key];
+          {processedLogs.map((day, index) => {
+            const dayLogs = day.logs;
             // first letter of key in upper case
-            const title = key.charAt(0).toUpperCase() + key.slice(1);
+            const title = day.label.charAt(0).toUpperCase() + day.label.slice(1);
             // title and number of hours worked (except if there is an error)
             const title_full = `${title} (${decimalToHours(
               getHoursToday(
@@ -207,34 +271,42 @@ const UserLogsComponentViewer: FC<{
             return (
               <DisplayContent
                 opened={index === 0}
-                key={key}
+                key={day.inputDate}
                 title={title_full}
                 bold={false}
                 rightContent={
                   allowManualOverwrite ? (
-                    <OverwriteButton onClick={() => openManualOverwriteForDay(dayLogs)}>
-                      Sobrescribir
-                    </OverwriteButton>
+                    dayLogs.length === 0 ? (
+                      <AddButton onClick={() => openManualAddForDay(day)}>Añadir</AddButton>
+                    ) : (
+                      <OverwriteButton onClick={() => openManualOverwriteForDay(day)}>
+                        Sobrescribir
+                      </OverwriteButton>
+                    )
                   ) : undefined
                 }
               >
-                {dayLogs.map((log) => (
-                  <Log key={log._id.toString()}>
-                    <Icon color={LogIcon[log.type].color}>
-                      {LogIcon[log.type].icon}
-                    </Icon>
-                    <div>{LogType[log.type]}</div>
-                    <Time>
-                      {datetoHHMM(new Date(log.date))}
-                      {log.manual && (
-                        <ManualBadge title="Fichaje manual">
-                          <IconManual />
-                        </ManualBadge>
-                      )}
-                      {log.isMobile && <IconMobile />}
-                    </Time>
-                  </Log>
-                ))}
+                {dayLogs.length === 0 ? (
+                  <EmptyDayMessage>Sin fichajes registrados</EmptyDayMessage>
+                ) : (
+                  dayLogs.map((log) => (
+                    <Log key={log._id.toString()}>
+                      <Icon color={LogIcon[log.type].color}>
+                        {LogIcon[log.type].icon}
+                      </Icon>
+                      <div>{LogType[log.type]}</div>
+                      <Time>
+                        {datetoHHMM(new Date(log.date))}
+                        {log.manual && (
+                          <ManualBadge title="Fichaje manual">
+                            <IconManual />
+                          </ManualBadge>
+                        )}
+                        {log.isMobile && <IconMobile />}
+                      </Time>
+                    </Log>
+                  ))
+                )}
               </DisplayContent>
             );
           })}
@@ -332,6 +404,24 @@ const OverwriteButton = styled.button`
   }
 `;
 
+const AddButton = styled.button`
+  height: 26px;
+  padding: 0 10px;
+  margin-right: 10px;
+  border: 1px solid #434242;
+  border-radius: 4px;
+  background: transparent;
+  color: #434242;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: #dfdfde;
+  }
+`;
+
 const Log = styled.div`
   display: grid;
   width: 100%;
@@ -341,6 +431,17 @@ const Log = styled.div`
   font-size: 14px;
   color: #4e4f53;
   align-items: center;
+`;
+
+const EmptyDayMessage = styled.div`
+  border-top: 1px solid #fff;
+  width: 100%;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  font-size: 13px;
+  color: #6d6e72;
 `;
 
 const ManualBadge = styled.span`

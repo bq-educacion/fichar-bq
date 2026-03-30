@@ -20,6 +20,7 @@ export const yyyyMmDdSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid YYYY-MM-DD format");
 export const timezoneOffsetMinutesSchema = z.number().int().min(-840).max(840);
+export const ianaTimezoneSchema = z.string().min(1).max(100);
 
 export const paginationBodySchema = z
   .object({
@@ -40,6 +41,8 @@ export const logActivityBodySchema = z
     type: logTypeEnumSchema,
     isMobile: z.boolean(),
     projectDedications: z.array(projectDedicationInputSchema).default([]),
+    clientTimezoneOffsetMinutes: timezoneOffsetMinutesSchema.optional(),
+    clientTimeZone: ianaTimezoneSchema.optional(),
   })
   .strict();
 
@@ -68,6 +71,7 @@ export const manualLogsBodySchema = z
     pauses: z.array(manualPauseSchema).default([]),
     projectDedications: z.array(projectDedicationInputSchema).default([]),
     clientTimezoneOffsetMinutes: timezoneOffsetMinutesSchema.optional(),
+    clientTimeZone: ianaTimezoneSchema.optional(),
     targetDate: yyyyMmDdSchema.optional(),
     preserveProjectDedications: z.boolean().default(false),
   })
@@ -86,6 +90,7 @@ export const todayLogsUpdateBodySchema = z
   .object({
     logs: z.array(todayLogTimeInputSchema).min(1),
     clientTimezoneOffsetMinutes: timezoneOffsetMinutesSchema.optional(),
+    clientTimeZone: ianaTimezoneSchema.optional(),
   })
   .strict();
 
@@ -99,6 +104,7 @@ export const todayLogsQuerySchema = z
       .min(-840)
       .max(840)
       .optional(),
+    clientTimeZone: ianaTimezoneSchema.optional(),
   })
   .strict();
 
@@ -109,6 +115,25 @@ export const myUserLogsBodySchema = paginationBodySchema;
 export const myUserLogsResponseSchema = z.array(logSchema);
 
 export const myUserStatsResponseSchema = userStatsSchema;
+
+export const myUserStatsQuerySchema = z
+  .object({
+    clientTimezoneOffsetMinutes: z.coerce
+      .number()
+      .int()
+      .min(-840)
+      .max(840)
+      .optional(),
+    clientTimeZone: ianaTimezoneSchema.optional(),
+  })
+  .strict();
+
+export const removeLastLogBodySchema = z
+  .object({
+    clientTimezoneOffsetMinutes: timezoneOffsetMinutesSchema.optional(),
+    clientTimeZone: ianaTimezoneSchema.optional(),
+  })
+  .strict();
 
 export const removeLastLogResponseSchema = logSchema;
 
@@ -130,6 +155,13 @@ export const myProjectDedicationsResponseSchema = z
 export const myProjectDedicationsQuerySchema = z
   .object({
     targetDate: yyyyMmDdSchema.optional(),
+    clientTimezoneOffsetMinutes: z.coerce
+      .number()
+      .int()
+      .min(-840)
+      .max(840)
+      .optional(),
+    clientTimeZone: ianaTimezoneSchema.optional(),
   })
   .strict();
 
@@ -163,6 +195,8 @@ export const workerLogsResponseSchema = z.array(logSchema);
 export const workerStatsBodySchema = z
   .object({
     workerEmail: z.string().email(),
+    clientTimezoneOffsetMinutes: timezoneOffsetMinutesSchema.optional(),
+    clientTimeZone: ianaTimezoneSchema.optional(),
   })
   .strict();
 
@@ -351,6 +385,7 @@ export type WorkerLogsBody = z.infer<typeof workerLogsBodySchema>;
 export type MyProjectDedicationsQuery = z.infer<
   typeof myProjectDedicationsQuerySchema
 >;
+export type RemoveLastLogBody = z.infer<typeof removeLastLogBodySchema>;
 export type WorkerStatsBody = z.infer<typeof workerStatsBodySchema>;
 export type UploadUrlQuery = z.infer<typeof uploadUrlQuerySchema>;
 export type AuthGoogleProfile = z.infer<typeof authGoogleProfileSchema>;
@@ -359,10 +394,9 @@ export type LogDoctorFileResponse = z.infer<typeof logDoctorFileResponseSchema>;
 export type ManualLogsResponse = z.infer<typeof manualLogsResponseSchema>;
 export type TodayLogsResponse = z.infer<typeof todayLogsResponseSchema>;
 export type MeResponse = z.infer<typeof meResponseSchema>;
-export type MyUserLogsResponse = z.infer<typeof myUserLogsResponseSchema>;
 export type MyProjectDedicationsResponse = z.infer<typeof myProjectDedicationsResponseSchema>;
+export type MyUserStatsQuery = z.infer<typeof myUserStatsQuerySchema>;
 export type MyUserStatsResponse = z.infer<typeof myUserStatsResponseSchema>;
-export type RemoveLastLogResponse = z.infer<typeof removeLastLogResponseSchema>;
 export type SetLegalResponse = z.infer<typeof setLegalResponseSchema>;
 export type UploadUrlResponse = z.infer<typeof uploadUrlResponseSchema>;
 export type UserStatusResponse = z.infer<typeof userStatusResponseSchema>;

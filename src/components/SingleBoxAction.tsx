@@ -9,6 +9,7 @@ import { useRouter } from "next/router";
 import TimedButton from "../ui/TimedButton";
 import { datetoHHMM, decimalToHours } from "@/lib/utils";
 import getMobileDetect from "@/lib/getmobileDetect";
+import { getBrowserTimeInput } from "@/lib/browserTime";
 import ManualLogsModal, { ManualLogsData } from "./ManualLogsModal";
 
 type UndoFeedbackState = "idle" | "loading" | "success" | "error";
@@ -78,7 +79,11 @@ const SingleBoxAction: FC<{
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ type, isMobile: device.isMobile }),
+      body: JSON.stringify({
+        type,
+        isMobile: device.isMobile,
+        ...getBrowserTimeInput(),
+      }),
     });
   };
 
@@ -142,6 +147,7 @@ const SingleBoxAction: FC<{
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify(getBrowserTimeInput()),
       });
       if (res.status === 401) {
         router.push("/login");
