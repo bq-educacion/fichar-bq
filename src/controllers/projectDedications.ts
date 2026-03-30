@@ -11,6 +11,13 @@ import {
 import { projectDedicationCreateSchema } from "@/schemas/db";
 import { z } from "zod";
 
+import {
+  type ClientTimeInput,
+  getUtcRangeForLocalDate,
+  parseYyyyMmDdToLocalDate,
+  resolveClientTimeContext,
+} from "@/lib/clientTime";
+
 const dedicationArraySchema = z.array(projectDedicationInputSchema).default([]);
 const emailSchema = z.string().email();
 const dayRangeSchema = z
@@ -23,27 +30,17 @@ const dayRangeSchema = z
     message: "Invalid day range",
   });
 
-const getDayRange = (date: Date) => {
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(date);
-  end.setHours(23, 59, 59, 999);
-  return { start, end };
-};
+const getRangeFromInputDate = (
+  clientTimeInput: ClientTimeInput = {},
+  targetDate?: string
+) => {
+  const context = resolveClientTimeContext(clientTimeInput);
+  const targetLocalDate = targetDate
+    ? parseYyyyMmDdToLocalDate(targetDate)
+    : context.nowLocalDate;
 
-const getTodayRange = () => getDayRange(new Date());
-
-const getRangeFromInputDate = (targetDate?: string) => {
-  if (!targetDate) {
-    return getTodayRange();
-  }
-
-  const parsedTargetDate = parseWithSchema(yyyyMmDdSchema, targetDate);
-  const [rawYear, rawMonth, rawDay] = parsedTargetDate.split("-");
-  const year = Number(rawYear);
-  const month = Number(rawMonth) - 1;
-  const day = Number(rawDay);
-  return getDayRange(new Date(year, month, day));
+  const range = getUtcRangeForLocalDate(context, targetLocalDate);
+  return { start: range.startUtc, end: range.endUtc };
 };
 
 const getUserContextFromEmail = async (
@@ -164,10 +161,11 @@ export const resolveDedicationsForProjects = (
 
 export const getProjectDedicationOptionsForDate = async (
   email: string,
-  targetDate?: string
+  targetDate?: string,
+  clientTimeInput: ClientTimeInput = {}
 ) => {
   const parsedEmail = parseWithSchema(emailSchema, email);
-  const targetRange = getRangeFromInputDate(targetDate);
+  const targetRange = getRangeFromInputDate(clientTimeInput, targetDate);
 
   await connectMongo();
 
@@ -239,14 +237,17 @@ export const getProjectDedicationOptionsForDate = async (
   });
 };
 
-export const getProjectDedicationOptionsForToday = async (email: string) =>
-  await getProjectDedicationOptionsForDate(email);
+export const getProjectDedicationOptionsForToday = async (
+  email: string,
+  clientTimeInput: ClientTimeInput = {}
+) => await getProjectDedicationOptionsForDate(email, undefined, clientTimeInput);
 
 export const saveProjectDedicationsForToday = async (
   email: string,
-  dedications: ProjectDedicationInput[]
+  dedications: ProjectDedicationInput[],
+  clientTimeInput: ClientTimeInput = {}
 ) => {
-  const todayRange = getTodayRange();
+  const todayRange = getRangeFromInputDate(clientTimeInput);
   await saveProjectDedicationsForRange(email, dedications, todayRange);
 };
 
@@ -296,13 +297,16 @@ export const saveProjectDedicationsForRange = async (
   ).exec();
 };
 
-export const clearProjectDedicationsForToday = async (email: string) => {
+export const clearProjectDedicationsForToday = async (
+  email: string,
+  clientTimeInput: ClientTimeInput = {}
+) => {
   const parsedEmail = parseWithSchema(emailSchema, email);
 
   await connectMongo();
 
   const { userId } = await getUserContextFromEmail(parsedEmail);
-  const { start, end } = getTodayRange();
+  const { start, end } = getRangeFromInputDate(clientTimeInput);
 
   await ProjectDedicationModel.deleteMany({
     userId,

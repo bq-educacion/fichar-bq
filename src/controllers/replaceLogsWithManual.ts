@@ -1,4 +1,11 @@
 import { LogModel } from "@/db/Models";
+import {
+  getUtcRangeForLocalDate,
+  localDateTimeToUtc,
+  localDateToSortableNumber,
+  parseYyyyMmDdToLocalDate,
+  resolveClientTimeContext,
+} from "@/lib/clientTime";
 import connectMongo from "@/lib/connectMongo";
 import {
   hhmmToMinutes,
@@ -33,30 +40,21 @@ const replaceLogsWithManual = async (
 
   await connectMongo();
 
-  const clientTimezoneOffsetMinutes =
-    parsedEntry.clientTimezoneOffsetMinutes ?? new Date().getTimezoneOffset();
+  const clientTimeContext = resolveClientTimeContext({
+    clientTimezoneOffsetMinutes: parsedEntry.clientTimezoneOffsetMinutes,
+    clientTimeZone: parsedEntry.clientTimeZone,
+  });
 
-  const userNow = new Date(Date.now() - clientTimezoneOffsetMinutes * 60 * 1000);
-  const todayYear = userNow.getUTCFullYear();
-  const todayMonth = userNow.getUTCMonth();
-  const todayDay = userNow.getUTCDate();
-
-  let userYear = todayYear;
-  let userMonth = todayMonth;
-  let userDay = todayDay;
-
-  if (parsedEntry.targetDate) {
-    const [rawYear, rawMonth, rawDay] = parsedEntry.targetDate.split("-");
-    userYear = Number(rawYear);
-    userMonth = Number(rawMonth) - 1;
-    userDay = Number(rawDay);
-  }
-
+  const targetLocalDate = parsedEntry.targetDate
+    ? parseYyyyMmDdToLocalDate(parsedEntry.targetDate)
+    : clientTimeContext.nowLocalDate;
+  const todayLocalDate = clientTimeContext.nowLocalDate;
   const isTargetToday =
-    userYear === todayYear && userMonth === todayMonth && userDay === todayDay;
+    localDateToSortableNumber(targetLocalDate) ===
+    localDateToSortableNumber(todayLocalDate);
 
-  const targetDayNumber = Date.UTC(userYear, userMonth, userDay);
-  const todayDayNumber = Date.UTC(todayYear, todayMonth, todayDay);
+  const targetDayNumber = localDateToSortableNumber(targetLocalDate);
+  const todayDayNumber = localDateToSortableNumber(todayLocalDate);
   if (targetDayNumber > todayDayNumber) {
     throw new Error("No se pueden introducir fichajes manuales en días futuros");
   }
@@ -64,22 +62,19 @@ const replaceLogsWithManual = async (
   const rangeValidation = validateManualHoursRange(
     parsedEntry.startHour,
     parsedEntry.endHour,
-    userNow,
-    { enforceNowLimit: isTargetToday }
+    new Date(),
+    {
+      enforceNowLimit: isTargetToday,
+      nowMinutes: clientTimeContext.nowMinutes,
+    }
   );
 
   if (!rangeValidation.isValid) {
     throw new Error(rangeValidation.error);
   }
 
-  const userTodayStartUtc = new Date(
-    Date.UTC(userYear, userMonth, userDay, 0, 0, 0, 0) +
-      clientTimezoneOffsetMinutes * 60 * 1000
-  );
-  const userTodayEndUtc = new Date(
-    Date.UTC(userYear, userMonth, userDay, 23, 59, 59, 999) +
-      clientTimezoneOffsetMinutes * 60 * 1000
-  );
+  const { startUtc: userTodayStartUtc, endUtc: userTodayEndUtc } =
+    getUtcRangeForLocalDate(clientTimeContext, targetLocalDate);
 
   if (!parsedEntry.preserveProjectDedications) {
     await saveProjectDedicationsForRange(parsedEmail, parsedEntry.projectDedications, {
@@ -101,10 +96,15 @@ const replaceLogsWithManual = async (
 
     const hh = Math.floor(totalMinutes / 60);
     const mm = totalMinutes % 60;
-    return new Date(
-      Date.UTC(userYear, userMonth, userDay, hh, mm, 0, 0) +
-        clientTimezoneOffsetMinutes * 60 * 1000
-    );
+
+    try {
+      return localDateTimeToUtc(clientTimeContext, targetLocalDate, hh, mm);
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Hora ${timeStr}: ${error.message}`);
+      }
+      throw error;
+    }
   };
 
   const logsToCreate: z.infer<typeof logCreateSchema>[] = [];

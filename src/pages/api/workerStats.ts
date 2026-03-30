@@ -26,7 +26,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return;
     }
 
-    const data = await getUserStats(body.workerEmail);
+    const data = await getUserStats(body.workerEmail, {
+      clientTimezoneOffsetMinutes: body.clientTimezoneOffsetMinutes,
+      clientTimeZone: body.clientTimeZone,
+    });
     const payload = parseWithSchema(workerStatsResponseSchema, toPlainObject(data));
 
     res.status(200).json(payload);

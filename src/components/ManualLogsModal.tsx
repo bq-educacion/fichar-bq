@@ -53,6 +53,7 @@ const ManualLogsModal: FC<{
   preserveProjectDedications = false,
 }) => {
   const getCurrentBrowserHour = () => dateToTimeInputValue(new Date());
+  const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const browserTodayDate = dateToInputDateValue(new Date());
   const effectiveTargetDate = targetDate ?? browserTodayDate;
   const isTargetToday = effectiveTargetDate === browserTodayDate;
@@ -207,6 +208,7 @@ const ManualLogsModal: FC<{
       pauses: pauses.map(({ start, end }) => ({ start, end })),
       projectDedications: showDedicationsState ? projectDedications : [],
       clientTimezoneOffsetMinutes: new Date().getTimezoneOffset(),
+      clientTimeZone: browserTimeZone,
       targetDate: effectiveTargetDate,
       preserveProjectDedications,
     });

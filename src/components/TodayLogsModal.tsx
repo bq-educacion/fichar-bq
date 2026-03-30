@@ -63,15 +63,21 @@ const TodayLogsModal: FC<{
     }, 30000);
 
     const browserTimezoneOffsetMinutes = new Date().getTimezoneOffset();
+    const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const fetchTodayLogs = async () => {
       setLoading(true);
       setError("");
       setSuccessMessage("");
 
       try {
-        const params = new URLSearchParams({
-          clientTimezoneOffsetMinutes: String(browserTimezoneOffsetMinutes),
-        });
+        const params = new URLSearchParams();
+        params.set(
+          "clientTimezoneOffsetMinutes",
+          String(browserTimezoneOffsetMinutes)
+        );
+        if (browserTimeZone) {
+          params.set("clientTimeZone", browserTimeZone);
+        }
         const res = await fetch(`/api/todayLogs?${params.toString()}`);
         if (res.status === 401) {
           router.push("/login");
@@ -158,12 +164,14 @@ const TodayLogsModal: FC<{
     setSuccessMessage("");
 
     try {
+      const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const res = await fetch("/api/todayLogs", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           logs: logs.map(({ _id, time }) => ({ _id, time })),
           clientTimezoneOffsetMinutes: new Date().getTimezoneOffset(),
+          clientTimeZone: browserTimeZone,
         }),
       });
 
@@ -206,9 +214,15 @@ const TodayLogsModal: FC<{
     setSuccessMessage("");
 
     try {
-      const params = new URLSearchParams({
-        clientTimezoneOffsetMinutes: String(new Date().getTimezoneOffset()),
-      });
+      const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const params = new URLSearchParams();
+      params.set(
+        "clientTimezoneOffsetMinutes",
+        String(new Date().getTimezoneOffset())
+      );
+      if (browserTimeZone) {
+        params.set("clientTimeZone", browserTimeZone);
+      }
       const res = await fetch(`/api/todayLogs?${params.toString()}`, {
         method: "DELETE",
       });

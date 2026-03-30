@@ -7,13 +7,18 @@ import { Log } from "@/types";
 import { z } from "zod";
 import { clearProjectDedicationsForToday } from "./projectDedications";
 import updateUserStatus from "./updateUserStatus";
+import { type ClientTimeInput, getUtcRangeForLocalDate, resolveClientTimeContext } from "@/lib/clientTime";
 
-const removeLastLogOfToday = async (email: string): Promise<Log> => {
+const removeLastLogOfToday = async (
+  email: string,
+  clientTimeInput: ClientTimeInput = {}
+): Promise<Log> => {
   const parsedEmail = parseWithSchema(z.string().email(), email);
 
   await connectMongo();
 
-  const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
+  const context = resolveClientTimeContext(clientTimeInput);
+  const todayStart = getUtcRangeForLocalDate(context, context.nowLocalDate).startUtc;
 
   const lastLogOfToday = await LogModel.findOne({
     user: parsedEmail,
@@ -36,7 +41,7 @@ const removeLastLogOfToday = async (email: string): Promise<Log> => {
     .exec();
 
   if (!newLastLogOfToday || newLastLogOfToday.type !== LOG_TYPE.out) {
-    await clearProjectDedicationsForToday(parsedEmail);
+    await clearProjectDedicationsForToday(parsedEmail, clientTimeInput);
   }
 
   await updateUserStatus(parsedEmail);

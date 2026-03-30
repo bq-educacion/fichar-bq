@@ -32,13 +32,16 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       )
         ? req.query.clientTimezoneOffsetMinutes[0]
         : req.query.clientTimezoneOffsetMinutes,
+      clientTimeZone: Array.isArray(req.query.clientTimeZone)
+        ? req.query.clientTimeZone[0]
+        : req.query.clientTimeZone,
     });
 
     if (req.method === "GET") {
-      const logs = await getTodayLogs(
-        session.user.email,
-        query.clientTimezoneOffsetMinutes
-      );
+      const logs = await getTodayLogs(session.user.email, {
+        clientTimezoneOffsetMinutes: query.clientTimezoneOffsetMinutes,
+        clientTimeZone: query.clientTimeZone,
+      });
       const payload = parseWithSchema(todayLogsResponseSchema, toPlainObject(logs));
       res.status(200).json(payload);
       return;
@@ -53,10 +56,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     if (req.method === "DELETE") {
-      const logs = await deleteTodayLogsExceptFirst(
-        session.user.email,
-        query.clientTimezoneOffsetMinutes
-      );
+      const logs = await deleteTodayLogsExceptFirst(session.user.email, {
+        clientTimezoneOffsetMinutes: query.clientTimezoneOffsetMinutes,
+        clientTimeZone: query.clientTimeZone,
+      });
       const payload = parseWithSchema(todayLogsResponseSchema, toPlainObject(logs));
       res.status(200).json(payload);
       return;

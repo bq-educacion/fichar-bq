@@ -27,7 +27,11 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       session.user.email,
       body.type,
       body.isMobile,
-      body.projectDedications
+      body.projectDedications,
+      {
+        clientTimezoneOffsetMinutes: body.clientTimezoneOffsetMinutes,
+        clientTimeZone: body.clientTimeZone,
+      }
     );
     const payload = parseWithSchema(
       logActivityResponseSchema,

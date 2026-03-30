@@ -121,7 +121,7 @@ export const validateManualHoursRange = (
   startHour: string,
   endHour: string,
   now: Date = new Date(),
-  options: { enforceNowLimit?: boolean } = {}
+  options: { enforceNowLimit?: boolean; nowMinutes?: number } = {}
 ): ManualHoursValidation => {
   const startMinutes = hhmmToMinutes(startHour);
   const endMinutes = hhmmToMinutes(endHour);
@@ -141,7 +141,7 @@ export const validateManualHoursRange = (
   }
 
   if (options.enforceNowLimit ?? true) {
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const nowMinutes = options.nowMinutes ?? now.getHours() * 60 + now.getMinutes();
     if (endMinutes > nowMinutes) {
       return {
         isValid: false,

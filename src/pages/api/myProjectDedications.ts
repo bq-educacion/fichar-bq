@@ -25,11 +25,23 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       targetDate: Array.isArray(req.query.targetDate)
         ? req.query.targetDate[0]
         : req.query.targetDate,
+      clientTimezoneOffsetMinutes: Array.isArray(
+        req.query.clientTimezoneOffsetMinutes
+      )
+        ? req.query.clientTimezoneOffsetMinutes[0]
+        : req.query.clientTimezoneOffsetMinutes,
+      clientTimeZone: Array.isArray(req.query.clientTimeZone)
+        ? req.query.clientTimeZone[0]
+        : req.query.clientTimeZone,
     });
 
     const data = await getProjectDedicationOptionsForDate(
       session.user.email,
-      query.targetDate
+      query.targetDate,
+      {
+        clientTimezoneOffsetMinutes: query.clientTimezoneOffsetMinutes,
+        clientTimeZone: query.clientTimeZone,
+      }
     );
     const payload = parseWithSchema(myProjectDedicationsResponseSchema, data);
 

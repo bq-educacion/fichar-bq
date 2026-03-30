@@ -1,11 +1,14 @@
 import { LogModel } from "@/db/Models";
+import {
+  ClientTimeInput,
+  getUtcRangeForLocalDate,
+  localDateTimeToUtc,
+  resolveClientTimeContext,
+} from "@/lib/clientTime";
 import connectMongo from "@/lib/connectMongo";
 import { hhmmToMinutes, validateSequentialUniqueTimes } from "@/lib/utils";
 import { parseWithSchema, toPlainObject } from "@/lib/validation";
-import {
-  timezoneOffsetMinutesSchema,
-  todayLogsUpdateBodySchema,
-} from "@/schemas/api";
+import { todayLogsUpdateBodySchema } from "@/schemas/api";
 import { logSchema } from "@/schemas/db";
 import { LOG_TYPE, Log } from "@/types";
 import { z } from "zod";
@@ -14,36 +17,18 @@ import updateUserStatus from "./updateUserStatus";
 
 const emailSchema = z.string().email();
 
-const resolveTodayContext = (clientTimezoneOffsetMinutes?: number) => {
-  const parsedOffsetMinutes =
-    parseWithSchema(
-      timezoneOffsetMinutesSchema.optional(),
-      clientTimezoneOffsetMinutes
-    ) ?? new Date().getTimezoneOffset();
-
-  const userNow = new Date(Date.now() - parsedOffsetMinutes * 60 * 1000);
-  const userYear = userNow.getUTCFullYear();
-  const userMonth = userNow.getUTCMonth();
-  const userDay = userNow.getUTCDate();
-
-  const todayStartUtc = new Date(
-    Date.UTC(userYear, userMonth, userDay, 0, 0, 0, 0) +
-      parsedOffsetMinutes * 60 * 1000
-  );
-  const todayEndUtc = new Date(
-    Date.UTC(userYear, userMonth, userDay, 23, 59, 59, 999) +
-      parsedOffsetMinutes * 60 * 1000
+const resolveTodayContext = (input: ClientTimeInput = {}) => {
+  const clientTimeContext = resolveClientTimeContext(input);
+  const { startUtc, endUtc } = getUtcRangeForLocalDate(
+    clientTimeContext,
+    clientTimeContext.nowLocalDate
   );
 
   return {
-    clientTimezoneOffsetMinutes: parsedOffsetMinutes,
-    userNow,
-    userYear,
-    userMonth,
-    userDay,
-    todayStartUtc,
-    todayEndUtc,
-    nowMinutes: userNow.getUTCHours() * 60 + userNow.getUTCMinutes(),
+    clientTimeContext,
+    todayStartUtc: startUtc,
+    todayEndUtc: endUtc,
+    nowMinutes: clientTimeContext.nowMinutes,
   };
 };
 
@@ -70,18 +55,21 @@ const makeDateFromTodayAndTime = (
 
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  return new Date(
-    Date.UTC(context.userYear, context.userMonth, context.userDay, hours, minutes, 0, 0) +
-      context.clientTimezoneOffsetMinutes * 60 * 1000
+
+  return localDateTimeToUtc(
+    context.clientTimeContext,
+    context.clientTimeContext.nowLocalDate,
+    hours,
+    minutes
   );
 };
 
 export const getTodayLogs = async (
   email: string,
-  clientTimezoneOffsetMinutes?: number
+  clientTimeInput: ClientTimeInput = {}
 ): Promise<Log[]> => {
   const parsedEmail = parseWithSchema(emailSchema, email);
-  const todayContext = resolveTodayContext(clientTimezoneOffsetMinutes);
+  const todayContext = resolveTodayContext(clientTimeInput);
 
   await connectMongo();
   const logs = await getTodayLogsSorted(parsedEmail, todayContext);
@@ -95,7 +83,10 @@ export const updateTodayLogsTimes = async (
 ): Promise<Log[]> => {
   const parsedEmail = parseWithSchema(emailSchema, email);
   const parsedBody = parseWithSchema(todayLogsUpdateBodySchema, body);
-  const todayContext = resolveTodayContext(parsedBody.clientTimezoneOffsetMinutes);
+  const todayContext = resolveTodayContext({
+    clientTimezoneOffsetMinutes: parsedBody.clientTimezoneOffsetMinutes,
+    clientTimeZone: parsedBody.clientTimeZone,
+  });
 
   await connectMongo();
 
@@ -153,7 +144,10 @@ export const updateTodayLogsTimes = async (
 
   const resultingLastLog = todayLogs[todayLogs.length - 1];
   if (resultingLastLog.type !== LOG_TYPE.out) {
-    await clearProjectDedicationsForToday(parsedEmail);
+    await clearProjectDedicationsForToday(parsedEmail, {
+      clientTimezoneOffsetMinutes: parsedBody.clientTimezoneOffsetMinutes,
+      clientTimeZone: parsedBody.clientTimeZone,
+    });
   }
 
   await updateUserStatus(parsedEmail);
@@ -164,10 +158,10 @@ export const updateTodayLogsTimes = async (
 
 export const deleteTodayLogsExceptFirst = async (
   email: string,
-  clientTimezoneOffsetMinutes?: number
+  clientTimeInput: ClientTimeInput = {}
 ): Promise<Log[]> => {
   const parsedEmail = parseWithSchema(emailSchema, email);
-  const todayContext = resolveTodayContext(clientTimezoneOffsetMinutes);
+  const todayContext = resolveTodayContext(clientTimeInput);
 
   await connectMongo();
 
@@ -186,7 +180,7 @@ export const deleteTodayLogsExceptFirst = async (
 
   const firstLog = todayLogs[0];
   if (firstLog.type !== LOG_TYPE.out) {
-    await clearProjectDedicationsForToday(parsedEmail);
+    await clearProjectDedicationsForToday(parsedEmail, clientTimeInput);
   }
 
   await updateUserStatus(parsedEmail);
